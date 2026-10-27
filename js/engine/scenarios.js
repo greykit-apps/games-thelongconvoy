@@ -120,6 +120,7 @@
       if (Sea.depthAt(b.x, b.y) < Math.max(80, depth + 40)) { b.x = x + PP.hx(hdg) * (6000 + i * 1500); b.y = y + PP.hy(hdg) * (6000 + i * 1500); }
     });
     Sh.spawn(S, cv);
+    S.start = { merch: S.ships.filter(q => q.role === "merchant").length, esc: S.ships.filter(q => q.role === "escort").length, boats: S.subs.length };
     /* an escort already hunting: it has a contact on the nearest boat */
     if (A.hunt) for (const sh of S.ships) if (sh.role === "escort") {
       const q = S.subs.reduce((a, b) => PP.dist(sh.x, sh.y, b.x, b.y) < PP.dist(sh.x, sh.y, a.x, a.y) ? b : a);

@@ -134,6 +134,11 @@ input::placeholder { color: var(--ps-faint); }
 .sh-body h3.mname.danger { color: var(--ps-red-text); }
 .sh-body h3.mname.dim { color: var(--ps-muted); }
 .rank { font-size: 20px; margin-bottom: 4px; }
+.tally.deb { width: 100%; margin-bottom: 12px; }
+.tally.deb th { font: 600 12px/1.3 var(--ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ps-muted); text-align: left; }
+.tally.deb th.num { text-align: right; }
+.tally.deb tr.lost td { color: var(--ps-faint); }
+.tally.deb .note { color: var(--ps-muted); }
 .rank b { color: var(--ps-yellow); }
 .sh-body p.nextrank { margin: 0 0 16px; font-size: 15px; }
 .sh-body p.placed { margin: 0 0 14px; font-size: 26px; font-weight: 700; line-height: 1.15; color: var(--ps-yellow); }

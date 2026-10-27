@@ -229,7 +229,7 @@
     UI.open("Service record", { wide: true, onClose: after,
       html: () => `${car && !car.over ? `<h3>In command</h3><p>${esc(car.rank)} ${esc(car.name)}, ${esc(car.boat)}: ${car.patrols.length} patrols, ${num(car.tons)} tons, ${C.dateStr(car.t)}.</p>` : ""}
         <h3>Careers</h3>${f.careers.length ? `<table class="scores"><tr><th></th><th>Captain</th><th>Rank</th><th class="num">Points</th><th class="num">Tons</th><th>Patrols</th><th>Ended</th></tr>${f.careers.map((e, i) => `<tr><td class="num">${i + 1}</td><td>${esc(e.name)}${e.code ? " · code" : ""}</td><td>${esc(e.rank)}</td><td class="num">${num(e.pts)}</td><td class="num">${num(e.tons)}</td><td>${e.patrols}</td><td>${{ war: "the war won", retired: "retired", lost: "lost at sea" }[e.over] || ""}</td></tr>`).join("")}</table>` : `<p class="note">No careers ended yet. They come here when the war is won, when you retire, or when the boat is lost.</p>`}
-        <h3>Missions</h3><table class="scores">${E.ACTIONS.map(A => { const r = f.actions[A.id]; return `<tr><td>${esc(A.name)}</td><td class="num">${r ? num(r.tons) + " t" : "—"}</td><td>${r ? esc(r.rating) + ` · reality ${r.pct}%` : ""}</td></tr>`; }).join("")}</table>`,
+        <h3>Missions</h3><table class="scores">${E.ACTIONS.map(A => { const r = f.actions[A.id]; return `<tr><td>${esc(A.name)}</td><td class="num">${r ? num(r.tons) + " t" : "—"}</td><td>${r ? (r.score !== undefined ? `${r.score}% · ` : "") + esc(r.rating) + ` · reality ${r.pct}%` : ""}</td></tr>`; }).join("")}</table>`,
     });
   };
 
@@ -269,15 +269,46 @@
   /* what the boat did, sunk or not: the shots, the hits, what she came through */
   const tally = S => { const t = S.stats, rows = [["Torpedoes fired", t.fired], ["Hits", t.hits + (t.duds ? `, ${t.duds} dud${t.duds > 1 ? "s" : ""}` : "")]].concat(t.shells ? [["Shells fired", t.shells]] : [], [["Depth charges survived", t.charges], ["Deepest", Math.round(t.maxDepth) + " ft"]]);
     return `<table class="tally">${rows.map(([a, b]) => `<tr><td>${a}</td><td class="num">${b}</td></tr>`).join("")}</table>`; };
+  /* ---- the debrief: who won, the score and its rating, both sides' vessels, every weapon, every boat ---- */
+  const FATE = { crushed: "crushed", flooded: "flooded" };
+  const KIND = { dc: "depth charges", gun: "gunfire", ram: "rammed", air: "bombs", torpedo: "her own torpedo", ground: "aground" };
+  const weaponTable = (head, rows) => `<table class="tally deb"><tr><th>${esc(head)}</th><th class="num">Fired</th><th class="num">Hits</th><th class="num">Kills</th></tr>${rows.filter(r => r[1] || r[3]).map(([n, f, h, k]) => `<tr><td>${esc(n)}</td><td class="num">${num(f)}</td><td class="num">${num(h)}</td><td class="num">${num(k)}</td></tr>`).join("") || `<tr><td colspan="4" class="note">None used.</td></tr>`}</table>`;
+  const boatTable = (D, S) => `<table class="tally deb"><tr><th>Boat</th><th>Captain</th><th class="num">Fired</th><th class="num">Sunk</th><th class="num">Damage</th></tr>${D.boats.map(b => {
+    const l = b.lost && (S.stats.lost || []).find(x => x.name === b.name);
+    return `<tr${b.lost ? ' class="lost"' : ""}><td>${esc(b.name)} <span class="note">${esc(C.SUBS[b.cls].name)}${b.lost ? `, lost: ${esc(FATE[b.lost] || b.lost)}${l && KIND[l.kind] ? ` (${KIND[l.kind]})` : ""}` : ""}</span></td><td>${esc(b.capt)}</td><td class="num">${b.fired}</td><td class="num">${b.sank ? `${b.sank} · ${num(b.tons)} t` : "0"}</td><td class="num">${b.lost ? "—" : b.damage + "%"}</td></tr>`;
+  }).join("")}</table>`;
   UI.actionOver = S => {
-    const pct = C.realPct(S.real), rating = E.rating(S), lost = S.end && (S.end.why === "crushed" || S.end.why === "flooded");
-    const rec = { tons: S.stats.tons, pts: Math.round(S.stats.tons * pct / 100), pct, rating, code: !!S.cheated, at: Date.now() };
+    const pct = C.realPct(S.real), D = E.debrief(S), rating = D.rating, lost = S.end && (S.end.why === "crushed" || S.end.why === "flooded");
+    const rec = { tons: S.stats.tons, pts: Math.round(S.stats.tons * pct / 100), pct, rating, score: D.score, code: !!S.cheated, at: Date.now() };
     const best = S.mode === "action" && !lost && S.stats.tons > 0 ? PP.addAction(S.scn, rec) : false;
-    const why = { allSunk: "Every merchant in the convoy is on the bottom.", escaped: "The rest of the convoy got away.", crushed: "The hull gave way under the pressure.", flooded: "She flooded and went down.", ended: "You broke off the action." }[S.end ? S.end.why : "ended"] || "";
-    UI.open(lost ? "Lost with all hands" : S.mode === "practice" ? "Practice over" : "The action is over", { wide: true, closable: false,
+    const why = { allSunk: S.goal === "escort" ? "The hunter is on the bottom." : "Every merchant in the convoy is on the bottom.", escaped: "The rest of the convoy got away.", slipped: "The pack slipped away from the hunter.", crushed: "The last of the pack is lost.", flooded: "The last of the pack is lost.", ended: "You broke off the action." }[S.end ? S.end.why : "ended"] || "";
+    if (S.mode === "action") {
+      const sd = D.sides;
+      UI.open("Debrief", { wide: true, closable: false,
+        html: () => `<div class="report"><div><h3 class="mname big${D.winner === "pack" ? " ok" : " danger"}">${D.winner === "pack" ? "The pack wins" : "The escorts win"}</h3>
+          <p class="meta">${esc(S.scnName || "")}. ${esc(why)}</p>
+          <p class="rank">Score <b>${D.score}%</b>: <b>${esc(rating)}</b>${best ? ", your best here" : ""}.</p>
+          <p>${num(S.stats.tons)} of ${num(S.potential)} tons sunk${D.escSunk && S.goal !== "escort" ? `, and ${D.escSunk} escort${D.escSunk > 1 ? "s" : ""}` : ""}.</p>
+          <table class="tally deb"><tr><th></th><th class="num">At the start</th><th class="num">Lost</th></tr>
+            <tr><td>The pack</td><td class="num">${sd.pack.start} boat${sd.pack.start > 1 ? "s" : ""}</td><td class="num">${sd.pack.lost}</td></tr>
+            <tr><td>The convoy</td><td class="num">${sd.fleet.merch ? `${sd.fleet.merch} ships, ` : ""}${sd.fleet.esc} escort${sd.fleet.esc === 1 ? "" : "s"}</td><td class="num">${sd.fleet.lost}</td></tr></table>
+          ${!S.stats.tons && !lost ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of her and off her track, under 3,000 yards.") : "No torpedoes away. Put the pack ahead of the convoy, on Attack, and take command of the boat nearest it."}</p>` : ""}
+          <p class="note">Reality ${pct}%. The score is the share of the tonnage sunk, and of the pack brought home.</p></div>
+          <div><h3>The pack</h3>${boatTable(D, S)}<h3>Weapons</h3>${weaponTable("The pack's", D.pack)}${weaponTable("The escorts'", D.fleet)}
+          ${S.stats.sunk.length ? `<h3>Sunk</h3>${sunkTable(S.stats.sunk)}` : ""}</div></div>
+          <div class="row end"><button data-act="again" class="primary">Fight it again</button><button data-act="actions">Missions</button><button data-act="title">Main menu</button></div>`,
+        onClick: b => {
+          const a = b.dataset.act;
+          if (a === "again") { UI.close(true); PP.game.startAction(S.scn, S.real, PP.game.lastCustom); }
+          if (a === "actions") { UI.close(true); UI.actions(); }
+          if (a === "title") { UI.close(true); PP.game.toTitle(); }
+        },
+      });
+      return;
+    }
+    UI.open(lost ? "Lost with all hands" : "Practice over", { wide: true, closable: false,
       html: () => `<div class="report"><div><h3 class="mname big${lost ? " danger" : S.stats.tons ? " ok" : ""}">${num(S.stats.tons)} tons</h3>
         <p class="meta">${esc(why)} ${esc(S.scnName || "")}</p>
-        ${S.mode === "action" ? `<p class="rank">Rated <b>${esc(rating)}</b>: ${Math.round(S.potential ? S.stats.tons / S.potential * 100 : 0)}% of the convoy's merchant tonnage${best ? ", your best here" : ""}.</p>` : ""}
         ${!lost && S.stats.charges ? `<p class="honour">Survived ${S.stats.charges} depth charge${S.stats.charges > 1 ? "s" : ""}</p>` : ""}
         ${S.mode === "action" && !lost && !S.stats.tons ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of her, 1,000 to 2,000 yards off her track, near 90° on the bow.") : "No torpedoes away. Get ahead of the convoy on the surface, then dive across its track."} The convoy is still out there.</p>` : ""}
         ${S.mode === "practice" ? `<p class="lesson">${S.scn === "gun" ? (S.stats.tons ? "That's the gun. Torpedoes next: the other practice." : "Lay the gun with the arrows and its range with up and down; <kbd>Space</kbd> fires when the sight reads READY.") : S.stats.hits ? "That's the attack. Escorts next: a convoy action, where they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of her, 1,000 to 2,000 yards off her track, near 90° on the bow." : "Lock a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the TDC lamp is green."}</p>` : ""}

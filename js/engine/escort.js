@@ -111,12 +111,14 @@
           if (ai.gunT <= 0) {
             ai.gunT = 4.5 / (k.guns || 1) * (0.8 + R(S) * 0.4);
             const p = 0.55 * Math.pow(1 - d / C.ESC.gunRange, 1.6) * (0.4 + Det.light(S) * 0.6) * (1 + expert * 0.3);
-            if (R(S) < p) { Sub.hurt(S, 0.05 + R(S) * 0.08, "deck", ev, s); ev.push({ t: "shellHit", id: sh.id, by: s.id }); }
+            S.stats.escShots = (S.stats.escShots || 0) + 1;
+            if (R(S) < p) { S.stats.escHits = (S.stats.escHits || 0) + 1; Sub.hurt(S, 0.05 + R(S) * 0.08, "deck", ev, s, "gun"); ev.push({ t: "shellHit", id: sh.id, by: s.id }); }
             else ev.push({ t: "shellNear", id: sh.id, x: s.x + (R(S) - 0.5) * 120, y: s.y + (R(S) - 0.5) * 120, by: s.id });
             ev.push({ t: "escortGun", id: sh.id, by: s.id });
           }
           if (d < 45 && s.depth < 20) {
-            Sub.hurt(S, 0.9, "mid", ev, s); Sh.hit(S, sh, 0.35, "fore", ev, false, "ram");
+            S.stats.rams = (S.stats.rams || 0) + 1;
+            Sub.hurt(S, 0.9, "mid", ev, s, "ram"); Sh.hit(S, sh, 0.35, "fore", ev, false, "ram");
             ev.push({ t: "rammed", id: sh.id, by: s.id });
             ai.st = "open"; ai.t = 0; ai.openAt = { x: sh.x, y: sh.y };
           }
@@ -149,7 +151,7 @@
         if (d3 < C.DC.hurt) {
           const along = (dx * PP.hx(s.hdg) + dy * PP.hy(s.hdg)) / 3, where = along > 25 ? "fore" : along < -25 ? "aft" : "mid";
           const sev = d3 < C.DC.kill ? 1.1 : Math.pow(1 - d3 / C.DC.hurt, 2) * C.DC.sev;
-          Sub.hurt(S, sev, where, ev, s);
+          Sub.hurt(S, sev, where, ev, s, "dc");
           S.stats.dcNear++;
         }
       }
@@ -200,7 +202,7 @@
         /* the bombs: where the boat was, or is; the deeper she is, the less they do */
         const err = R(S) * C.AIR.bombR * 1.6;
         ev.push({ t: "bombs", x: s.x, y: s.y, err });
-        if (s.depth < C.AIR.bombDepth && err < C.AIR.bombR) Sub.hurt(S, 0.55 * (1 - s.depth / C.AIR.bombDepth) * (1 - err / C.AIR.bombR) + 0.05, "deck", ev);
+        if (s.depth < C.AIR.bombDepth && err < C.AIR.bombR) Sub.hurt(S, 0.55 * (1 - s.depth / C.AIR.bombDepth) * (1 - err / C.AIR.bombR) + 0.05, "deck", ev, s, "air");
         p.st = "leave"; p.t = 0;
       }
       /* our lookouts, or our radar, see it coming */

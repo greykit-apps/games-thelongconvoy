@@ -153,7 +153,10 @@
         if (s.sinking >= s.sinkT && !s.sunk) {
           s.sunk = true; s.sunkT = S.t;
           ev.push({ t: "shipSunk", id: s.id, name: s.name, cls: s.cls, tons: k.tons, x: s.x, y: s.y, role: s.role });
-          if (s.byUs) { S.stats.tons += k.tons; S.stats.sunk.push({ name: s.name, cls: s.cls, tons: k.tons, t: S.t, role: s.role }); }
+          if (s.byUs) {
+            S.stats.tons += k.tons; S.stats.sunk.push({ name: s.name, cls: s.cls, tons: k.tons, t: S.t, role: s.role, kind: s.lastKind || "torp", boat: s.lastBy });
+            const q = S.subs.find(b => b.id === s.lastBy); if (q) { q.sank = (q.sank || 0) + 1; q.tons = (q.tons || 0) + k.tons; }
+          }
         }
       } else if (s.role === "merchant" || s.ai.st === "screen") {
         /* keep station: steer for the slot, a little ahead of it; or run, scattered */
@@ -182,9 +185,11 @@
   };
 
   /* ---- a hit: a torpedo, a shell ---- */
-  Sh.hit = (S, s, dmg, where, ev, byUs = true, kind = "torp") => {
+  /* kind: torp, shell or ram; by: the boat of the pack that did it, for the debrief */
+  Sh.hit = (S, s, dmg, where, ev, byUs = true, kind = "torp", by) => {
     if (!Sh.alive(s)) return;
     const k = C.SHIPS[s.cls];
+    s.lastKind = kind; if (by !== undefined) s.lastBy = by;
     s.dmg += dmg; if (byUs) s.byUs = true;
     s.fire = Math.min(1, s.fire + (kind === "torp" ? 0.6 : 0.15));
     ev.push({ t: "shipHit", id: s.id, kind, where, x: s.x, y: s.y });

@@ -144,7 +144,7 @@
     /* the bottom */
     s.bottomed = false;
     if (bot > 0 && s.depth > bot - 3 && s.depth > 0) {
-      if (s.vz > 1.2) { Sub.hurt(S, Math.min(0.3, s.vz * 0.05), "bottom", ev); ev.push({ t: "bottomHit" }); }
+      if (s.vz > 1.2) { Sub.hurt(S, Math.min(0.3, s.vz * 0.05), "bottom", ev, s, "ground"); ev.push({ t: "bottomHit" }); }
       s.depth = Math.max(0, bot - 3); s.vz = Math.min(0, s.vz); s.bottomed = true;
     }
     if (!wasSurf && Sub.surfaced(s)) { ev.push({ t: "surfaced" }); s.scope.up = false; }
@@ -155,7 +155,7 @@
     const nx = s.x + PP.hx(s.hdg) * s.spd * PP.KN * dt, ny = s.y + PP.hy(s.hdg) * s.spd * PP.KN * dt;
     const nb = Sea.depthAt(nx, ny);
     if (nb < 16 || !Sea.inside(nx, ny)) {
-      if (!s.aground) { ev.push({ t: "aground" }); if (s.spd > 4) Sub.hurt(S, 0.08, "bottom", ev); }
+      if (!s.aground) { ev.push({ t: "aground" }); if (s.spd > 4) Sub.hurt(S, 0.08, "bottom", ev, s, "ground"); }
       s.aground = true; s.spd = Math.min(s.spd, 0) * 0.5;
     } else { s.x = nx; s.y = ny; s.aground = false; }
     /* the periscope going up and down */
@@ -202,8 +202,10 @@
 
   /* ---- damage ---- */
   /* sev 0..1; where: "fore", "aft", "mid", "bottom", "deck" */
-  Sub.hurt = (S, sev, where, ev, s = S.sub) => {
+  /* kind: what hurt her (dc, gun, ram, air, torpedo, ground), kept for the debrief */
+  Sub.hurt = (S, sev, where, ev, s = S.sub, kind = "") => {
     if (!s || s.lost) return;
+    if (kind) s.lastHit = kind;
     if (S.konami) sev *= 0.15;
     s.hull = Math.max(0, s.hull - sev * (where === "deck" ? 0.5 : 0.7));
     const pool = { fore: ["tubesF", "planes", "sonar", "battery", "pumps"], aft: ["tubesA", "motors", "engines", "planes", "pumps"],
@@ -244,6 +246,7 @@
     if (S.phase === "over" || !s || s.lost) return;
     s.lost = why; s.spd = 0; s.scope.up = false; s.gun.on = false; s.lostT = S.t;
     ev.push({ t: "subLost", why, by: s.id, name: s.name });
+    (S.stats.lost = S.stats.lost || []).push({ name: s.name, cls: s.cls, why, kind: s.lastHit || "", t: S.t });
     if (!S.subs.some(q => !q.lost)) { S.phase = "over"; S.end = { why, t: S.t }; }
   };
 })();

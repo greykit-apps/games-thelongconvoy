@@ -200,14 +200,14 @@
             }
             S.stats.hits++;
             ev.push({ t: "torpHit", id: tp.id, ship: sh.id, where, x: px, y: py });
-            Sh.hit(S, sh, 0.9 + R(S) * 0.4 + (where === "mid" ? 0.15 : 0), where, ev);
+            Sh.hit(S, sh, 0.9 + R(S) * 0.4 + (where === "mid" ? 0.15 : 0), where, ev, true, "torp", s.id);
             if (cv) Sh.alarm(S, cv, PP.lerp(sh.x, s.x, 0.5) + (R(S) - 0.5) * 1500, PP.lerp(sh.y, s.y, 0.5) + (R(S) - 0.5) * 1500, ev, true);
             break;
           }
         }
         /* a circular runner coming home */
         const own = !tp.done && tp.fate === "circ" && tp.run > 500 && pack.find(q => PP.dist(tp.x, tp.y, q.x, q.y) < 40 && q.depth < 30);
-        if (own) { tp.done = true; ev.push({ t: "torpHitUs", by: own.id }); Sub.hurt(S, 1.0, "mid", ev, own); break; }
+        if (own) { tp.done = true; ev.push({ t: "torpHitUs", by: own.id }); Sub.hurt(S, 1.0, "mid", ev, own, "torpedo"); break; }
         if (tp.run >= tp.max) { tp.done = true; ev.push({ t: "torpMiss", id: tp.id }); break; }
       }
       /* a steam torpedo's wake, seen by day: the convoy turns to comb it */
@@ -264,7 +264,7 @@
         const k = C.SHIPS[q.cls], dx = sh.x - q.x, dy = sh.y - q.y, u = dx * PP.hx(q.hdg) + dy * PP.hy(q.hdg), v = dx * Math.cos(q.hdg) + dy * Math.sin(q.hdg);
         if (Math.abs(u) < k.len / 2 + 6 && Math.abs(v) < k.beam / 2 + 6) { hit = q; break; }
       }
-      if (hit) { ev.push({ t: "gunHit", id: hit.id, x: sh.x, y: sh.y }); Sh.hit(S, hit, C.GUN.hit * (0.6 + R(S) * 0.8), "deck", ev, true, "shell"); }
+      if (hit) { S.stats.gunHits = (S.stats.gunHits || 0) + 1; ev.push({ t: "gunHit", id: hit.id, x: sh.x, y: sh.y }); Sh.hit(S, hit, C.GUN.hit * (0.6 + R(S) * 0.8), "deck", ev, true, "shell", sh.by); }
       else ev.push({ t: "gunSplash", x: sh.x, y: sh.y });
       alarmNear(S, sh.x, sh.y, ev, false, S.subs.find(q => q.id === sh.by) || S.sub);
     }
