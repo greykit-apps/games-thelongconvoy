@@ -236,6 +236,13 @@
         ev.push({ t: "escortGun", id: sh.id });
         break;
       }
+      /* AUTO / USER CONTROL for the escort you are aboard: on AUTO her own captain sails her under her order */
+      case "auto": {
+        sh.auto = a.v === undefined ? !sh.auto : !!a.v;
+        if (sh.auto) { sh.ai.st = "lost"; sh.ai.t = 0; sh.pat = null; } else { sh.ai.st = "user"; sh.ordHdg = sh.hdg; }
+        ev.push({ t: "auto", on: sh.auto, name: sh.name });
+        break;
+      }
       case "commandEsc": { const q = S.ships.find(o => o.id === a.id && Sh.alive(o) && o.role === "escort"); if (q && q.id !== S.flag) Esc.take(S, q, ev); break; }
       case "eorders": { const q = S.ships.find(o => o.id === a.id && Sh.alive(o) && o.role === "escort"); if (q && C.ESC_ORDERS.some(o => o[0] === a.v)) { q.ord = a.v; ev.push({ t: "eorders", id: q.id, name: q.name, v: a.v }); } break; }
       case "ewp": { const q = S.ships.find(o => o.id === a.id && Sh.alive(o) && o.role === "escort"); if (q) { if (a.clear || !q.wps) q.wps = []; if (a.x !== undefined && q.wps.length < 12) q.wps.push({ x: a.x, y: a.y }); } break; }
@@ -245,7 +252,7 @@
   Esc.take = (S, q, ev = []) => {
     const was = S.ships.find(o => o.id === S.flag);
     if (was && Sh.alive(was)) { was.ai.st = "lost"; was.ai.t = 0; was.pat = null; }
-    S.flag = q.id; q.ai.st = "user"; q.ord = q.ord || "screen";
+    S.flag = q.id; q.ai.st = "user"; q.auto = false; q.ord = q.ord || "screen";
     if (q.bell === undefined) q.bell = 4;
     q.ordSpd = C.ESC_BELL_F[q.bell] * C.SHIPS[q.cls].kn; q.ordHdg = q.hdg;
     if (q.dcSet === undefined) q.dcSet = 150;

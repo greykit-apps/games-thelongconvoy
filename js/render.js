@@ -14,11 +14,22 @@
 
   /* the screens, as the 1990 game had them: the map, the view out of the boat you are on (the bridge and
    * its glasses on the surface, the periscope under it), and the damage. This is the view actually drawn */
+  /* the screens, as the 1990 game had them: the dashboard of the vessel you are aboard (the view out in its
+   * window, the map in a small one, every instrument at once), and the full Map, Damage and Status screens */
   R.stationOf = (S, ui) => {
-    const v = ui.station === "view" || ui.station === "bridge" || ui.station === "scope" || ui.station === "ebridge";
-    /* the escorts' side: the map and the escort's bridge */
-    if (S.side === "escorts") return v ? "ebridge" : "chart";
-    return v ? (Sub.surfaced(S.sub) ? "bridge" : "scope") : ui.station;
+    const v = ui.station === "dash" || ui.station === "view" || ui.station === "bridge" || ui.station === "scope" || ui.station === "ebridge";
+    if (v) return "dash";
+    if (S.side === "escorts" && ui.station === "damage") return "status";
+    return ui.station || "dash";
+  };
+  /* the view in the dashboard's window: the periscope under the water, the bridge on the surface, the escort's bridge */
+  R.innerOf = S => S.side === "escorts" ? "ebridge" : Sub.surfaced(S.sub) ? "bridge" : "scope";
+  R.viewInto = (g, S, ui, now, Wd, Ht) => {
+    const st = R.innerOf(S);
+    if (st === "scope") scope(g, S, ui, now, Wd, Ht);
+    else if (st === "bridge") bridge(g, S, ui, now, Wd, Ht);
+    else ebridge(g, S, ui, now, Wd, Ht);
+    return st;
   };
 
   /* a live reading, set over the canvas in the HUD's own type (hud.js): canvas pixels, an anchor (l c r, t m b), a tone */
@@ -37,7 +48,9 @@
     R.shake *= Math.pow(0.02, dt);
     g.fillStyle = INK; g.fillRect(-8, -8, Wd + 16, Ht + 16);
     R.last = null;
-    if (st === "scope") scope(g, S, ui, now, Wd, Ht);
+    if (st === "dash") PP.Dash.draw(g, S, ui, now, Wd, Ht);
+    else if (st === "status") PP.Dash.status(g, S, ui, now, Wd, Ht);
+    else if (st === "scope") scope(g, S, ui, now, Wd, Ht);
     else if (st === "bridge") bridge(g, S, ui, now, Wd, Ht);
     else if (st === "ebridge") ebridge(g, S, ui, now, Wd, Ht);
     else if (st === "panel") PP.Panel.draw(g, S, ui);

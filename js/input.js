@@ -18,10 +18,10 @@
     KeyZ: "zoom", KeyT: "lock",
     Space: "fire", KeyF: "bank", KeyV: "spread", KeyG: "gun", KeyX: "silent", KeyY: "radar",
     Equal: "tcU", NumpadAdd: "tcU", Minus: "tcD", NumpadSubtract: "tcD", Backspace: "tc1",
-    Digit1: "st1", Digit2: "st2", Digit3: "st3", Digit4: "st6",
-    F2: "st1", F3: "st2", F4: "st3", F7: "st6", Tab: "stNext",
+    Digit1: "st1", Digit2: "st2", Digit3: "st3", Digit4: "st4", Digit5: "st6",
+    F2: "st1", F3: "st2", F4: "st3", F5: "st4", F7: "st6", Tab: "stNext",
     Escape: "pause", KeyL: "aids", KeyH: "onHer", KeyB: "ahead",
-    KeyN: "boatNext", KeyO: "orders", Enter: "takeCmd", KeyK: "decoy",
+    KeyN: "boatNext", KeyO: "orders", Enter: "takeCmd", KeyK: "decoy", KeyJ: "auto", KeyI: "snorkel",
   };
   I.BIND = BIND;
   I.actionFor = code => BIND[code] || null;
@@ -61,7 +61,10 @@
   I.cmd = (S, ui, stepMs) => {
     const c = { dHdg: 0, dTrain: 0, dGun: 0, acts: I.queue.splice(0) };
     /* the screen as drawn (the view is the periscope or the bridge), not as chosen */
-    const sec = stepMs / 1000, fast = I.held.has("shift") ? 3 : 1, st = S ? PP.Render.stationOf(S, ui) : ui.station;
+    const sec = stepMs / 1000, fast = I.held.has("shift") ? 3 : 1, st0 = S ? PP.Render.stationOf(S, ui) : ui.station;
+    /* on the dashboard the arrows are the view's: the periscope's or the bridge's (an escort's bridge as a boat's) */
+    let st = st0 === "dash" && S ? PP.Render.innerOf(S) : st0;
+    if (st === "ebridge") st = "bridge";
     /* the helm: A and D everywhere; the arrows on the chart and the instruments */
     let h = 0;
     if (on("hL") || ((st === "chart" || st === "damage") && on("aL"))) h -= 1;

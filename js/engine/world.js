@@ -19,17 +19,22 @@
 
   /* ---- the orders: cmd = { dHdg, acts: [{ a, ... }] } ---- */
   /* the escorts' side: the player's keys give the escort she is aboard her orders (PP.Escort.order) */
-  const ESC_ACTS = new Set(["bell", "setBell", "hdg", "dcSet", "ping", "pattern", "hedgehog", "egun", "commandEsc", "eorders", "ewp"]);
+  const ESC_ACTS = new Set(["bell", "setBell", "hdg", "dcSet", "ping", "pattern", "hedgehog", "egun", "commandEsc", "eorders", "ewp", "auto"]);
   function escOrders(S, cmd, ev) {
     const f = Esc.flag(S);
+    /* the helm or the telegraph by hand takes her back from AUTO */
+    if (f && f.auto && (cmd.dHdg || (cmd.acts || []).some(a => a.a === "bell" || a.a === "setBell" || a.a === "hdg"))) Esc.order(S, { a: "auto", v: false }, ev);
     if (f && cmd.dHdg) f.ordHdg = PP.normAng(f.ordHdg + cmd.dHdg);
     for (const a of cmd.acts || []) {
       if (a.a === "tc") S.tcReq = PP.clamp(a.v !== undefined ? a.v : S.tcReq + a.d, 0, C.TC_MAX_IDX);
       else if (ESC_ACTS.has(a.a)) Esc.order(S, a, ev);
     }
   }
-  function orders(S, cmd, ev, aids) {
+  /* the player's own orders (by hand) take the boat back from AUTO */
+  const BY_HAND = new Set(["bell", "setBell", "hdg", "depth", "setDepth", "surface", "pd", "dive", "crash"]);
+  function orders(S, cmd, ev, aids, byHand = false) {
     const s = S.sub;
+    if (byHand && s.auto && (cmd.dHdg || (cmd.acts || []).some(a => BY_HAND.has(a.a)))) { s.auto = false; ev.push({ t: "auto", on: false, name: s.name }); }
     if (cmd.dHdg) s.ordHdg = PP.normAng(s.ordHdg + cmd.dHdg);
     if (cmd.dTrain) s.scope.brg = PP.normAng(s.scope.brg + cmd.dTrain);
     if (cmd.dGun) s.gun.brg = PP.normAng(s.gun.brg + cmd.dGun);
@@ -44,6 +49,8 @@
         case "gun": case "gunTrain": case "gunSetBrg": case "gunRange": case "gunSetRng": case "gunFire": W.gunOrder(S, a, ev); break;
         /* the pack: take command of another boat; tell one to hunt on her own or hold the orders she has */
         case "command": E.command(S, a.i, ev); break;
+        /* AUTO / USER CONTROL: on AUTO the boat you are aboard sails under her order while you watch */
+        case "auto": s.auto = a.v === undefined ? !s.auto : !!a.v; ev.push({ t: "auto", on: s.auto, name: s.name }); break;
         /* a boat's orders (PP.Orders), and her waypoints: a.i the boat (else the one in command) */
         case "orders": { const q = S.subs[a.i === undefined ? S.cmd : a.i];
           /* an order goes to a boat by radio: with hers out, only the boat you are aboard takes one */
@@ -80,7 +87,7 @@
     /* on the escorts' side every boat of the pack is under her own captain */
     const mine = S.side === "escorts" ? -1 : S.cmd;
     E.each(S, ev, s => {
-      if (S.cmd === mine) return;
+      if (S.cmd === mine && !s.auto) return;
       orders(S, { acts: PP.Orders.acts(S, s, captain(s)) }, ev, null);
     });
   }
@@ -125,7 +132,7 @@
   E.tick = (S, cmd = {}, aids = null) => {
     const ev = [];
     if (S.phase !== "sea") return ev;
-    if (S.side === "escorts") escOrders(S, cmd, ev); else orders(S, cmd, ev, aids);
+    if (S.side === "escorts") escOrders(S, cmd, ev); else orders(S, cmd, ev, aids, true);
     captains(S, ev);
     const idx = Math.min(S.tcReq, S.tcCap), dt = C.DT * C.TC[idx];
     E.each(S, ev, () => Sub.step(S, dt, ev));

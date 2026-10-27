@@ -14,6 +14,7 @@ No install required. Plain scripts, no build step, nothing fetched at play time:
 
 Pumacity's convoys carry its oil, its ore and its troops between the islands, and the PDF's escorts ring them round. The Wolf Empire has a pack.
 
+- **The dashboard**, as in 1990: the vessel you are aboard, every instrument at once. The view out in the big window, the map in a small one, the telegraph, compass and depth, battery and fuel, the tubes, the snorkel and the Metox radar warning; on an escort the sonar scope and its passive/active switch, the charges' depth and the racks. Every control is a button with a key. **AUTO / USER CONTROL** hands the vessel to her order while you watch.
 - **The map runs the battle**, as in 1990: the depth in hard bands, every boat of the pack, the convoy as the pack has seen it. Click a boat to select her: her class, captain, depth and order, and the orders to give her.
 - **Every boat sails under her order:** Attack (her captain finds the convoy and goes in), Shadow, Patrol (her waypoints: a right click on the map), Evade, Drift, Charge, Periscope depth, Hold.
 - **Take command of one boat at a time** (`Enter`, a second click, or `N` for the next): then the view out of her is yours, the periscope at periscope depth and the bridge on the surface, with her helm, telegraph and tubes.
@@ -28,7 +29,9 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 
 ![The map as the wolfpack: every boat's order beside her, the orders panel for the one selected, the convoy under the hydrophones' lines of bearing](screenshots/map.png)
 
-![Through the periscope: the convoy at 2,100 and 2,900 yards](screenshots/periscope.png)
+![A wolf boat's dashboard: the periscope on the convoy in the big window, the map in the small one, the telegraph, compass, depth, battery and fuel, the tubes, the snorkel and Metox](screenshots/dashboard.png)
+
+![A PDF escort's dashboard: her bridge, the telegraph and compass, the sonar scope and its P / A switch, the charges set for 150 feet](screenshots/pdf-dashboard.png)
 
 ![The map as the PDF: the escorts round the convoy, each with her order, the escort you are aboard and her charges set for 150 feet](screenshots/escorts.png)
 
@@ -40,7 +43,8 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 
 | | |
 |---|---|
-| `1` / `2` / `3` | the map / the view (bridge or periscope) / damage |
+| `1` / `2` / `3` / `4` / `5` | the dashboard / the map / damage / status / the log |
+| `J` / `I` | AUTO or USER CONTROL / the snorkel |
 | Click, `O`, right click | on the map: select a boat, give her the next order, add her a waypoint |
 | `Enter` / `N` | take command of the boat selected / of the next boat |
 | `W` `S` | telegraph |

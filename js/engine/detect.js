@@ -67,6 +67,12 @@
         if (d < Rv) { p = D.look * Math.pow(1 - d / Rv, 2) * e.asw * (esc ? 1 + expert * 0.5 : 0.5); how = "eye"; }
       }
       if (esc && e.escortRadar && Sub.surfaced(s) && d < D.radarShipVsSub && p < 0.5) { p = 0.5; how = "radar"; }
+      else if (esc && e.escortRadar && Sub.snorkeling(s) && d < D.radarShipVsSub * C.SNORKEL.radar && p < 0.3) { p = 0.3; how = "radar"; }
+      /* Metox: her radar warning hears an escort's radar sweeping, while her antenna is above the water */
+      if (esc && e.escortRadar && e.metox && (Sub.surfaced(s) || Sub.snorkeling(s) || Sub.exposed(s) > 0) && d < D.radarShipVsSub * C.METOX.reach) {
+        s.metoxT = S.t;
+        if (S.t - (s.metoxSaid === undefined ? -1e9 : s.metoxSaid) > C.METOX.repeat) { s.metoxSaid = S.t; ev.push({ t: "metox", by: s.id, brg: PP.angTo(s.x, s.y, sh.x, sh.y) }); }
+      }
       if (esc && sub) {
         const Rh = D.hyd * Sub.noise(s) * e.asw * C.SHIPS[sh.cls].sonar * (sh.spd > D.hydFastKn ? D.hydFast : 1) * (1 - S.wx.sea * 0.06) * (1 + expert * 0.25);
         if (d < Rh) { const q = 0.22 * (1 - d / Rh); if (q > p) { p = q; how = "ear"; } }

@@ -15,13 +15,13 @@
   const HUD = PP.HUD = { el: null, toasts: [], last: {}, built: false };
   const $ = id => document.getElementById(id);
   const set = (el, k, v, f) => { if (HUD.last[k] !== v) { HUD.last[k] = v; f(el, v); } };
-  HUD.STATIONS = [["chart", "Map", "1"], ["view", "View", "2"], ["damage", "Damage", "3"]];
+  HUD.STATIONS = [["dash", "Dashboard", "1"], ["chart", "Map", "2"], ["damage", "Damage", "3"], ["status", "Status", "4"]];
   const WHY = { ships: "ships near", contact: "a contact", close: "ships close", torps: "torpedoes running", plane: "aircraft", hunted: "hunted", charges: "depth charges", danger: "danger" };
 
   HUD.build = (side = "pack") => {
     const el = HUD.el = $("hud");
     HUD.side = side;
-    const tabs = side === "escorts" ? [["chart", "Map", "1"], ["view", "Bridge", "2"]] : HUD.STATIONS;
+    const tabs = side === "escorts" ? [["dash", "Dashboard", "1"], ["chart", "Map", "2"], ["status", "Status", "4"]] : HUD.STATIONS;
     el.innerHTML = `
       <div class="h-labels" aria-hidden="true"></div>
       <nav class="hp" id="h-tabs" aria-label="Stations">${tabs.map(([k, n, key]) => `<button data-st="${k}"><kbd>${key}</kbd>${n}</button>`).join("")}</nav>
@@ -43,7 +43,10 @@
       <div class="hp" id="h-orders" hidden></div>
       <div class="h-low"><div class="h-toasts"></div><div class="hp h-hint" hidden></div></div>
       <div class="hp h-end" hidden></div>
-      <div class="h-flash"></div>`;
+      <div class="h-flash"></div>
+      <div class="h-dash"></div>
+      <div class="h-msgs" aria-hidden="true"></div>
+      <div class="hp" id="h-status" hidden></div>`;
     el.querySelector("#h-tabs").addEventListener("click", ev => { const b = ev.target.closest("[data-st]"); if (b && PP.game.setStation) PP.game.setStation(b.dataset.st); });
     HUD.last = {};
     HUD.built = true;
@@ -58,6 +61,8 @@
     d.className = "hp h-toast " + tone; d.innerHTML = PP.Input.caps(esc(text).replace(/&lt;(\/?)kbd&gt;/g, "<$1kbd>"));
     box.appendChild(d);
     HUD.toasts.push({ text, d, until: performance.now() + ms });
+    /* the dashboard's message window keeps the last of them */
+    HUD.msgs = (HUD.msgs || []).concat([{ text: d.innerHTML, tone, t: PP.game && PP.game.S ? PP.C.timeStr(PP.game.S.t) : "" }]).slice(-12); HUD.msgsKey = "";
     while (HUD.toasts.length > 2) HUD.toasts.shift().d.remove();
     const live = $(tone === "red" ? "alert" : "live"); if (live) live.textContent = d.textContent;
   };
@@ -84,7 +89,39 @@
     }
     for (const [id, n] of labs) if (!seen.has(id)) { n.remove(); labs.delete(id); }
   }
-  HUD.clearLabels = () => { for (const n of labs.values()) n.remove(); labs.clear(); };
+  HUD.clearLabels = () => { for (const n of labs.values()) n.remove(); labs.clear(); for (const n of dbs.values()) n.remove(); dbs.clear(); HUD.msgs = []; HUD.msgsKey = ""; };
+  /* the dashboard's buttons, set over the canvas where the dashboard puts them; a held one holds its key */
+  const dbs = new Map();
+  function dashButtons(list) {
+    const box = HUD.el.querySelector(".h-dash"), cv = $("screen"), k = cv.getBoundingClientRect().width / cv.width || 1, seen = new Set();
+    for (const B of list) {
+      let n = dbs.get(B.id);
+      if (!n) {
+        n = document.createElement("button"); n.type = "button"; box.appendChild(n); dbs.set(B.id, n);
+        n.addEventListener("pointerdown", ev => { const b = n._b; if (!b || b.dim) return; if (b.hold) { PP.Input.held.add(b.hold); PP.Input.heldT[b.hold] = performance.now() - 300; } ev.preventDefault(); });
+        const up = () => { const b = n._b; if (b && b.hold) { PP.Input.held.delete(b.hold); delete PP.Input.heldT[b.hold]; } };
+        n.addEventListener("pointerup", up); n.addEventListener("pointerleave", up);
+        n.addEventListener("click", () => { const b = n._b; if (b && b.act && !b.dim && PP.game.dashAct) PP.game.dashAct(b.act); });
+      }
+      n._b = B; seen.add(B.id);
+      if (n.dataset.h !== B.html) { n.dataset.h = B.html; n.innerHTML = PP.Input.caps(B.html); }
+      const cls = "db" + (B.on ? " on" : "") + (B.dim ? " dim" : "") + (B.cls ? " " + B.cls : "");
+      if (n.className !== cls) n.className = cls;
+      if (B.title && n.title !== B.title) n.title = B.title;
+      n.setAttribute("aria-pressed", String(!!B.on));
+      const css = `left:${Math.round(B.x * k)}px;top:${Math.round(B.y * k)}px;width:${Math.round(B.w * k)}px;height:${Math.round(B.h * k)}px;font-size:${Math.max(10, Math.round(Math.min(B.h * k * 0.62, 6.2 * k)))}px`;
+      if (n.dataset.css !== css) { n.dataset.css = css; n.style.cssText = css; }
+    }
+    for (const [id, n] of dbs) if (!seen.has(id)) { n.remove(); dbs.delete(id); }
+  }
+  /* the message window: the last few reports, newest at the foot */
+  function msgWindow(r) {
+    const box = HUD.el.querySelector(".h-msgs"), cv = $("screen"), k = cv.getBoundingClientRect().width / cv.width || 1;
+    const css = `left:${Math.round(r.x * k)}px;top:${Math.round(r.y * k)}px;width:${Math.round(r.w * k)}px;height:${Math.round(r.h * k)}px`;
+    if (box.dataset.css !== css) { box.dataset.css = css; box.style.cssText = css; }
+    const key = (HUD.msgs || []).length + ":" + ((HUD.msgs || []).slice(-1)[0] || {}).text;
+    if (HUD.msgsKey !== key) { HUD.msgsKey = key; box.innerHTML = (HUD.msgs || []).slice(-8).map(m => `<p class="${m.tone || ""}"><span class="t">${m.t}</span> ${m.text}</p>`).join(""); box.scrollTop = box.scrollHeight; }
+  }
 
   /* the part of the play screen no panel covers, in the canvas's pixels: the stations lay out inside it.
    * t and b, the strip of stations and the key strip; tr, the foot of the clock and the buttons up on the
@@ -113,7 +150,7 @@
   function drawEsc(S, ui, st) {
     const el = HUD.el, f = PP.Escort.flag(S); if (!f) return;
     const k = C.SHIPS[f.cls], X = C.ESC_SIDE;
-    set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String((b.dataset.st === "view") === (st === "ebridge"))); });
+    set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.st === st)); });
     set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });
     set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
     const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
@@ -190,10 +227,17 @@
     set(el, "onPanel", `${st}:${gunNow}`, e => { e.querySelector("#h-boat").hidden = st === "panel" || dmg; e.querySelector("#h-tdc").hidden = dmg || gunNow; e.querySelector("#h-hull").hidden = !dmg; e.querySelector("#h-dmg").hidden = !dmg; });
     if (now - (HUD.safeAt || 0) > 250) { HUD.safeAt = now; safe(); describe(S, ui, st); }
     labels(PP.Render.labels || []);
+    /* the dashboard, and the Status screen: their own buttons and message window; the old panels stand down */
+    const dashOn = st === "dash", statusOn = st === "status";
+    set(el, "dashMode", st, e => { e.classList.toggle("dashmode", dashOn); e.classList.toggle("statusmode", statusOn); });
+    dashButtons(dashOn && PP.Render.dash ? PP.Render.dash.buttons : statusOn ? [{ id: "back", html: "&#9664; Dashboard <kbd>1</kbd>", x: 8, y: 8, w: 92, h: 16, act: "st1" }] : []);
+    if (dashOn && PP.Render.dash && PP.Render.dash.msg) msgWindow(PP.Render.dash.msg);
+    const stp = el.querySelector("#h-status");
+    if (statusOn) { const h = PP.Dash.statusHTML(S); if (stp.dataset.h !== h) { stp.dataset.h = h; stp.innerHTML = h; } stp.hidden = false; } else stp.hidden = true;
+    if (dashOn || statusOn) return;
     if (dmg) damage(S);
     if (side === "escorts") { drawEsc(S, ui, st); return; }
-    const tab = st === "bridge" || st === "scope" ? "view" : st;
-    set(el.querySelector("#h-tabs"), "tabs", tab + ":" + Sub.surfaced(s), e => { for (const b of e.querySelectorAll("button")) { b.setAttribute("aria-current", String(b.dataset.st === tab)); if (b.dataset.st === "view") b.lastChild.textContent = Sub.surfaced(s) ? "Bridge" : "Periscope"; } });
+    set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.st === st)); });
     set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });
     set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
     const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;

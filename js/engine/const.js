@@ -137,6 +137,10 @@
   C.FUEL = { c: 2.78e-7, charging: 0.5e-7 };
   C.NOISE = { base: 0.18, cav: 0.6, cavKn: 6, cavDepth: 100, diesel: 1.4, silent: 0.6 };
   C.WATER = { pump: 1 / 1800, heavy: 0.45, sinkRate: 1.2, lost: 1 };
+  /* the snorkel: the diesels run at periscope depth through a mast; slower than on the surface, slower to charge, loud (UNCERTAIN) */
+  C.SNORKEL = { kn: 0.45, charge: 0.6, noise: 0.8, mast: 6, radar: 0.4 };
+  /* Metox hears an escort's radar out to this many times the range it can find her at */
+  C.METOX = { reach: 2.5, repeat: 180 };
   /* the noisemaker (the 1990 game's decoy): a boat carries a few; one in the water sounds like a boat for so
    * long, and an escort that hears or pings a boat near it may take it for her (UNCERTAIN) */
   C.DECOY = { n: 4, life: 300, reach: 1200, fool: 0.6, sink: 0.6 };
@@ -221,6 +225,9 @@
     circular: 0.006,
     torp: mi >= 36 ? "electric" : "steam",
     subRadar: mi >= 20,
+    /* the 1990 game's boats: the radar warning (Metox) from Year III, the snorkel from Year IV (UNCERTAIN, after history's shape) */
+    metox: mi >= 28,
+    snorkel: mi >= 36,
     escortRadar: mi >= 38,
     planeRadar: mi >= 29,
     sonar: at(mi, [[0, 1600], [14, 2100], [28, 2600], [40, 3000]]),

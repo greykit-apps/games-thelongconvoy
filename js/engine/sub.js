@@ -37,11 +37,14 @@
   Sub.surfaced = s => s.depth <= 2;
   Sub.scopeReady = s => s.scope.up && s.scope.h >= 1 && s.depth <= C.PD + 4 && s.sys.scope < 0.5;
   /* feet of periscope (or tower) above the sea, for being seen */
-  Sub.exposed = s => Sub.surfaced(s) ? 14 : s.scope.up && s.scope.h > 0.2 ? Math.max(0, C.PD + 7 - s.depth) * s.scope.h : 0;
+  /* the snorkel: up only at periscope depth, and only a boat that has one */
+  Sub.snorkeling = s => !!s.snork && !Sub.surfaced(s) && s.depth <= C.PD + 4;
+  Sub.exposed = s => Sub.surfaced(s) ? 14 : Math.max(Sub.snorkeling(s) ? C.SNORKEL.mast : 0, s.scope.up && s.scope.h > 0.2 ? Math.max(0, C.PD + 7 - s.depth) * s.scope.h : 0);
   Sub.radarWorks = s => s.radar && s.radarOn && s.depth <= C.RADAR_DEPTH && s.sys.radar < 0.5;
   Sub.maxKn = s => {
     const k = C.SUBS[s.cls];
     if (Sub.surfaced(s)) return k.surf * (1 - s.sys.engines * 0.85);
+    if (Sub.snorkeling(s) && s.fuel > 0) return k.surf * C.SNORKEL.kn * (1 - s.sys.engines * 0.85);
     return s.bat <= 0.002 ? 0.6 : k.sub * (1 - s.sys.motors * 0.8);
   };
   Sub.bellMax = s => s.silent ? 2 : 6;
@@ -51,10 +54,10 @@
   /* the diesels charge the battery: surfaced, with fuel, the diesels sound enough, no faster than
    * chargeKn + 4, and room in the cells; fastest stopped. why, when surfaced and not charging */
   Sub.charge = s => {
-    if (!Sub.surfaced(s)) return { rate: 0, why: "down" };
+    if (!Sub.surfaced(s) && !Sub.snorkeling(s)) return { rate: 0, why: "down" };
     const top = C.BAT.chargeKn + 4, cap = Sub.batCap(s);
     const why = s.bat >= cap ? (cap < 0.995 ? "cap" : "full") : s.fuel <= 0 ? "fuel" : s.sys.engines >= 0.6 ? "engines" : Math.abs(s.spd) > top ? "fast" : null;
-    return { rate: why ? 0 : C.BAT.charge * PP.clamp(1 - Math.abs(s.spd) / top, 0.15, 1), why };
+    return { rate: why ? 0 : C.BAT.charge * PP.clamp(1 - Math.abs(s.spd) / top, 0.15, 1) * (Sub.surfaced(s) ? 1 : C.SNORKEL.charge), why };
   };
   /* how loud she is: the escorts' hydrophones hear this */
   Sub.noise = s => {
@@ -62,6 +65,7 @@
     let n = N.base + Math.pow(s.spd / 9, 2);
     if (!Sub.surfaced(s) && s.depth < N.cavDepth && s.spd > N.cavKn) n += N.cav;
     if (Sub.surfaced(s)) n += N.diesel;
+    else if (Sub.snorkeling(s)) n += N.diesel * C.SNORKEL.noise;
     for (const [k] of Sub.SYS) n += s.sys[k] * 0.06;
     if (s.bottomed && s.spd < 0.5) n *= 0.4;
     return s.silent ? n * N.silent : n;
@@ -115,6 +119,13 @@
       case "silent": s.silent = !s.silent; if (s.silent) s.bell = Math.min(s.bell, 2); ev.push({ t: "silent", on: s.silent }); break;
       case "bank": s.bank = a.v || (s.bank === "F" ? "A" : "F"); ev.push({ t: "bank", bank: s.bank }); break;
       case "spread": s.spread = a.v || (s.spread % 4) + 1; ev.push({ t: "spread", n: s.spread }); break;
+      case "snorkel": {
+        const on = a.v === undefined ? !s.snork : !!a.v;
+        if (on && !C.era(C.monthOf(S.t)).snorkel) { ev.push({ t: "snorkelNo", why: "none" }); break; }
+        if (on && (Sub.surfaced(s) || s.depth > C.PD + 4)) { ev.push({ t: "snorkelNo", why: Sub.surfaced(s) ? "surfaced" : "deep" }); break; }
+        s.snork = on; ev.push({ t: "snorkel", on });
+        break;
+      }
       case "decoy": {
         if (Sub.surfaced(s)) { ev.push({ t: "decoyNo", why: "surfaced" }); break; }
         if (!(s.decoys > 0)) { ev.push({ t: "decoyNo", why: "none" }); break; }
@@ -171,7 +182,9 @@
     if (Sub.surfaced(s)) s.scope.h = 0;
     /* power */
     const cap = Sub.batCap(s);
-    if (Sub.surfaced(s)) {
+    /* the snorkel down by itself when she goes below periscope depth */
+    if (s.snork && s.depth > C.PD + 8) { s.snork = false; ev.push({ t: "snorkel", on: false, forced: true }); }
+    if (Sub.surfaced(s) || Sub.snorkeling(s)) {
       const f = C.FUEL.c * (0.3 + 0.7 * Math.pow(Math.abs(s.spd) / 10, 3)) / k.fuel;
       let burn = f;
       const ch = Sub.charge(s);

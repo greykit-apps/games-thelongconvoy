@@ -115,7 +115,7 @@ The title's menu (the pack board), the pause, the sheets, the questions and the 
 
 ## Layout
 
-The play screen is the station (map, view, damage) drawn on one canvas at about 640 by 360, scaled up whole, with the HUD's panels over its corners: the screens' tabs top centre, the clock top right, the vessel's panel bottom left, the target or contact panel bottom right, the orders panel top left on the map, the key strip along the foot. Panels never cover the middle of the map or the view.
+The play screen is the **dashboard** of the vessel you are aboard, as the 1990 game had one per kind of vessel, drawn on one canvas at about 640 by 360 and scaled up whole (`js/art/dash.js`): the view out in the big window top right, the strip of its controls under it; the small map top left, then timing, AUTO / USER CONTROL, the screens and the message window down the left; the gauges along the foot, the vessel's own (a submarine's telegraph, compass, depth, battery and fuel, tubes, snorkel and Metox; an escort's telegraph, compass, sonar scope and P / A switch, charges and racks, hedgehog). Every reading is a HUD label and every control a real button over the canvas, each with its key. The Map, Damage and Status screens are full screens, with the old panels and a way back.
 
 ## Elevation & Depth
 
