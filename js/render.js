@@ -12,8 +12,9 @@
   const INK = "#05070a";
   R.init = cv => { R.cv = cv; R.g = cv.getContext("2d"); R.g.imageSmoothingEnabled = false; };
 
-  /* the station actually shown: no bridge while she is under */
-  R.stationOf = (S, ui) => ui.station === "bridge" && !Sub.surfaced(S.sub) ? "scope" : ui.station;
+  /* the screens, as the 1990 game had them: the map, the view out of the boat you are on (the bridge and
+   * its glasses on the surface, the periscope under it), and the damage. This is the view actually drawn */
+  R.stationOf = (S, ui) => ui.station === "view" || ui.station === "bridge" || ui.station === "scope" ? (Sub.surfaced(S.sub) ? "bridge" : "scope") : ui.station;
 
   /* a live reading, set over the canvas in the HUD's own type (hud.js): canvas pixels, an anchor (l c r, t m b), a tone */
   R.labels = [];
@@ -358,7 +359,20 @@
   };
 
   /* ---- the title's lookout: a convoy at dusk, from abeam ---- */
+  /* the title: the plot under red light, the pack closing on the convoy (main.js plays it) */
   R.title = (cv, D, now) => {
+    const g = cv.getContext("2d"), Wd = cv.width, Ht = cv.height;
+    g.imageSmoothingEnabled = false;
+    const conv = D.convoys[0];
+    if (!conv) return;
+    const was = R.safe;
+    R.safe = { t: 6, b: 6, tr: 6, br: Ht };
+    /* the convoy two thirds across, clear of the menu on the left */
+    const z = PP.Chart.ZOOMS[3];
+    PP.Chart.draw(g, D, { chartZoom: 3, chartAt: { x: conv.x - Wd * 0.2 * z, y: conv.y + Ht * 0.05 * z }, track: [], title: true }, {}, now);
+    R.safe = was; R.labels = [];
+  };
+  R.titleScope = (cv, D, now) => {
     const g = cv.getContext("2d"), Wd = cv.width, Ht = cv.height;
     g.imageSmoothingEnabled = false;
     const conv = D.convoys[0];

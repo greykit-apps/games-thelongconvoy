@@ -34,7 +34,9 @@
         case "gun": case "gunTrain": case "gunSetBrg": case "gunRange": case "gunSetRng": case "gunFire": W.gunOrder(S, a, ev); break;
         /* the pack: take command of another boat; tell one to hunt on her own or hold the orders she has */
         case "command": E.command(S, a.i, ev); break;
-        case "captain": { const q = S.subs[a.i === undefined ? S.cmd : a.i]; if (q && !q.lost) { q.orders = a.v || (q.orders === "hold" ? "hunt" : "hold"); ev.push({ t: "captain", id: q.id, name: q.name, v: q.orders }); } break; }
+        /* a boat's orders (PP.Orders), and her waypoints: a.i the boat (else the one in command) */
+        case "orders": { const q = S.subs[a.i === undefined ? S.cmd : a.i]; if (q && !q.lost && PP.Orders.LIST.some(o => o[0] === a.v)) { q.orders = a.v; ev.push({ t: "orders", id: q.id, name: q.name, v: a.v, why: a.why || "" }); } break; }
+        case "wp": { const q = S.subs[a.i === undefined ? S.cmd : a.i]; if (q && !q.lost) { if (a.clear || !q.wps) q.wps = []; if (a.x !== undefined && q.wps.length < 12) q.wps.push({ x: a.x, y: a.y }); ev.push({ t: "wp", id: q.id, n: q.wps.length }); } break; }
         default: Sub.order(S, a, ev);
       }
     }
@@ -64,9 +66,8 @@
   function captains(S, ev) {
     const mine = S.cmd;
     E.each(S, ev, s => {
-      if (S.cmd === mine || s.orders === "hold") return;
-      const c = captain(s).cmd(S);
-      orders(S, { acts: (c.acts || []).filter(a => a.a !== "tc") }, ev, null);
+      if (S.cmd === mine) return;
+      orders(S, { acts: PP.Orders.acts(S, s, captain(s)) }, ev, null);
     });
   }
   /* the pack's eyes and ears, taken together */
@@ -189,6 +190,7 @@
     warOver: () => "Word from command: the war is over.",
     subLost: (S, e) => `${e.name}: ${e.why === "crushed" ? "the hull gave way" : e.why === "flooded" ? "she flooded" : "lost"}.`,
     command: (S, e) => `Command shifts to ${e.name}.`,
+    orders: (S, e) => e.why === "lastWp" ? `${e.name} is at her last waypoint, holding.` : `${e.name}: ${PP.Orders.name(e.v).toLowerCase()}.`,
   };
 
   /* ---- the Konami code: everything put right, the torpedoes true, for this patrol or action ---- */

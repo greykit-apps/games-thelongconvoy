@@ -66,7 +66,8 @@
     if (!Det.sees(S, s, t)) return;
     const b = PP.angTo(s.x, s.y, t.x, t.y), trueR = PP.dist(s.x, s.y, t.x, t.y);
     let r = PP.dist(s.x, s.y, T.ex, T.ey);
-    if (t.kn.by === "radar" || (aids && aids.autoRange)) { r += (trueR - r) * (1 - Math.exp(-dt / 4)); T.rngT = S.t; }
+    /* the boat's fire control takes the range as it watches, by eye or by radar */
+    r += (trueR - r) * (1 - Math.exp(-dt / 4)); T.rngT = S.t;
     T.ex = s.x + PP.hx(b) * r; T.ey = s.y + PP.hy(b) * r;
     if (!S.real.aob) {
       /* the Field TDC: it works out course and speed from watching, given time */
@@ -111,9 +112,22 @@
     if (Sub.loaded(s, bank) === 0) return "empty";
     return "";
   };
+  /* fire, as the 1990 game had it: at the ship selected, else the nearest the pack has in sight within a
+   * torpedo's run; the fire control does the rest, and it will not waste a torpedo on a shot the tubes
+   * cannot make ("wrong angle: fire the opposite tubes") or one out of range */
   W.fire = (S, ev) => {
     const s = S.sub, T = S.tdc, bank = s.bank, why = W.canFire(S, bank);
     if (why) { ev.push({ t: "cantFire", why, bank }); return; }
+    if (!T.set || T.tgt === null) {
+      const reach = C.TORPS[s.mark].range * 1.05;
+      const t = S.ships.filter(q => Sh.alive(q) && Det.known(S, q)).map(q => ({ q, d: PP.dist(s.x, s.y, q.x, q.y) })).filter(o => o.d < reach).sort((a, b) => a.d - b.d)[0];
+      if (!t) { ev.push({ t: "noTarget" }); return; }
+      W.lock(S, t.q.id, ev);
+    }
+    {
+      const e0 = W.est(S), sol0 = e0 && W.solve(S, e0, bank);
+      if (sol0 && !sol0.ok && S.t - T.salvoT > 12) { ev.push({ t: "cantFire", why: sol0.why === "gyro" ? "angle" : "range", bank }); return; }
+    }
     if (S.t - T.salvoT > 12) T.salvo = 0;
     const pat = SPREADS[s.spread] || [0], off = pat[T.salvo % pat.length] * C.SPREAD;
     T.salvo++; T.salvoT = S.t;

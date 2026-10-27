@@ -1,7 +1,7 @@
 /* PumaPack -- the chart: from a few thousand yards across (the attack)
  * to the whole archipelago (the patrol).
  *
- * Depth in bands of blue, the shoals pale, the land dun with a dark coast.
+ * Depth in ten hard bands under red light, the shoals lightest, the land dun with a bright coast.
  * The Empire's sea lanes, our patrol zone, the bases, the names. Our boat,
  * her ordered course and her track. The ships as we know them: what is in
  * sight where it is, what was seen where it was last (a hollow mark, aging),
@@ -14,8 +14,11 @@
 (() => {
   const K = PP.K, C = PP.C, Sea = PP.Sea, Det = PP.Detect, W = PP.Weapons, Sub = PP.Sub, CH = PP.Chart = {};
   CH.ZOOMS = [10, 25, 60, 150, 400, 1100, 3200, 0];       /* yards a pixel; 0, the whole sea fitted to the window */
-  const INK = "#081018", COL = { merchant: "#e8c27a", escort: "#ff9a80", ghost: "#9aa3ad", ear: "#7fe0a8", sub: "#f6f2e8", pack: "#c9e3f2", packDown: "#86b8d6", tdc: "#e6bd6a", torp: "#cfe8ff", plane: "#ff9a80", lane: "rgba(230,189,106,.28)", zone: "rgba(127,224,168,.5)" };
-  const depthCol = d => d <= 0 ? (d < -800 ? "#6e7254" : "#5f6a4a") : d < 30 ? "#4f8e94" : d < 120 ? "#3a7488" : d < 400 ? "#285a78" : d < 2000 ? "#1b4566" : d < 6000 ? "#133652" : "#0e2b44";
+  const INK = "#0b0504", COL = { merchant: "#ffc65a", escort: "#ff5a3c", ghost: "#a07466", ear: "#8fe3a1", sub: "#fff0e6", pack: "#ffd2bf", packDown: "#e09a80", tdc: "#ffc65a", torp: "#ffe6d6", plane: "#ff5a3c", lane: "rgba(255,198,90,.22)", zone: "rgba(127,224,168,.5)" };
+  /* the depth in ten hard bands, as the 1990 game's sea maps have them, under the boat's red light: the shoals
+   * lightest, the deep near black; the land a dun the red light warms, its coast a bright line */
+  const BANDS = [[30, "#5c2b22"], [60, "#4f251e"], [120, "#45201a"], [200, "#3b1b17"], [400, "#331714"], [800, "#2b1411"], [1600, "#24110f"], [3000, "#1e0e0c"], [6000, "#180b0a"]];
+  const depthCol = d => { if (d <= 0) return d < -800 ? "#5e4c3c" : "#6b5846"; for (const [b, c] of BANDS) if (d < b) return c; return "#130908"; };
 
   /* the whole sea, a pixel a cell, painted once */
   let WHOLE = null;
@@ -25,7 +28,7 @@
       const d = D[j * Sea.NX + i], o = (j * Sea.NX + i) * 4;
       let q = K.rgb(depthCol(d));
       const land = d <= 0, coast = land && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const ii = i + a, jj = j + b; return ii >= 0 && jj >= 0 && ii < Sea.NX && jj < Sea.NY && D[jj * Sea.NX + ii] > 0; });
-      if (coast) q = [44, 50, 38];
+      if (coast) q = [201, 140, 92];
       else if (land) q = q.map(v => v + (K.hash(i, j, 3) - 0.5) * 10);
       img.data[o] = q[0]; img.data[o + 1] = q[1]; img.data[o + 2] = q[2]; img.data[o + 3] = 255;
     }
@@ -43,7 +46,7 @@
       const x = ox + i * z, y = oy + j * z, d = Sea.depthAt(x, y);
       let qq = K.rgb(depthCol(d));
       if (d > 0 && d < 400) { const n = Math.sin(d / 25) ; if (Math.abs(n) < 0.08) qq = qq.map(v => v + 14); }
-      if (d <= 0 && Sea.depthAt(x + z * 2, y) > 0 || d <= 0 && Sea.depthAt(x - z * 2, y) > 0 || d <= 0 && Sea.depthAt(x, y + z * 2) > 0 || d <= 0 && Sea.depthAt(x, y - z * 2) > 0) qq = [44, 50, 38];
+      if (d <= 0 && Sea.depthAt(x + z * 2, y) > 0 || d <= 0 && Sea.depthAt(x - z * 2, y) > 0 || d <= 0 && Sea.depthAt(x, y + z * 2) > 0 || d <= 0 && Sea.depthAt(x, y - z * 2) > 0) qq = [201, 140, 92];
       for (let b = 0; b < step; b++) for (let a = 0; a < step; a++) { const o = ((j + b) * cw + i + a) * 4; if (o >= img.data.length) continue; img.data[o] = qq[0]; img.data[o + 1] = qq[1]; img.data[o + 2] = qq[2]; img.data[o + 3] = 255; }
     }
     g.putImageData(img, 0, 0);
@@ -85,7 +88,7 @@
   function pointers(g, S, ui, X, Y, v, Wd) {
     const s = S.sub, sf = v.sf, out = [], put = [];
     const L = 8, R = Wd - 8, T = Math.max(v.top, sf.tr || v.top) + 8, B = Math.min(v.bot, sf.br || v.bot) - 8;
-    if (ui.chartAt) out.push({ x: s.x, y: s.y, n: "Our boat", col: Sub.surfaced(s) ? COL.sub : "#a9d8f0" });
+    if (ui.chartAt) out.push({ x: s.x, y: s.y, n: "Our boat", col: Sub.surfaced(s) ? COL.sub : "#e09a80" });
     if (S.mode === "patrol") {
       const zn = Sea.zones.find(q => q.id === S.patrol.zone);
       if (zn) out.push({ x: zn.x, y: zn.y, n: zn.name, col: "#a8ecc4", d: Math.max(0, PP.dist(s.x, s.y, zn.x, zn.y) - zn.r) });
@@ -114,7 +117,7 @@
     const z = v.z, cx = v.cx, cy = v.cy, sf = v.sf, my = v.my;
     const X = x => Wd / 2 + (x - cx) / z, Y = y => my + (y - cy) / z;
     g.imageSmoothingEnabled = false;
-    g.fillStyle = "#0e2b44"; g.fillRect(0, 0, Wd, Ht);
+    g.fillStyle = "#130908"; g.fillRect(0, 0, Wd, Ht);
     if (z >= 400) {
       const wsrc = whole(), k = Sea.CELL / z;
       g.drawImage(wsrc, Math.round(X(0)), Math.round(Y(0)), Math.round(Sea.NX * k), Math.round(Sea.NY * k));
@@ -124,7 +127,7 @@
     }
     /* a grid: every 10 nm on the sea chart, every 1,000 yd close in */
     const gs = z >= 400 ? 50 * PP.YD_NM : z >= 60 ? 5000 : 1000;
-    g.fillStyle = "rgba(200,220,236,.07)";
+    g.fillStyle = "rgba(255,140,110,.07)";
     for (let gx = Math.floor((cx - Wd / 2 * z) / gs) * gs; gx < cx + Wd / 2 * z; gx += gs) g.fillRect(Math.round(X(gx)), 0, 1, Ht);
     for (let gy = Math.floor((cy - Ht / 2 * z) / gs) * gs; gy < cy + Ht / 2 * z; gy += gs) g.fillRect(0, Math.round(Y(gy)), Wd, 1);
     /* the lanes, the zones, the bases, the names */
@@ -135,20 +138,20 @@
       for (const p of Sea.portsOpen(C.monthOf(S.t))) { const px = X(p.x), py = Y(p.y); K.rect(g, px - 3, py - 3, 7, 7, INK); K.rect(g, px - 2, py - 2, 5, 5, "#7fe0a8"); if (z >= 60) K.text5(g, p.name, Math.round(px + 6), Math.round(py - 3), "#d6f5e2", INK); }
     }
     if (z >= 400) {
-      for (const I of Sea.isles) K.text5(g, I.n, Math.round(X(I.x) - K.text5w(I.n) / 2), Math.round(Y(I.y) - 3), I.side === "wolf" ? "#f0c0b0" : "#e9e4d8", INK);
-      for (const l of Sea.labels) K.text5(g, l.n, Math.round(X(l.x) - K.text5w(l.n) / 2), Math.round(Y(l.y)), "rgba(180,206,226,.7)");
+      for (const I of Sea.isles) K.text5(g, I.n, Math.round(X(I.x) - K.text5w(I.n) / 2), Math.round(Y(I.y) - 3), I.side === "wolf" ? "#ff9f86" : "#f2d6c0", INK);
+      for (const l of Sea.labels) K.text5(g, l.n, Math.round(X(l.x) - K.text5w(l.n) / 2), Math.round(Y(l.y)), "rgba(240,170,150,.6)");
     }
     /* our track */
     const tr = ui.track || [];
-    g.fillStyle = "rgba(246,242,232,.35)";
+    g.fillStyle = "rgba(255,210,190,.35)";
     for (let i = 0; i < tr.length; i += 1) g.fillRect(Math.round(X(tr[i][0])), Math.round(Y(tr[i][1])), 1, 1);
     /* range rings, close in */
-    if (z < 400) for (const r of z <= 25 ? [1000, 2000, 4000] : z <= 60 ? [2000, 5000, 10000] : [5000, 10000, 20000]) { ringPx(g, X(s.x), Y(s.y), r / z, "rgba(230,224,210,.18)", 2); K.text5(g, PP.num(r) + " YD", Math.round(X(s.x) + r / z * 0.7 + 3), Math.round(Y(s.y) - r / z * 0.7 - 3), "rgba(230,224,210,.55)"); }
+    if (z < 400 && !ui.title) for (const r of z <= 25 ? [1000, 2000, 4000] : z <= 60 ? [2000, 5000, 10000] : [5000, 10000, 20000]) { ringPx(g, X(s.x), Y(s.y), r / z, "rgba(255,150,120,.16)", 2); K.text5(g, PP.num(r) + " YD", Math.round(X(s.x) + r / z * 0.7 + 3), Math.round(Y(s.y) - r / z * 0.7 - 3), "rgba(255,190,170,.5)"); }
     /* the escorts' ears (a Field aid): how far each could hear us now */
     if (aids.rings) for (const sh of S.ships) {
       if (sh.role !== "escort" || !PP.Ships.alive(sh) || !(Det.known(S, sh) || !S.real.vis)) continue;
       const Rh = C.DET.hyd * Sub.noise(s) * C.era(C.monthOf(S.t)).asw * C.SHIPS[sh.cls].sonar * (sh.spd > C.DET.hydFastKn ? C.DET.hydFast : 1);
-      if (!Sub.surfaced(s)) ringPx(g, X(sh.x), Y(sh.y), Rh / z, "rgba(255,154,128,.45)", 2);
+      if (!Sub.surfaced(s)) ringPx(g, X(sh.x), Y(sh.y), Rh / z, "rgba(255,90,60,.45)", 2);
     }
     /* the ships as we know them; their ranges (a Field aid) in the HUD's type, the nearest first, none crowding another */
     const free = !S.real.vis, rngAt = [];
@@ -158,7 +161,7 @@
       const r = Math.max(2, Math.min(5, Math.round(C.SHIPS[sh.cls].len / z / 2) + 2));
       if (know || (free && near)) {
         const x = X(sh.x), y = Y(sh.y);
-        if (sh.sinking) cross(g, x, y, r, "#c8ccd2");
+        if (sh.sinking) cross(g, x, y, r, "#b88a7c");
         else if (sh.role === "escort") tri(g, x, y, r + 1, sh.hdg, COL.escort);
         else diamond(g, x, y, r, COL.merchant);
         if (aids.labels && z <= 60) rngAt.push({ id: sh.id, x: x + r + 4, y, d: PP.dist(s.x, s.y, sh.x, sh.y) });
@@ -178,7 +181,7 @@
     }
     /* our torpedoes, the charges, aircraft */
     if (aids.tracks) for (const tp of S.torps) { const x = X(tp.x), y = Y(tp.y); dash(g, x, y, x - PP.hx(tp.hdg) * 160 / z * 6, y - PP.hy(tp.hdg) * 160 / z * 6, COL.torp, 2, 2); K.rect(g, x - 1, y - 1, 2, 2, "#ffffff"); }
-    for (const c of S.charges) { const x = X(c.x), y = Y(c.y); ringPx(g, x, y, Math.max(2, 30 / z), "#ffd7cc", 1); }
+    for (const c of S.charges) { const x = X(c.x), y = Y(c.y); ringPx(g, x, y, Math.max(2, 30 / z), "#ffc0a8", 1); }
     for (const p of S.planes) if (p.seen) { const x = Math.round(X(p.x)), y = Math.round(Y(p.y)); K.rect(g, x - 4, y, 9, 1, COL.plane); K.rect(g, x, y - 4, 1, 9, COL.plane); }
     /* the TDC's target and solution (a Field aid) */
     const e = W.est(S);
@@ -187,8 +190,8 @@
       ringPx(g, X(e.x), Y(e.y), 4, COL.tdc, 1);
       if (sol && sol.ok) {
         const ix = e.x + PP.hx(e.c) * e.s * PP.KN * sol.time, iy = e.y + PP.hy(e.c) * e.s * PP.KN * sol.time;
-        dash(g, X(s.x), Y(s.y), X(ix), Y(iy), "rgba(230,189,106,.85)", 3, 2);
-        dash(g, X(e.x), Y(e.y), X(ix), Y(iy), "rgba(230,189,106,.5)", 1, 2);
+        dash(g, X(s.x), Y(s.y), X(ix), Y(iy), "rgba(255,198,90,.85)", 3, 2);
+        dash(g, X(e.x), Y(e.y), X(ix), Y(iy), "rgba(255,198,90,.5)", 1, 2);
         K.rect(g, X(ix) - 1, Y(iy) - 1, 3, 3, COL.tdc);
       }
     }
@@ -198,18 +201,25 @@
       const qx = X(q.x), qy = Y(q.y);
       if (q.lost) { cross(g, qx, qy, 4, COL.ghost); continue; }
       tri(g, qx, qy, 4, q.hdg, Sub.surfaced(q) ? COL.pack : COL.packDown);
-      K.text5(g, q.name.toUpperCase() + (q.orders === "hold" ? " (HOLD)" : ""), Math.round(qx + 7), Math.round(qy - 3), COL.packDown, INK);
+      K.text5(g, q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), Math.round(qx + 7), Math.round(qy - 3), COL.packDown, INK);
+    }
+    /* the boat selected for orders: a ring, and her waypoints joined up from her */
+    const si = S.subs.findIndex(q => q.id === ui.sel && !q.lost), sel = S.subs[si >= 0 ? si : S.cmd];
+    if (sel && !sel.lost && !ui.title) {
+      ringPx(g, X(sel.x), Y(sel.y), 8, COL.tdc, 1);
+      let px = X(sel.x), py = Y(sel.y);
+      (sel.wps || []).forEach((w, k) => { const wx = X(w.x), wy = Y(w.y); dash(g, px, py, wx, wy, "rgba(255,198,90,.7)", 3, 3); K.rect(g, wx - 2, wy - 2, 5, 5, COL.tdc); K.text5(g, String(k + 1), Math.round(wx + 5), Math.round(wy - 3), COL.tdc, INK); px = wx; py = wy; });
     }
     /* our boat, on top: a pale triangle, her ordered course a tick */
     const sx = X(s.x), sy = Y(s.y);
-    dash(g, sx, sy, sx + PP.hx(s.ordHdg) * 22, sy + PP.hy(s.ordHdg) * 22, "rgba(230,189,106,.9)", 2, 2);
-    tri(g, sx, sy, 5, s.hdg, Sub.surfaced(s) ? COL.sub : "#a9d8f0");
+    dash(g, sx, sy, sx + PP.hx(s.ordHdg) * 22, sy + PP.hy(s.ordHdg) * 22, "rgba(255,198,90,.9)", 2, 2);
+    tri(g, sx, sy, 5, s.hdg, Sub.surfaced(s) ? COL.sub : "#e09a80");
     pointers(g, S, ui, X, Y, v, Wd);
     /* the scale */
     const bar = z >= 400 ? 100 * PP.YD_NM : z >= 60 ? 10000 : 2000, bl = bar / z;
     const sy0 = sf.t + 10;
-    K.rect(g, 12, sy0 + 4, bl, 2, "rgba(236,231,220,.8)"); K.rect(g, 12, sy0, 1, 6, "rgba(236,231,220,.8)"); K.rect(g, 12 + bl, sy0, 1, 6, "rgba(236,231,220,.8)");
-    K.text5(g, z >= 400 ? "100 NM" : PP.num(bar) + " YD", 16 + bl, sy0 - 1, "rgba(236,231,220,.85)", INK);
+    K.rect(g, 12, sy0 + 4, bl, 2, "rgba(255,200,180,.75)"); K.rect(g, 12, sy0, 1, 6, "rgba(255,200,180,.75)"); K.rect(g, 12 + bl, sy0, 1, 6, "rgba(255,200,180,.75)");
+    K.text5(g, z >= 400 ? "100 NM" : PP.num(bar) + " YD", 16 + bl, sy0 - 1, "rgba(255,200,180,.85)", INK);
     return { X, Y, z, cx, cy };
   };
   /* a point on the chart (canvas pixels) to the sea */

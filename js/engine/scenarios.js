@@ -33,7 +33,7 @@
       boats: [["caracal", 12000, 5000, PD], ["caracal", 9000, -7000, 0], ["cougar", -6000, 9000, 0], ["caracal", 16000, -1000, PD]] },
     { id: "strait", name: "The Kessrin Strait", note: "A supply convoy about to clear the strait for open water. Six boats strung across its way out; stop it in the narrows.", mi: 17, hour: 2, day: 6, wx: "clear",
       at: [520, 330], hdg: 300, conv: { kinds: ["freighter", "tanker", "liner", "troopship"], n: 18, escorts: 8 },
-      boats: [["cougar", 15000, 0, PD], ["caracal", 14000, 4500, PD], ["caracal", 14000, -4500, PD], ["caracal", 22000, 2500, 0], ["caracal", 22000, -2500, 0], ["caracal", 9000, 9000, PD]] },
+      boats: [["cougar", 9000, 0, PD], ["caracal", 8500, 4000, PD], ["caracal", 8500, -4000, PD], ["caracal", 13000, 2500, 0], ["caracal", 13000, -2500, 0], ["caracal", 6000, 7000, PD]] },
   ];
   E.CUSTOM = {
     when: [[2, "Year I"], [14, "Year II"], [26, "Year III"], [38, "Year IV"]],
@@ -48,7 +48,8 @@
   E.base = ({ seed, mode, mi = 0, hour = 12, day = 1, real, cls, name = "Talus" }) => {
     const S = {
       v: 1, seed, rs: seed | 0, mode, phase: "sea", t: C.monthStart(mi) + (day - 1) * C.DAY + H(hour), tcReq: 0, tcCap: C.TC_MAX_IDX, nextId: 1,
-      real: Object.assign({}, real), wx: { k: "clear", vis: 1, sea: 2, until: 0 }, subs: [], cmd: 0, ships: [], convoys: [], torps: [], charges: [], shells: [], planes: [],
+      /* the 1990 game had no angle on the bow to judge: the boat's fire control solves every shot */
+      real: Object.assign({}, real, { aob: false }), wx: { k: "clear", vis: 1, sea: 2, until: 0 }, subs: [], cmd: 0, ships: [], convoys: [], torps: [], charges: [], shells: [], planes: [],
       log: [], stats: { tons: 0, sunk: [], fired: 0, hits: 0, duds: 0, charges: 0, dcNear: 0, dmg: 0, maxDepth: 0, shells: 0 },
       konami: false, cheated: false, end: null, nameI: 0, potential: 0, msg: null,
     };
@@ -65,7 +66,8 @@
   };
   E.addBoat = (S, cls, name) => {
     const s = Sub.init(Sub.make(cls, name, C.monthOf(S.t)));
-    s.id = S.nextId++; s.tdc = PP.Weapons.newTdc(); s.lost = null; s.bot = null;
+    s.id = S.nextId++; s.tdc = PP.Weapons.newTdc(); s.lost = null; s.bot = null; s.orders = "attack"; s.wps = [];
+    s.capt = C.CAPTAINS[(S.seed + S.subs.length * 7) % C.CAPTAINS.length];
     S.subs.push(s);
     return s;
   };
@@ -111,7 +113,8 @@
       used.add(n); E.addBoat(S, cls, n);
     }
     S.subs.forEach((b, i) => {
-      const [, ahead, star, depth = 0, how] = A.boats[i];
+      const [, ahead, star, depth = 0, how, ord] = A.boats[i];
+      if (ord) b.orders = ord;
       const [sx, sy] = offset(x, y, hdg, ahead, star), h = how === "with" ? hdg : PP.angTo(sx, sy, x, y);
       Object.assign(b, { x: sx, y: sy, hdg: h, ordHdg: h, bell: how === "with" ? 2 : 3, spd: how === "with" ? 5 : 6, depth, ordDepth: depth });
       if (Sea.depthAt(b.x, b.y) < Math.max(80, depth + 40)) { b.x = x + PP.hx(hdg) * (6000 + i * 1500); b.y = y + PP.hy(hdg) * (6000 + i * 1500); }

@@ -219,7 +219,6 @@
     ["vis", "Limited visibility", "Only what you have seen or heard is on the chart.", 15],
     ["zig", "Convoy zig-zags", "Convoys turn together on a zig-zag plan.", 10],
     ["expert", "Expert escorts", "Escorts hunt in pairs, hold on longer and set their charges closer.", 20],
-    ["aob", "Angle on bow by eye", "You set the target's angle on the bow and speed on the TDC yourself.", 15],
     ["duds", "Torpedo failures", "Duds, prematures and deep runners, as the year's torpedoes had them.", 15],
     ["portOnly", "Port repairs only", "The hull, the battery and the periscope can only be put right in port.", 10],
   ];
@@ -236,6 +235,9 @@
   C.REFIT_DAYS = [14, 24];
   C.BOAT_NAMES = ["Talus", "Scree", "Mesa", "Arroyo", "Juniper", "Tamarack", "Ridgeline", "Sagebrush", "Cliffrunner", "Ponderosa", "Granite", "Canyon",
     "Sierra", "Chaparral", "Bitterroot", "Cascade", "Rimrock", "Highpass", "Saltcedar", "Manzanita", "Piñon", "Basin", "Cougar Peak", "Sandstone"];
+  /* the pack's captains (ours): one to a boat */
+  C.CAPTAINS = ["Ardent", "Bramble", "Cinder", "Dusk", "Ember", "Flint", "Gorse", "Harrow", "Ingle", "Juno", "Kestrel", "Larch", "Marrow", "Nettle",
+    "Ochre", "Pell", "Quarry", "Rowan", "Sable", "Tansy", "Umber", "Vesper", "Wren", "Yarrow"];
   C.START_MONTHS = [[0, "January, Year I", "The war's first month. Old boats, bad torpedoes, plenty of targets."],
     [12, "January, Year II", "Better boats arrive. The torpedoes are still suspect."],
     [24, "January, Year III", "The torpedoes are fixed by autumn. Their escorts are learning."],

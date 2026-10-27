@@ -15,14 +15,13 @@
     ArrowUp: "aU", ArrowDown: "aD", ArrowLeft: "aL", ArrowRight: "aR",
     PageUp: "shallower", KeyQ: "shallower", PageDown: "deeper", KeyE: "deeper",
     KeyU: "surface", KeyP: "pd", KeyC: "crash",
-    KeyZ: "zoom", KeyT: "lock", KeyR: "range",
-    BracketLeft: "aobL", BracketRight: "aobR", Comma: "spdD", Period: "spdU",
+    KeyZ: "zoom", KeyT: "lock",
     Space: "fire", KeyF: "bank", KeyV: "spread", KeyG: "gun", KeyX: "silent", KeyY: "radar",
     Equal: "tcU", NumpadAdd: "tcU", Minus: "tcD", NumpadSubtract: "tcD", Backspace: "tc1",
-    Digit1: "st1", Digit2: "st2", Digit3: "st3", Digit4: "st4", Digit5: "st5", Digit6: "st6",
-    F1: "st1", F2: "st2", F3: "st3", F4: "st4", F6: "st5", F7: "st6", Tab: "stNext",
-    Escape: "pause", KeyL: "aids", KeyO: "dock", KeyH: "onHer", KeyB: "ahead",
-    KeyN: "boatNext", KeyK: "captain",
+    Digit1: "st1", Digit2: "st2", Digit3: "st3", Digit4: "st6",
+    F2: "st1", F3: "st2", F4: "st3", F7: "st6", Tab: "stNext",
+    Escape: "pause", KeyL: "aids", KeyH: "onHer", KeyB: "ahead",
+    KeyN: "boatNext", KeyO: "orders", Enter: "takeCmd",
   };
   I.BIND = BIND;
   I.actionFor = code => BIND[code] || null;
@@ -64,8 +63,8 @@
     const sec = stepMs / 1000, fast = I.held.has("shift") ? 3 : 1, st = ui.station;
     /* the helm: A and D everywhere; the arrows on the chart and the instruments */
     let h = 0;
-    if (on("hL") || ((st === "chart" || st === "panel" || st === "damage") && on("aL"))) h -= 1;
-    if (on("hR") || ((st === "chart" || st === "panel" || st === "damage") && on("aR"))) h += 1;
+    if (on("hL") || ((st === "chart" || st === "damage") && on("aL"))) h -= 1;
+    if (on("hR") || ((st === "chart" || st === "damage") && on("aR"))) h += 1;
     if (I.stick && Math.abs(I.stick.x) > 0.3) h += I.stick.x;
     const helmKey = ["hL", "hR", "aL", "aR"].find(k => on(k));
     if (h && (!helmKey || heldFor(helmKey) > 220 || I.stick)) c.dHdg = h * 32 * PP.DEG * sec * fast;
@@ -112,7 +111,7 @@
    * radar, the dials, the log, the aids, back to 1x, the swings (onto her, ahead and astern), Help; Back tapped
    * alone is the chart. */
   const PAD = ["fire", "scope", "lock", "zoom", "stPrev", "stNext", "tcD", "tcU", null, "pause", "crash", "level", "shallower", "deeper", "bank", "gun"];
-  const PAD_MOD = { 0: "spread", 1: "silent", 2: "range", 3: "radar", 4: "st6", 5: "aids", 6: "tc1", 7: "ahead", 9: "help", 11: "onHer", 12: "aobR", 13: "aobL", 14: "spdD", 15: "spdU" };
+  const PAD_MOD = { 0: "spread", 1: "silent", 2: "orders", 3: "radar", 4: "st6", 5: "aids", 6: "tc1", 7: "ahead", 9: "help", 11: "onHer", 12: "boatNext", 13: "takeCmd" };
   I.rawPrev = new Set(); I.padBtns = []; I.modUsed = false;
   I.pollPad = () => {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];

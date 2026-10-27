@@ -370,55 +370,45 @@
 
   /* ---- Help and About ---- */
   /* the angle on the bow, drawn: the target's course, the line of sight to you, the angle between */
-  const AOB = `<figure class="aob"><svg viewBox="0 0 160 120" width="160" height="120" aria-hidden="true">
-    <path d="M70 20 L82 20 L86 44 L82 70 L70 70 L66 44 Z" fill="currentColor" opacity=".55"/>
-    <path d="M76 18 L76 4" stroke="currentColor" stroke-width="2"/><path d="M71 9 L76 2 L81 9" fill="none" stroke="currentColor" stroke-width="2"/>
-    <g class="hi"><path d="M76 44 L140 108" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
-    <circle cx="140" cy="108" r="5" fill="currentColor"/>
-    <path d="M76 26 A18 18 0 0 1 89 31" fill="none" stroke="currentColor" stroke-width="2"/>
-    <text x="92" y="28" fill="currentColor" font-size="11" font-family="Barlow Semi Condensed, sans-serif">45°</text></g>
-    <text x="118" y="100" fill="currentColor" font-size="11" font-family="Barlow Semi Condensed, sans-serif">you</text></svg>
-    <figcaption><b>Angle on the bow</b> is the angle between the target's bow and the line to you: 0 is bow on, 90 is beam on, 180 is stern on. Here, starboard 45: you are off its starboard bow.</figcaption></figure>`;
   const keys = rows => `<table class="keys">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table>`;
   UI.helpTabs = () => [
-    ["The pack", `<div class="cols"><p><b>You command a pack of boats, one at a time.</b> Everything you do (the helm, the periscope, the torpedoes) is done aboard the boat you are on; the pack's row on the boat's panel shows which one, lit.</p>
-      <p><kbd>N</kbd> takes you to the next boat afloat, <kbd>Shift</kbd> <kbd>N</kbd> the one before; on the chart a click on a boat takes command of her.</p>
-      <p>The boats you are not on <b>hunt on their own</b>: their captains find the convoy, work ahead of it and attack, and go deep when they are hunted. <kbd>K</kbd> tells the boat you are on to <b>hold</b> instead when you leave her: she keeps the course, speed and depth you gave her. <kbd>K</kbd> again lets her hunt.</p>
-      <p>The pack shares what it sees: a ship one boat has in sight is on every boat's chart. Their news comes in their names: who is firing, who is hunted, who is lost. When the boat you are on is lost, command passes to the next; the mission ends when the convoy is gone or the last boat is.</p></div>`],
+    ["The pack", `<div class="cols"><p><b>You lead a pack, from the map.</b> The map (<kbd>1</kbd>) is where the battle is run: every boat of the pack, the convoy as the pack has seen it, the escorts. A click on a boat <b>selects</b> her: the panel on the left shows her class, her captain, her depth and her order, and gives her another.</p>
+      <p>Every boat you are not aboard sails under <b>her order</b>: <b>Attack</b> (her captain finds the convoy and goes in), <b>Shadow</b> (keep it in reach, out of its sight, and never fire), <b>Patrol</b> (run her waypoints, then hold), <b>Evade</b>, <b>Drift</b>, <b>Charge</b>, <b>Periscope depth</b> and <b>Hold</b>. <kbd>O</kbd> gives the boat selected the next order; a right click on the map adds a waypoint for her.</p>
+      <p><b>Take command</b> of the boat selected with <kbd>Enter</kbd>, or a second click on her; <kbd>N</kbd> takes you straight to the next boat afloat. Aboard her, everything is yours: the helm, the telegraph, the periscope, the torpedoes. Her order waits for you to leave her.</p>
+      <p>The pack shares what it sees, and its news comes in its boats' names: who is firing, who is hunted, who is lost. When the boat you are on is lost, command passes to the next; the mission ends when the convoy is gone or the last boat is.</p></div>`],
     ["The boat", `<div class="cols"><p><b>Sink the Wolf Empire's merchant ships, and live.</b> On the surface the diesels drive her and charge the battery; under the water the battery does everything, and runs down the faster you go.</p>
       <p>The <b>telegraph</b> (<kbd>W</kbd> <kbd>S</kbd>) orders her speed a bell at a time: Back, Stop, 1/3, 2/3, Standard, Full, Flank. The <b>helm</b> (<kbd>A</kbd> <kbd>D</kbd>) orders her course: a tap turns it five degrees, a hold swings it.</p>
       <p>Periscope depth is ${C.PD} feet (<kbd>P</kbd>); <kbd>Q</kbd> <kbd>E</kbd> take her up and down; <kbd>U</kbd> surfaces; <kbd>C</kbd> crash dives, at full speed. Below the <b>test depth</b> the hull groans; below the <b>crush depth</b> it fails. Damage lowers the crush depth.</p>
       <p>Time compression (<kbd>+</kbd> <kbd>−</kbd>) is held back when ships are near; the clock says why.</p>
       <p>The <b>battery</b> charges only on the surface, and slowly: fastest stopped or at a slow bell, slower as she speeds up, and not at all above ${C.BAT.chargeKn + 4} knots (Full or Flank in a fleet boat). A charge from flat takes most of a night stopped, so charge under time compression. Under the battery bar the boat's panel says when she is charging, or why not.</p></div>`],
-    ["The attack", `<div class="cols">${AOB}<p><b>Lock a target</b> (<kbd>T</kbd>) at the periscope or the bridge. The <b>TDC</b>, the torpedo data computer, tracks its bearing and range and works out the shot: <b>Gyro</b> is how far the torpedo turns after it leaves the tube (R right, L left), <b>Run</b> how far it travels to meet her. A green lamp means a solution: <kbd>Space</kbd> fires.</p>
-      <p>With <b>angle on bow by eye</b>, you set it yourself: <kbd>[</kbd> <kbd>]</kbd> for the angle, <kbd>,</kbd> <kbd>.</kbd> for the speed, <kbd>R</kbd> for a stadimeter range.</p>
-      <p>The best shot is from ahead of the target, 1,000 to 2,000 yards off its track, at 90°. A spread (<kbd>V</kbd>) fans the next shots across her, a press of <kbd>Space</kbd> for each, to cover a bad guess. <kbd>F</kbd> picks the forward or after tubes.</p>
-      <p>Bearings are true, as the crew report them: the ring above the periscope glass reads true, TRUE beside it is where it looks and REL is that off the bow. A brass mark on the ring is the locked target, a hollow amber one the crew's last report; an arrow at the ring's end means it is off to that side.</p></div>`],
+    ["The attack", `<div class="cols"><p><b>From the view</b> (<kbd>2</kbd>): the periscope at periscope depth, the bridge and its glasses on the surface. <kbd>T</kbd> selects the ship nearest the crosshair (again, the next); a click on a ship selects her too.</p>
+      <p><kbd>Space</kbd> fires at the ship selected, or, with none, at the nearest the pack has in sight within a torpedo's run. The boat's fire control aims it: the panel says <b>On target</b> when the shot will run, <b>Wrong angle</b> when the other tubes must take it (<kbd>F</kbd> forward or after), and <b>Out of range</b> when she must close. It will not waste a torpedo on a shot it cannot make.</p>
+      <p>The best shot is from ahead of the target and off its track, under 3,000 yards. A spread (<kbd>V</kbd>) fans the next shots across her, a press of <kbd>Space</kbd> for each.</p>
+      <p>Bearings are true, as the crew report them: the ring above the periscope glass reads true. A brass mark on the ring is the ship selected, a hollow amber one the crew's last report; an arrow at the ring's end means it is off to that side.</p></div>`],
     ["Escorts and the war", `<div class="cols"><p><b>Escorts</b> hear you when you are fast and see you when you show. When one has you, go deep (<kbd>E</kbd>), slow (<kbd>S</kbd>) and quiet (<kbd>X</kbd> runs silent), and turn across its line. They give up, in time. While they hunt you the key strip turns red, with the keys to get away.</p>
       <p><b>Aircraft</b> come by day near the Empire's islands. When the lookouts call one, dive (<kbd>C</kbd>).</p>
-      <p>On <b>patrol</b>, sail to your zone, find a convoy, and come home to a base on the surface (<kbd>O</kbd> to tie up). The torpedoes improve as the war goes on; the hunters do too.</p>
-      <p>On the <b>damage report</b> (<kbd>5</kbd>) the boat is cut away: a hatched compartment has a system hurt, amber damaged, red out. Under her, the depth she is at against her test and crush depths; damage to the hull brings the crush depth up. The crew mend one thing at a time, the worst first.</p></div>`],
+      <p>On the <b>damage report</b> (<kbd>3</kbd>) the boat is cut away: a hatched compartment has a system hurt, amber damaged, red out. Under her, the depth she is at against her test and crush depths; damage to the hull brings the crush depth up. The crew mend one thing at a time, the worst first.</p></div>`],
     ["Keys", keys([["Telegraph", "<kbd>W</kbd> <kbd>S</kbd>, a bell at a time"], ["Helm", "<kbd>A</kbd> <kbd>D</kbd>, a tap five degrees, a hold to swing"], ["Depth", "<kbd>Q</kbd> <kbd>E</kbd> or <kbd>PgUp</kbd> <kbd>PgDn</kbd>; <kbd>P</kbd> periscope depth, <kbd>U</kbd> surface, <kbd>C</kbd> crash dive"],
-      ["Stations", "<kbd>1</kbd> bridge, <kbd>2</kbd> periscope, <kbd>3</kbd> instruments, <kbd>4</kbd> chart, <kbd>5</kbd> damage; <kbd>Tab</kbd> the next, <kbd>Shift</kbd> <kbd>Tab</kbd> the one before"],
+      ["Screens", "<kbd>1</kbd> the map, <kbd>2</kbd> the view (the bridge on the surface, the periscope under it), <kbd>3</kbd> damage; <kbd>Tab</kbd> the next, <kbd>Shift</kbd> <kbd>Tab</kbd> the one before"],
       ["Periscope", "<kbd>←</kbd> <kbd>→</kbd> train (held, it gathers speed), <kbd>↑</kbd> <kbd>↓</kbd> raise and lower, <kbd>Z</kbd> high or low power"],
       ["Swing", "<kbd>H</kbd> the periscope, the glasses or the gun onto her: the locked target, else the nearest in sight; <kbd>B</kbd> round to the bow, again to the stern. From another station they take you to the periscope, or the bridge on the surface"],
       ["Bridge", "<kbd>←</kbd> <kbd>→</kbd> look, <kbd>↑</kbd> <kbd>↓</kbd> the glasses, <kbd>G</kbd> man the gun; manned, <kbd>←</kbd> <kbd>→</kbd> lay it and <kbd>↑</kbd> <kbd>↓</kbd> its range"],
-      ["Elsewhere", "on the instruments, the chart and the damage report the arrows are the helm and the telegraph; <kbd>Z</kbd> zooms the chart out, the last step the whole sea; an arrow at its edge points to the patrol zone, the nearest base, and the boat when the chart is dragged off her"],
-      ["Target", "<kbd>T</kbd> lock (again: the next ship), <kbd>R</kbd> stadimeter range, <kbd>[</kbd> <kbd>]</kbd> angle on bow, <kbd>,</kbd> <kbd>.</kbd> her speed"],
+      ["Map", "the arrows are the helm and the telegraph; <kbd>Z</kbd> zooms out, the last step the whole sea; a click on a boat selects her, <kbd>O</kbd> her next order, a right click a waypoint for her (<kbd>Shift</kbd>: her first, clearing the rest), <kbd>Enter</kbd> takes command of her"],
+      ["Target", "<kbd>T</kbd> selects the ship nearest the crosshair (again: the next ship)"],
       ["Fire", "<kbd>Space</kbd>, a torpedo a press; <kbd>F</kbd> forward or after tubes, <kbd>V</kbd> a spread of one to four"],
       ["Time", "<kbd>+</kbd> <kbd>−</kbd> faster and slower, <kbd>Backspace</kbd> back to 1x"],
-      ["Shift", "held: finer dials, a faster helm and periscope, the gun's range by 500; <kbd>Shift</kbd> <kbd>Z</kbd> zooms the chart in"],
-      ["Mouse", "a click on a ship locks it, at the periscope, the bridge or the chart; drag the chart to look round it, and a zoom or another station brings it back to the boat"],
-      ["The pack", "<kbd>N</kbd> the next boat, <kbd>Shift</kbd> <kbd>N</kbd> the one before; <kbd>K</kbd> the boat you are on holds your orders when you leave her, or hunts on her own; a click on a boat on the chart takes command of her"],
-      ["Other", "<kbd>6</kbd> captain's log, <kbd>X</kbd> silent running, <kbd>Y</kbd> radar, <kbd>O</kbd> tie up at a base, <kbd>L</kbd> Classic or Field aids, <kbd>M</kbd> sound, <kbd>?</kbd> these keys, <kbd>Esc</kbd> pause"]]) +
+      ["Shift", "held: a faster helm and periscope, the gun's range by 500; <kbd>Shift</kbd> <kbd>Z</kbd> zooms the map in"],
+      ["Mouse", "a click on a ship selects her, in the view or on the map; on the map a click on a boat selects her, again takes command, and a right click adds her a waypoint; drag the map to look round it"],
+      ["The pack", "<kbd>N</kbd> command of the next boat, <kbd>Shift</kbd> <kbd>N</kbd> the one before"],
+      ["Other", "<kbd>4</kbd> captain's log, <kbd>X</kbd> silent running, <kbd>Y</kbd> radar, <kbd>L</kbd> Classic or Field aids, <kbd>M</kbd> sound, <kbd>?</kbd> these keys, <kbd>Esc</kbd> pause"]]) +
       `<p class="note">The keys are where they sit on a US keyboard; where the browser can tell, each shows the letter on your own.</p>`],
     ["Gamepad", keys([["Sticks", "<kbd>pad:L-stick</kbd> the helm, flicked up or down the telegraph; <kbd>pad:R-stick</kbd> trains the periscope, looks round, lays the gun"],
-      ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> lock, <kbd>pad:Y</kbd> power, the glasses, the chart's zoom, and at a base tie up"],
+      ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> select a ship, <kbd>pad:Y</kbd> power, the glasses, the chart's zoom, and at a base tie up"],
       ["D-pad", "<kbd>pad:dU</kbd> <kbd>pad:dD</kbd> depth (the gun's range, when it is manned), <kbd>pad:dL</kbd> the tubes, <kbd>pad:dR</kbd> man the gun"],
       ["Stick clicks", "<kbd>pad:L-click</kbd> crash dive, <kbd>pad:R-click</kbd> up a level: periscope depth, then the surface"],
-      ["Shoulders", "<kbd>pad:LB</kbd> <kbd>pad:RB</kbd> stations, <kbd>pad:LT</kbd> <kbd>pad:RT</kbd> time"],
-      ["Back, Start", "<kbd>pad:Back</kbd> alone the chart, <kbd>pad:Start</kbd> pause and resume"],
-      ["Back held", "<kbd>pad:A</kbd> spread, <kbd>pad:B</kbd> silent running, <kbd>pad:X</kbd> stadimeter, <kbd>pad:Y</kbd> radar, <kbd>pad:dU</kbd> <kbd>pad:dD</kbd> angle on bow, <kbd>pad:dL</kbd> <kbd>pad:dR</kbd> her speed, <kbd>pad:LB</kbd> log, <kbd>pad:RB</kbd> aids, <kbd>pad:LT</kbd> back to 1x, <kbd>pad:R-click</kbd> swing onto her, <kbd>pad:RT</kbd> swing to the bow, again the stern, <kbd>pad:Start</kbd> this help"],
+      ["Shoulders", "<kbd>pad:LB</kbd> <kbd>pad:RB</kbd> screens, <kbd>pad:LT</kbd> <kbd>pad:RT</kbd> time"],
+      ["Back, Start", "<kbd>pad:Back</kbd> alone the map, <kbd>pad:Start</kbd> pause and resume"],
+      ["Back held", "<kbd>pad:A</kbd> spread, <kbd>pad:B</kbd> silent running, <kbd>pad:X</kbd> the selected boat's next order, <kbd>pad:dU</kbd> the next boat, <kbd>pad:dD</kbd> take command of the selected boat, <kbd>pad:Y</kbd> radar, <kbd>pad:LB</kbd> log, <kbd>pad:RB</kbd> aids, <kbd>pad:LT</kbd> back to 1x, <kbd>pad:R-click</kbd> swing onto her, <kbd>pad:RT</kbd> swing to the bow, again the stern, <kbd>pad:Start</kbd> this help"],
       ["Menus", "the d-pad moves, <kbd>pad:A</kbd> chooses, <kbd>pad:B</kbd> goes back, <kbd>pad:LB</kbd> <kbd>pad:RB</kbd> turn these pages"]]) + `<p class="gk-credit">${CREDIT}</p>`],
   ];
   UI.help = (tab = 0, after) => UI.open("Help", { wide: true, tab, tabs: UI.helpTabs(), onClose: after });

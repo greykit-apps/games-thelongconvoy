@@ -36,7 +36,8 @@ Part of the greykit.games portfolio, served at greykit.com/games/pumapack. It op
 
 - The name PumaPack. The captains are pumas; the enemy is the Wolf Empire.
 - The same fictional archipelago and Wolf War as Puma Service; every place and ship name our own.
-- Modern hi-bit pixel art at about 640 by 360.
+- Modern hi-bit pixel art at about 640 by 360; past the boot, a boat rigged for red light (owner's decision, 2026-10-26): black panels, red-orange light, amber readouts; the view out keeps the world's own colours.
+- The 1990 game's screens, not Puma Service's (owner's note, 2026-10-26): the map runs the battle, the view out of the boat you are on, the damage; orders for every boat; select and fire, no torpedo data computer.
 - It must not look like a mobile game, and it must not look like it is running in an emulator.
 
 ## Evidence on Hand

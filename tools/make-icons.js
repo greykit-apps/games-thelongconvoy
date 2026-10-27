@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
- * PumaPack's icons, from one pixel drawing: a periscope with a puma's
- * ears, breaking a dusk swell, its glass catching the low sun.
+ * PumaPack's icons, from one pixel drawing: the plot under the boat's red
+ * light, the pack's three boats closing in a wedge on a convoy.
  *
  *   node tools/make-icons.js
  *
@@ -22,41 +22,37 @@ const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)] / 16;
 const hash = (x, y, s) => { let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 974634721)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 /* a colour along stops, dithered between them */
 const band = (stops, t, x, y) => { const f = Math.max(0, Math.min(0.9999, t)) * (stops.length - 1), i = Math.floor(f); return bayer(x, y) < f - i ? stops[i + 1] : stops[i]; };
-const SKY = ["#121c38", "#2a2a56", "#5a3a66", "#a8566a", "#ec9460"], SEA = ["#5a4a64", "#33405a", "#1d2c46", "#111c30"];
-const HZ = 23, SUN = { x: 29, y: HZ, r: 5 };
+/* the plot under the boat's red light: the depth in hard bands */
+const DEEP = ["#6a3126", "#56291f", "#45201a", "#371915", "#2b1411", "#1e0e0c"];
 const ART = [];
 for (let y = 0; y < N; y++) {
   const row = [];
   for (let x = 0; x < N; x++) {
-    let c;
-    if (y < HZ) c = band(SKY, y / (HZ - 1), x, y);
-    else {
-      c = band(SEA, (y - HZ) / (N - HZ - 1), x, y);
-      /* the sun's path on the water, and crests */
-      if (Math.abs(x - SUN.x) < 1.5 + (y - HZ) * 0.22 && hash(x, y, 3) > (y - HZ < 4 ? 0.35 : 0.62)) c = y - HZ < 5 ? "#f6c27e" : "#b47c6a";
-      else if (hash(x >> 1, y, 7) > 0.86) c = "#4a5878";
-    }
-    /* the low sun, half down */
-    if (y < HZ && Math.hypot(x - SUN.x + 0.5, y - SUN.y + 0.5) < SUN.r) c = y > HZ - 3 ? "#ffb070" : "#ffd89a";
+    /* shoal water toward the bottom left, the deep toward the top right, the bands ragged at their edges */
+    const t = (x - y + N) / (2 * N) + (hash(x >> 2, y >> 2, 5) - 0.5) * 0.08;
+    let c = DEEP[Math.max(0, Math.min(DEEP.length - 1, Math.floor(t * DEEP.length)))];
     row.push(c);
   }
   ART.push(row);
 }
 const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < N && y < N) ART[y][x] = c; };
 const rect = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) put(x + i, y + j, c); };
-/* the periscope's standard, lit from the sun on its right */
-const SX = 15;
-rect(SX, 12, 4, HZ + 2 - 12, "#1a1f28"); rect(SX + 3, 12, 1, HZ + 2 - 12, "#525c6a"); rect(SX, 12, 1, HZ + 2 - 12, "#0c0f14");
-/* the head: a housing, its window toward the sun catching the light */
-rect(SX - 2, 7, 8, 6, "#1a1f28"); rect(SX - 2, 7, 8, 1, "#3a424e"); rect(SX + 5, 8, 1, 4, "#525c6a"); rect(SX - 2, 12, 8, 1, "#0c0f14");
-rect(SX + 3, 9, 3, 2, "#ffd89a"); put(SX + 4, 9, "#fff4dc");
-/* the ears: a puma's, tawny, dark-tipped */
-const ear = (x, dir) => { rect(x, 5, 2, 2, "#c98b49"); put(x + (dir > 0 ? 1 : 0), 4, "#c98b49"); put(x + (dir > 0 ? 1 : 0), 3, "#2a1a0e"); put(x + (dir > 0 ? 0 : 1), 6, "#ebb877"); };
-ear(SX - 2, 1); ear(SX + 4, -1);
-/* the feather: foam where it cuts the water, and its wake astern (to the left) */
-for (let i = -5; i <= 7; i++) { const y = HZ + 1 + (Math.abs(i) > 3 ? 1 : 0); if (hash(i, 1, 9) > 0.25) put(SX + 1 + i, y, i > -2 && i < 5 ? "#f2f6f8" : "#b8c8d6"); }
-for (let i = 1; i < 12; i++) { put(SX - 4 - i, HZ + 2 + (i >> 2), i % 2 ? "#8ea4ba" : "#5c6e88"); put(SX - 3 - i, HZ + 3 + (i >> 1), i % 3 ? "#5c6e88" : "#33405a"); }
-rect(SX - 1, HZ, 6, 1, "#d8e4ec");
+/* a filled triangle, an outline of ink round it */
+const inTri = (px, py, [a, b, c]) => { const s = (p, q, r) => (p[0] - r[0]) * (q[1] - r[1]) - (q[0] - r[0]) * (p[1] - r[1]); const d1 = s([px, py], a, b), d2 = s([px, py], b, c), d3 = s([px, py], c, a); return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0)); };
+const tri = (cx, cy, r, h, col) => {
+  const p = k => [cx + Math.sin(h + k) * r * (k ? 1.0 : 1.35), cy - Math.cos(h + k) * r * (k ? 1.0 : 1.35)], T = [p(0), p(2.4), p(-2.4)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const X = x + 0.5, Y = y + 0.5; if (inTri(X, Y, T)) put(x, y, col); else if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => inTri(X + a, Y + b, T))) put(x, y, "#0b0504"); }
+  return T;
+};
+const diamond = (cx, cy, r, col) => { for (let j = -r - 1; j <= r + 1; j++) for (let i = -r - 1; i <= r + 1; i++) { const d = Math.abs(i) + Math.abs(j); if (d <= r) put(cx + i, cy + j, col); else if (d === r + 1) put(cx + i, cy + j, "#0b0504"); } };
+/* the convoy, up and to the right, and the pack's tracks closing on it in dotted amber */
+const H = Math.PI / 4;
+/* each boat's wake astern of her, a dotted line of foam */
+for (const [x0, y0, n] of [[12, 27, 9], [7, 18, 6], [21, 33, 6]]) for (let k = 5; k < 5 + n; k += 2) put(Math.round(x0 - k * 0.72), Math.round(y0 + k * 0.72), "#b4705c");
+diamond(29, 8, 3, "#ffc65a"); diamond(35, 15, 2, "#ffc65a"); diamond(26, 15, 2, "#ffc65a");
+/* the pack: three boats in a wedge, the lead the brightest */
+tri(7, 18, 4, H, "#e09a80"); tri(21, 33, 4, H, "#e09a80");
+tri(12, 27, 5.5, H, "#ffd2bf");
 
 /* ---- icon.svg: one rect per run of a colour along a row ---- */
 const rects = [];
@@ -70,7 +66,7 @@ ART.forEach((row, y) => {
 });
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges" role="img" aria-label="PumaPack">
 <title>PumaPack</title>
-<!-- A periscope with a puma's ears at dusk. Written by tools/make-icons.js; edit the drawing there, not this file. -->
+<!-- The pack closing on a convoy, on the plot under red light. Written by tools/make-icons.js; edit the drawing there, not this file. -->
 <clipPath id="p"><rect width="${N}" height="${N}" rx="${R}"/></clipPath>
 <g clip-path="url(#p)">
 ${rects.join("\n")}

@@ -15,7 +15,7 @@
   const HUD = PP.HUD = { el: null, toasts: [], last: {}, built: false };
   const $ = id => document.getElementById(id);
   const set = (el, k, v, f) => { if (HUD.last[k] !== v) { HUD.last[k] = v; f(el, v); } };
-  HUD.STATIONS = [["bridge", "Bridge", "1"], ["scope", "Periscope", "2"], ["panel", "Instruments", "3"], ["chart", "Chart", "4"], ["damage", "Damage", "5"]];
+  HUD.STATIONS = [["chart", "Map", "1"], ["view", "View", "2"], ["damage", "Damage", "3"]];
   const WHY = { ships: "ships near", contact: "a contact", close: "ships close", torps: "torpedoes running", plane: "aircraft", hunted: "hunted", charges: "depth charges", danger: "danger" };
 
   HUD.build = () => {
@@ -38,6 +38,7 @@
       <div class="hp" id="h-hull" hidden></div>
       <div class="hp" id="h-dmg" hidden></div>
       <div class="hp" id="h-port" hidden></div>
+      <div class="hp" id="h-orders" hidden></div>
       <div class="h-low"><div class="h-toasts"></div><div class="hp h-hint" hidden></div></div>
       <div class="hp h-end" hidden></div>
       <div class="h-flash"></div>`;
@@ -141,7 +142,8 @@
     if (now - (HUD.safeAt || 0) > 250) { HUD.safeAt = now; safe(); describe(S, ui, st); }
     labels(PP.Render.labels || []);
     if (dmg) damage(S);
-    set(el.querySelector("#h-tabs"), "tabs", st + ":" + Sub.surfaced(s), e => { for (const b of e.querySelectorAll("button")) { const off = b.dataset.st === "bridge" && !Sub.surfaced(s); b.setAttribute("aria-current", String(b.dataset.st === st)); b.classList.toggle("off", off); if (off) b.setAttribute("aria-disabled", "true"); else b.removeAttribute("aria-disabled"); } });
+    const tab = st === "bridge" || st === "scope" ? "view" : st;
+    set(el.querySelector("#h-tabs"), "tabs", tab + ":" + Sub.surfaced(s), e => { for (const b of e.querySelectorAll("button")) { b.setAttribute("aria-current", String(b.dataset.st === tab)); if (b.dataset.st === "view") b.lastChild.textContent = Sub.surfaced(s) ? "Bridge" : "Periscope"; } });
     set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });
     set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
     const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
@@ -150,7 +152,7 @@
     const packKey = S.subs.map(q => `${q.id}${q === s ? "*" : ""}${q.lost ? "x" : Sub.surfaced(q) ? "s" : "d"}${q.orders || ""}`).join(",") + PP.Input.device;
     set(el.querySelector(".hb-pack"), "pack", packKey, e => {
       e.hidden = S.subs.length < 2;
-      e.innerHTML = S.subs.map(q => `<span class="pk${q === s ? " on" : ""}${q.lost ? " lost" : ""}" title="${esc(q.name)}: ${q.lost ? "lost" : (Sub.surfaced(q) ? "surfaced" : "submerged") + (q === s ? ", in command" : q.orders === "hold" ? ", holding your orders" : ", hunting")}">${esc(q.name)}${q !== s && !q.lost && q.orders === "hold" ? " <i>hold</i>" : ""}</span>`).join("")
+      e.innerHTML = S.subs.map(q => `<span class="pk${q === s ? " on" : ""}${q.lost ? " lost" : ""}" title="${esc(q.name)}: ${q.lost ? "lost" : (Sub.surfaced(q) ? "surfaced" : "submerged") + (q === s ? ", in command" : ", " + PP.Orders.name(q.orders).toLowerCase())}">${esc(q.name)}${q !== s && !q.lost ? ` <i>${esc(PP.Orders.name(q.orders).toLowerCase())}</i>` : ""}</span>`).join("")
         + (S.subs.length > 1 ? `<span class="pk-key">${PP.Input.cap("N")} next</span>` : "");
     });
     /* the boat */
@@ -195,14 +197,24 @@
       const sol = W.solve(S, e, s.bank), ok = sol && sol.ok;
       tdc = `<div class="ht-name">${t ? esc(t.name) : "Last known"}</div><div class="ht-cls">${t ? esc(C.SHIPS[t.cls].name) + (PP.Detect.known(S, t) ? "" : ", not in sight") : "the target is lost"}</div>
         <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(e.brg)}</b><span class="lbl">Range</span><b>${PP.num(Math.round(e.rng / 10) * 10)}</b>
-        <span class="lbl">Angle on bow</span><b class="${S.real.aob ? "set" : ""}">${e.aob >= 0 ? "S" : "P"} ${Math.round(Math.abs(e.aob) / PP.DEG)}</b><span class="lbl">Speed</span><b class="${S.real.aob ? "set" : ""}">${e.s.toFixed(1)}</b>
-        <span class="lbl" title="How far the torpedo turns after it leaves the tube: R right, L left">Gyro</span><b>${sol && isFinite(sol.gyro) ? (sol.gyro >= 0 ? "R " : "L ") + Math.round(Math.abs(sol.gyro) / PP.DEG) : "--"}</b><span class="lbl" title="How far the torpedo runs to meet her, in yards">Run</span><b>${ok ? PP.num(Math.round(sol.run / 10) * 10) : "--"}</b></div>
-        ${S.mode === "practice" ? `<p class="ht-eye">Gyro: how far the torpedo turns after the tube. Run: the yards it runs to meet her.</p>` : ""}${S.real.aob ? `<p class="ht-eye">Angle on bow and speed are yours to set: <kbd>[</kbd> <kbd>]</kbd> <kbd>,</kbd> <kbd>.</kbd></p>` : ""}<div class="ht-sol ${ok ? "ok" : "no"}"><span class="ht-lamp"></span><span>${ok ? "Solution: fire " + (s.bank === "F" ? "forward" : "aft") : sol ? { gyro: "No solution: turn toward it", range: "No solution: out of range", speed: "No solution" }[sol.why] || "No solution" : "No solution"}</span></div>`;
-    } else tdc = `<div class="ht-name">Torpedo data computer</div><p class="ht-none">No target. ${PP.Input.device === "pad" ? "<kbd>pad:X</kbd>" : "<kbd>T</kbd>"} locks the nearest ship in sight.</p>`;
+        <span class="lbl">Her speed</span><b>${e.s.toFixed(1)} kn</b><span class="lbl" title="How far the torpedo runs to meet her, in yards">Run</span><b>${ok ? PP.num(Math.round(sol.run / 10) * 10) : "--"}</b></div>
+        <div class="ht-sol ${ok ? "ok" : "no"}"><span class="ht-lamp"></span><span>${ok ? "On target: fire " + (s.bank === "F" ? "forward" : "aft") : sol ? { gyro: `Wrong angle: fire the ${s.bank === "F" ? "after" : "forward"} tubes`, range: "Out of range", speed: "No shot" }[sol.why] || "No shot" : "No shot"}</span></div>`;
+    } else tdc = `<div class="ht-name">Target</div><p class="ht-none">None selected. ${PP.Input.device === "pad" ? "<kbd>pad:X</kbd>" : "<kbd>T</kbd>"} selects the nearest ship in sight; ${PP.Input.device === "pad" ? "<kbd>pad:A</kbd>" : "<kbd>Space</kbd>"} fires at the nearest in range.</p>`;
     set(el.querySelector("#h-tdc"), "tdc", tdc, (x, v) => { x.innerHTML = PP.Input.caps(v); });
     /* nothing to aim at, nothing in sight: the TDC stands back */
     const idle = !e && !S.ships.some(q => PP.Detect.known(S, q) && PP.Ships.alive(q));
     set(el.querySelector("#h-tdc"), "tdcIdle", idle, (x, v) => x.classList.toggle("thin", v));
+    /* the map's orders panel: the boat selected there, her captain, her depth, her order, and the orders to give */
+    const onMap = st === "chart" && S.subs.length > 1, si = PP.game.selIdx ? PP.game.selIdx() : S.cmd, q = S.subs[si];
+    const ordKey = onMap ? `${q.id}:${q.orders}:${Math.round(q.depth / 10)}:${Sub.surfaced(q)}:${(q.wps || []).length}:${q === s}:${PP.Input.device}` : "";
+    set(el.querySelector("#h-orders"), "orders", ordKey, x => {
+      x.hidden = !onMap; if (!onMap) return;
+      const k = C.SUBS[q.cls];
+      x.innerHTML = PP.Input.caps(`<div class="ht-name">${esc(q.name)}</div><div class="ht-cls">${esc(k.name)} class · Captain ${esc(q.capt || "")} · ${Sub.surfaced(q) ? "on the surface" : Math.round(q.depth) + " ft"}${q.wps && q.wps.length ? ` · ${q.wps.length} waypoint${q.wps.length > 1 ? "s" : ""}` : ""}</div>
+        <p class="ho-now">${q === s ? "You are aboard her. Her order, when you leave her:" : "Her order:"} <b>${esc(PP.Orders.name(q.orders))}</b></p>
+        <div class="ho-list">${PP.Orders.LIST.map(([o, n, note]) => `<button data-order="${o}" title="${esc(note)}" aria-pressed="${q.orders === o}"${q.orders === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
+        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== s ? " · <kbd>Enter</kbd> or click her again: take command" : ""}</p>`);
+    });
     /* a base in reach */
     const p = S.mode === "patrol" && !S.patrol.leaving ? PP.Engine.nearPort(S) : null;
     set(el.querySelector("#h-port"), "port", p ? p.id + PP.Engine.canDock(S) + PP.Input.device : "", (x) => { x.hidden = !p; if (p) x.innerHTML = PP.Engine.canDock(S) ? `${esc(p.name)} ${PP.Input.cap(PP.Input.device === "pad" ? "pad:Y" : "O")} tie up` : `${esc(p.name)}: on the surface, under 9 knots, to tie up`; });
