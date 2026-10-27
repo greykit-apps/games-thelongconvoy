@@ -48,7 +48,7 @@ function main() {
   const word = (t, y, col) => { [["#1c0604", 16], ["#4f1209", 12], ["#8e2412", 8], ["#c8401f", 4]].forEach(([c, o]) => { g.fillStyle = c; g.fillText(t, 72 + o, y + o); }); g.fillStyle = col; g.fillText(t, 72, y); };
   word("PUMA", 160, "#ffd9a8"); word("PACK", 262, "#ffc65a");
   g.font = '600 30px "Barlow Semi Condensed"'; g.fillStyle = "#ffd0bd";
-  const words = "Lead a pack of submarines against the Wolf Empire's convoys: switch between your boats and bring them in on the convoy together.".split(" "), lines = [""];
+  const words = "The Wolf Empire's wolfpack against Pumacity's convoys and the fleet that escorts them. Command either side.".split(" "), lines = [""];
   for (const w of words) { const t = lines[lines.length - 1] ? lines[lines.length - 1] + " " + w : w; if (g.measureText(t).width > 520) lines.push(w); else lines[lines.length - 1] = t; }
   lines.forEach((l, i) => g.fillText(l, 72, 340 + i * 40));
   g.font = '600 26px "Barlow Semi Condensed"'; g.fillStyle = "#ffc65a";

@@ -130,7 +130,7 @@
     steel: M.steel, iron: M.iron, wood: M.wood, brass: M.brass, canvas: M.canvas, cream: M.cream,
     red: ["#ff8a6a", "#d8402a", "#a52c1a", "#6e1a0e", "#3e0e08"], black: ["#5a5e66", "#3c4048", "#26292f", "#17191d", "#0c0d10"],
     chalk: ["#ffffff", "#eeeae0", "#d8d2c4", "#b0aa9c", "#888274"], glass: ["#e8f0ff", "#9ab4d0", "#56708c", "#33465a", "#1e2a38"],
-    /* the Empire's ships: warship grey, merchant black and rust, red lead below the waterline, white and buff topsides */
+    /* Pumacity's ships: the PDF's warship grey, merchant black and rust, red lead below the waterline, white and buff topsides */
     grey: ["#c2c8d0", "#959da8", "#6c7480", "#4a515c", "#2d323a"],
     greyDk: ["#9aa1ab", "#737b86", "#535a65", "#383e47", "#22262d"],
     hull: ["#727780", "#50545c", "#373a41", "#24262b", "#141518"],
@@ -138,7 +138,7 @@
     redlead: ["#d26a50", "#aa4632", "#7e3022", "#541e15", "#32120c"],
     white: ["#f6f2e8", "#dcd6c8", "#b6af9f", "#898274", "#5c564c"],
     buff: ["#ecd29a", "#cbac6c", "#9f824c", "#6f5932", "#43351e"],
-    wolfRed: M.wolfRed, deck: ["#b89a74", "#93774f", "#6f5636", "#4d3a23", "#2f2315"],
+    wolfRed: M.wolfRed, livery: M.tawny, deck: ["#b89a74", "#93774f", "#6f5636", "#4d3a23", "#2f2315"],
     /* ours: a black-grey hull, a teak deck */
     sub: ["#7c848e", "#58606a", "#3e454e", "#292e35", "#17191e"],
     plane: ["#a8b4c4", "#7c8898", "#5a6474", "#3e4652", "#262c36"], under: ["#c8d0d8", "#a2acb6", "#7e8892", "#5a636c", "#3a4048"],

@@ -1,7 +1,7 @@
 {
   "name": "PumaPack",
   "short_name": "PumaPack",
-  "description": "Lead a pack of puma submarines against the Wolf Empire's convoys: a remake of Wolfpack, NovaLogic's 1990 classic.",
+  "description": "The Wolf Empire's wolfpack against Pumacity's convoys and the fleet that escorts them: a remake of Wolfpack, NovaLogic's 1990 classic.",
   "start_url": ".",
   "scope": "./",
   "display": "standalone",

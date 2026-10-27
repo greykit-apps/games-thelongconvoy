@@ -14,7 +14,12 @@
 
   /* the screens, as the 1990 game had them: the map, the view out of the boat you are on (the bridge and
    * its glasses on the surface, the periscope under it), and the damage. This is the view actually drawn */
-  R.stationOf = (S, ui) => ui.station === "view" || ui.station === "bridge" || ui.station === "scope" ? (Sub.surfaced(S.sub) ? "bridge" : "scope") : ui.station;
+  R.stationOf = (S, ui) => {
+    const v = ui.station === "view" || ui.station === "bridge" || ui.station === "scope" || ui.station === "ebridge";
+    /* the escorts' side: the map and the escort's bridge */
+    if (S.side === "escorts") return v ? "ebridge" : "chart";
+    return v ? (Sub.surfaced(S.sub) ? "bridge" : "scope") : ui.station;
+  };
 
   /* a live reading, set over the canvas in the HUD's own type (hud.js): canvas pixels, an anchor (l c r, t m b), a tone */
   R.labels = [];
@@ -34,14 +39,53 @@
     R.last = null;
     if (st === "scope") scope(g, S, ui, now, Wd, Ht);
     else if (st === "bridge") bridge(g, S, ui, now, Wd, Ht);
+    else if (st === "ebridge") ebridge(g, S, ui, now, Wd, Ht);
     else if (st === "panel") PP.Panel.draw(g, S, ui);
     else if (st === "chart") R.last = { chart: PP.Chart.draw(g, S, ui, ui.aids, now) };
     else if (st === "damage") PP.DamageArt.draw(g, S, ui, now);
     g.restore();
     /* our track, for the chart: a point a minute */
     if (!ui.track) ui.track = [];
-    if (!ui.trackT || S.t - ui.trackT > 60) { ui.trackT = S.t; ui.track.push([S.sub.x, S.sub.y]); if (ui.track.length > 4000) ui.track.shift(); }
+    const me = PP.Chart.me(S);
+    if (!ui.trackT || S.t - ui.trackT > 60) { ui.trackT = S.t; ui.track.push([me.x, me.y]); if (ui.track.length > 4000) ui.track.shift(); }
   };
+
+  /* ---- the escort's bridge: high above the water, the glasses, no deck of a boat in front of you ---- */
+  function ebridge(g, S, ui, now, Wd, Ht) {
+    const s = PP.Escort.flag(S); if (!s) return;
+    const bino = ui.bino, fov = (bino ? 9 : 70) * PP.DEG, brg = ui.look;
+    const r = Math.round(Wd / 2), cx = Math.round(Wd / 2), cy = Math.round(Ht * (bino ? 0.5 : 0.44));
+    const v = V.draw(g, S, { x: s.x, y: s.y, eyeH: 45, brg, fov, cx, cy, r, now, aids: ui.aids, calm: PP.calm(), mask: bino ? "bino" : "none" });
+    R.last = { view: v, brg, fov, cx, cy, r };
+    if (bino) {
+      const rr = Math.round(Ht * 0.42), dx = Math.round(rr * 0.62);
+      g.fillStyle = INK;
+      for (let y = -8; y < Ht + 8; y++) {
+        const spans = [];
+        for (const ox of [-dx, dx]) { const dy = y - cy, ins = rr * rr - dy * dy; if (ins > 0) { const w = Math.sqrt(ins); spans.push([cx + ox - w, cx + ox + w]); } }
+        if (!spans.length) { g.fillRect(-8, y, Wd + 16, 1); continue; }
+        const a = Math.min(...spans.map(q => q[0])), b = Math.max(...spans.map(q => q[1]));
+        g.fillRect(-8, y, Math.round(a) + 8, 1); g.fillRect(Math.round(b), y, Wd - Math.round(b) + 8, 1);
+      }
+    } else {
+      /* her forecastle running away to the bow when you look ahead; the bridge's rail */
+      const rel = PP.angDiff(brg, s.hdg);
+      if (Math.abs(rel) < fov / 2 + 0.3) {
+        const bx = cx + rel / fov * Wd, base = Ht + 4, tip = Math.round(Ht * 0.62);
+        K.poly(g, [[bx, tip], [cx - Wd * 0.34, base], [cx + Wd * 0.34, base]], "#2a2f36");
+        K.poly(g, [[bx, tip + 3], [cx - Wd * 0.3, base], [cx + Wd * 0.3, base]], "#3a4048");
+        K.rect(g, Math.round(bx) - 1, tip - 14, 2, 14, "#2a2f36");
+      }
+      rail(g, Wd, Ht, now);
+    }
+    if (ui.aids.labels) ranges(S, v, "bridge");
+    const sf = R.safe || { t: 28 }, tw = Math.round(Wd * 0.3);
+    tape(g, S, cx, sf.t + 12, tw, brg, Math.min(fov, 40 * PP.DEG), s.hdg);
+    lab("look", `<span class="c">${bino ? "Glasses" : "Looking"}</span><b>${PP.deg3(brg)}</b>`, cx - tw - 8, sf.t + 12, "rd brass", "rm");
+    const dx = cx - tw - 8 - DIAL, dy = sf.t + 30 + DIAL;
+    bowDial(g, dx, dy, PP.angDiff(s.hdg, brg), fov);
+    lab("rel", `<span class="c">Rel</span><b>${PP.deg3(brg - s.hdg)}</b>`, dx - DIAL - 6, dy, "rd", "rm");
+  }
 
   /* ---- the periscope ---- */
   function scope(g, S, ui, now, Wd, Ht) {
@@ -100,7 +144,7 @@
   function ranges(S, v, k0) {
     const taken = [];
     const mid = (v.x0 + v.x1) / 2, half = (v.x1 - v.x0) / 2 - 16;
-    for (const d of v.drawn.filter(q => PP.Detect.known(S, PP.Ships.byId(S, q.id)) && q.px > 6 && q.haze < 0.9 && Math.abs(q.x - mid) < half).sort((a, b) => a.d - b.d)) {
+    for (const d of v.drawn.filter(q => (S.side === "escorts" || PP.Detect.known(S, PP.Ships.byId(S, q.id))) && q.px > 6 && q.haze < 0.9 && Math.abs(q.x - mid) < half).sort((a, b) => a.d - b.d)) {
       if (taken.some(x => Math.abs(x - d.x) < 30)) continue;
       taken.push(d.x);
       /* just right of her middle, so the crosshair on her does not run through the figures */

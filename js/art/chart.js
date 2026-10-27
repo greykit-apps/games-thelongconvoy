@@ -73,11 +73,15 @@
    * Centred on the boat unless dragged (chartAt); the whole sea at the last scale. */
   CH.seaW = () => Sea.NX * Sea.CELL;
   CH.seaH = () => Sea.NY * Sea.CELL;
+  /* the vessel the chart is about: the boat you are on, or on the escorts' side the escort you are aboard */
+  const ESCS = S => S.side === "escorts";
+  CH.me = S => (ESCS(S) && PP.Escort.flag(S)) || S.sub;
+  const surf = s => !s.subs && s.depth === undefined ? true : Sub.surfaced(s);
   CH.view = (S, ui, Wd, Ht) => {
     const sf = PP.Render.safe || { t: 28, b: 12 }, top = sf.t, bot = Ht - Math.max(sf.b, 60), my = (top + bot) / 2;
     let z = CH.ZOOMS[ui.chartZoom], cx, cy;
     if (!z) { z = Math.max(CH.seaW() / (Wd - 16), CH.seaH() / Math.max(40, bot - top - 8)); cx = CH.seaW() / 2; cy = CH.seaH() / 2; }
-    else { cx = ui.chartAt ? ui.chartAt.x : S.sub.x; cy = ui.chartAt ? ui.chartAt.y : S.sub.y; }
+    else { const me = CH.me(S); cx = ui.chartAt ? ui.chartAt.x : me.x; cy = ui.chartAt ? ui.chartAt.y : me.y; }
     return { z, cx, cy, my, top, bot, sf };
   };
   /* the middle of a dragged chart, kept on the sea */
@@ -86,9 +90,9 @@
   /* what lies off the chart's edge, an arrow at the edge pointing to it and its name and distance:
    * our boat when the chart is dragged off her; on patrol, the zone and the nearest base */
   function pointers(g, S, ui, X, Y, v, Wd) {
-    const s = S.sub, sf = v.sf, out = [], put = [];
+    const s = CH.me(S), sf = v.sf, out = [], put = [];
     const L = 8, R = Wd - 8, T = Math.max(v.top, sf.tr || v.top) + 8, B = Math.min(v.bot, sf.br || v.bot) - 8;
-    if (ui.chartAt) out.push({ x: s.x, y: s.y, n: "Our boat", col: Sub.surfaced(s) ? COL.sub : "#e09a80" });
+    if (ui.chartAt) out.push({ x: s.x, y: s.y, n: ESCS(S) ? "Our escort" : "Our boat", col: surf(s) ? COL.sub : "#e09a80" });
     if (S.mode === "patrol") {
       const zn = Sea.zones.find(q => q.id === S.patrol.zone);
       if (zn) out.push({ x: zn.x, y: zn.y, n: zn.name, col: "#a8ecc4", d: Math.max(0, PP.dist(s.x, s.y, zn.x, zn.y) - zn.r) });
@@ -113,7 +117,7 @@
 
   /* ui: { chartZoom, chartAt: {x,y}|null }, aids */
   CH.draw = (g, S, ui, aids, now) => {
-    const Wd = g.canvas.width, Ht = g.canvas.height, s = S.sub, v = CH.view(S, ui, Wd, Ht);
+    const Wd = g.canvas.width, Ht = g.canvas.height, s = CH.me(S), esc = ESCS(S), v = CH.view(S, ui, Wd, Ht);
     const z = v.z, cx = v.cx, cy = v.cy, sf = v.sf, my = v.my;
     const X = x => Wd / 2 + (x - cx) / z, Y = y => my + (y - cy) / z;
     g.imageSmoothingEnabled = false;
@@ -148,7 +152,7 @@
     /* range rings, close in */
     if (z < 400 && !ui.title) for (const r of z <= 25 ? [1000, 2000, 4000] : z <= 60 ? [2000, 5000, 10000] : [5000, 10000, 20000]) { ringPx(g, X(s.x), Y(s.y), r / z, "rgba(255,150,120,.16)", 2); K.text5(g, PP.num(r) + " YD", Math.round(X(s.x) + r / z * 0.7 + 3), Math.round(Y(s.y) - r / z * 0.7 - 3), "rgba(255,190,170,.5)"); }
     /* the escorts' ears (a Field aid): how far each could hear us now */
-    if (aids.rings) for (const sh of S.ships) {
+    if (aids.rings && !esc) for (const sh of S.ships) {
       if (sh.role !== "escort" || !PP.Ships.alive(sh) || !(Det.known(S, sh) || !S.real.vis)) continue;
       const Rh = C.DET.hyd * Sub.noise(s) * C.era(C.monthOf(S.t)).asw * C.SHIPS[sh.cls].sonar * (sh.spd > C.DET.hydFastKn ? C.DET.hydFast : 1);
       if (!Sub.surfaced(s)) ringPx(g, X(sh.x), Y(sh.y), Rh / z, "rgba(255,90,60,.45)", 2);
@@ -157,7 +161,9 @@
     const free = !S.real.vis, rngAt = [];
     for (const sh of S.ships) {
       if (sh.sunk) continue;
-      const know = Det.known(S, sh), was = sh.kn.t >= 0 && S.t - sh.kn.t < 1800, near = PP.dist(s.x, s.y, sh.x, sh.y) < 26000;
+      /* on the escorts' side the convoy and its escorts are ours: always on the chart */
+      const know = esc || Det.known(S, sh), was = sh.kn.t >= 0 && S.t - sh.kn.t < 1800, near = PP.dist(s.x, s.y, sh.x, sh.y) < 26000;
+      if (esc && sh === s) continue;
       const r = Math.max(2, Math.min(5, Math.round(C.SHIPS[sh.cls].len / z / 2) + 2));
       if (know || (free && near)) {
         const x = X(sh.x), y = Y(sh.y);
@@ -184,7 +190,7 @@
     for (const c of S.charges) { const x = X(c.x), y = Y(c.y); ringPx(g, x, y, Math.max(2, 30 / z), "#ffc0a8", 1); }
     for (const p of S.planes) if (p.seen) { const x = Math.round(X(p.x)), y = Math.round(Y(p.y)); K.rect(g, x - 4, y, 9, 1, COL.plane); K.rect(g, x, y - 4, 1, 9, COL.plane); }
     /* the TDC's target and solution (a Field aid) */
-    const e = W.est(S);
+    const e = esc ? null : W.est(S);
     if (e && aids.solution) {
       const sol = W.solve(S, e, s.bank);
       ringPx(g, X(e.x), Y(e.y), 4, COL.tdc, 1);
@@ -195,8 +201,24 @@
         K.rect(g, X(ix) - 1, Y(iy) - 1, 3, 3, COL.tdc);
       }
     }
+    /* the escorts' side: the pack as the escorts know it. Each escort's contact a ring where she has it, fading
+     * as it ages (a sonar contact tight, one heard wider); a boat seen on the surface or at her periscope, a
+     * mark where she is; a boat sunk, a cross */
+    if (esc) {
+      for (const q of S.ships) {
+        const a = q.ai; if (q.role !== "escort" || !PP.Ships.alive(q) || !a || !a.datum || !a.contact) continue;
+        const age = S.t - a.contact; if (age > 900) continue;
+        const x = X(a.datum.x), y = Y(a.datum.y), r = Math.max(4, (a.how === "sonar" ? 90 : a.how === "ear" ? 300 : 60) / z);
+        ringPx(g, x, y, r, age < 60 ? "#ffc65a" : age < 300 ? "rgba(255,198,90,.6)" : "rgba(255,198,90,.3)", age < 60 ? 2 : 3);
+        if (z <= 150) K.text5(g, (a.how === "sonar" ? "SONAR" : a.how === "ear" ? "HEARD" : "SEEN") + " " + (age < 60 ? "NOW" : Math.round(age / 60) + "M"), Math.round(x + r + 3), Math.round(y - 3), "rgba(255,198,90,.85)", INK);
+      }
+      for (const q of S.subs) {
+        if (q.lost) { cross(g, X(q.x), Y(q.y), 4, COL.ghost); continue; }
+        if ((q.seenT !== undefined && S.t - q.seenT < 30) || !S.real.vis && PP.dist(s.x, s.y, q.x, q.y) < 4000) tri(g, X(q.x), Y(q.y), 4, q.hdg, COL.escort, !Sub.surfaced(q));
+      }
+    }
     /* the rest of the pack: the same triangle, dimmer, her name beside her; a boat lost, a cross where she went down */
-    for (const q of S.subs) {
+    if (!esc) for (const q of S.subs) {
       if (q === s) continue;
       const qx = X(q.x), qy = Y(q.y);
       if (q.lost) { cross(g, qx, qy, 4, COL.ghost); continue; }
@@ -204,7 +226,8 @@
       K.text5(g, q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), Math.round(qx + 7), Math.round(qy - 3), COL.packDown, INK);
     }
     /* the boat selected for orders: a ring, and her waypoints joined up from her */
-    const si = S.subs.findIndex(q => q.id === ui.sel && !q.lost), sel = S.subs[si >= 0 ? si : S.cmd];
+    const si = S.subs.findIndex(q => q.id === ui.sel && !q.lost);
+    const sel = esc ? (S.ships.find(q => q.id === ui.sel && q.role === "escort" && PP.Ships.alive(q)) || s) : S.subs[si >= 0 ? si : S.cmd];
     if (sel && !sel.lost && !ui.title) {
       ringPx(g, X(sel.x), Y(sel.y), 8, COL.tdc, 1);
       let px = X(sel.x), py = Y(sel.y);
@@ -213,7 +236,9 @@
     /* our boat, on top: a pale triangle, her ordered course a tick */
     const sx = X(s.x), sy = Y(s.y);
     dash(g, sx, sy, sx + PP.hx(s.ordHdg) * 22, sy + PP.hy(s.ordHdg) * 22, "rgba(255,198,90,.9)", 2, 2);
-    tri(g, sx, sy, 5, s.hdg, Sub.surfaced(s) ? COL.sub : "#e09a80");
+    tri(g, sx, sy, 5, s.hdg, surf(s) ? COL.sub : "#e09a80");
+    /* on the escorts' side, each escort's name and order beside her */
+    if (esc && !ui.title && z <= 150) for (const q of S.ships) if (q.role === "escort" && PP.Ships.alive(q)) K.text5(g, q.name.toUpperCase() + (q === s ? "" : " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase()), Math.round(X(q.x) + 8), Math.round(Y(q.y) - 3), q === s ? COL.sub : "rgba(255,170,150,.85)", INK);
     pointers(g, S, ui, X, Y, v, Wd);
     /* the scale */
     const bar = z >= 400 ? 100 * PP.YD_NM : z >= 60 ? 10000 : 2000, bl = bar / z;

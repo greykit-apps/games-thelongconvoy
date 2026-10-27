@@ -177,4 +177,40 @@
     };
     return m;
   };
+
+  /* ---- the escorts' side's test pilot: he sails the escort you would be aboard ----
+   * Through the same orders a player gives: to the freshest contact any escort has, sonar on, slowing to
+   * listen when he is close; over it, a pattern set to the depth the contact gave; the hedgehog when he
+   * has one and the contact is ahead; the guns on a boat up in sight. With nothing to hunt, back to the
+   * convoy's bow. */
+  Bot.escort = () => {
+    const m = { patT: -1e9, hhT: -1e9 }, act = [], A = o => act.push(o);
+    m.cmd = S => {
+      act.length = 0;
+      A({ a: "tc", v: C.TC_MAX_IDX });
+      const f = PP.Escort.flag(S); if (!f) return { acts: act.slice() };
+      const all = PP.Escort.mine(S), best = all.filter(q => q.ai.datum && q.ai.contact).sort((a, b) => b.ai.contact - a.ai.contact)[0];
+      const k = C.SHIPS[f.cls], bell = v => { if (f.bell !== v) A({ a: "setBell", v }); }, helm = h => { if (Math.abs(PP.angDiff(f.ordHdg, h)) > 0.02) A({ a: "hdg", v: h }); };
+      if (!f.ping) A({ a: "ping", v: true });
+      if (best && S.t - best.ai.contact > 45 && S.t - best.ai.contact < 900) {
+        /* an old contact: to it at a listening speed, then round it, slow, pinging */
+        const d = best.ai.datum, r = PP.dist(f.x, f.y, d.x, d.y);
+        if (r > 1200) { helm(PP.angTo(f.x, f.y, d.x, d.y)); bell(r > 5000 ? 5 : 3); }
+        else { helm(PP.normAng(PP.angTo(f.x, f.y, d.x, d.y) + Math.PI * 0.45)); bell(2); }
+      } else if (best && S.t - best.ai.contact <= 45) {
+        const d = best.ai.datum, age = S.t - d.t, x = d.x + (d.vx || 0) * age, y = d.y + (d.vy || 0) * age, r = PP.dist(f.x, f.y, x, y);
+        helm(PP.angTo(f.x, f.y, x, y)); bell(r > 3000 ? 5 : r > 900 ? 3 : 4);
+        const want = Math.round(PP.clamp(best.ai.dz || 150, 50, 600) / 25) * 25;
+        if (Math.abs((f.dcSet || 150) - want) >= 25) A({ a: "dcSet", d: want - (f.dcSet || 150) });
+        if (r < 70 && !f.pat && S.t - m.patT > 50 && f.dcLeft > 1) { A({ a: "pattern" }); m.patT = S.t; }
+        if (f.hhLeft > 0 && r > 180 && r < 320 && Math.abs(PP.angDiff(f.hdg, PP.angTo(f.x, f.y, x, y))) < 0.2 && S.t - m.hhT > 40) { A({ a: "hedgehog" }); m.hhT = S.t; }
+      } else {
+        const cv = S.convoys[0];
+        if (cv) { const x = cv.x + PP.hx(cv.base) * 3000, y = cv.y + PP.hy(cv.base) * 3000; helm(PP.angTo(f.x, f.y, x, y)); bell(PP.dist(f.x, f.y, x, y) > 1500 ? 4 : 2); }
+      }
+      if (PP.Engine.afloat(S).some(b => PP.Sub.surfaced(b) && b.seenT !== undefined && S.t - b.seenT < 10 && PP.dist(f.x, f.y, b.x, b.y) < C.ESC.gunRange)) A({ a: "egun" });
+      return { acts: act.slice() };
+    };
+    return m;
+  };
 })();

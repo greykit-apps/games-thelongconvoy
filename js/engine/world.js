@@ -18,6 +18,16 @@
   E.tcNow = S => C.TC[Math.min(S.tcReq, S.tcCap)];
 
   /* ---- the orders: cmd = { dHdg, acts: [{ a, ... }] } ---- */
+  /* the escorts' side: the player's keys give the escort she is aboard her orders (PP.Escort.order) */
+  const ESC_ACTS = new Set(["bell", "setBell", "hdg", "dcSet", "ping", "pattern", "hedgehog", "egun", "commandEsc", "eorders", "ewp"]);
+  function escOrders(S, cmd, ev) {
+    const f = Esc.flag(S);
+    if (f && cmd.dHdg) f.ordHdg = PP.normAng(f.ordHdg + cmd.dHdg);
+    for (const a of cmd.acts || []) {
+      if (a.a === "tc") S.tcReq = PP.clamp(a.v !== undefined ? a.v : S.tcReq + a.d, 0, C.TC_MAX_IDX);
+      else if (ESC_ACTS.has(a.a)) Esc.order(S, a, ev);
+    }
+  }
   function orders(S, cmd, ev, aids) {
     const s = S.sub;
     if (cmd.dHdg) s.ordHdg = PP.normAng(s.ordHdg + cmd.dHdg);
@@ -64,7 +74,8 @@
     return b;
   };
   function captains(S, ev) {
-    const mine = S.cmd;
+    /* on the escorts' side every boat of the pack is under her own captain */
+    const mine = S.side === "escorts" ? -1 : S.cmd;
     E.each(S, ev, s => {
       if (S.cmd === mine) return;
       orders(S, { acts: PP.Orders.acts(S, s, captain(s)) }, ev, null);
@@ -75,7 +86,7 @@
    * are by the second, so it comes out the same), and what each last found stands in between */
   const LOOK_EVERY = E.LOOK_EVERY = 4;
   function look(S, dt, ev) {
-    const out = { seen: 0, heard: 0, nearestSeen: 1e9, nearestEscort: 1e9, hunted: false, pinged: false }, mine = S.cmd;
+    const out = { seen: 0, heard: 0, nearestSeen: 1e9, nearestEscort: 1e9, hunted: false, pinged: false }, mine = S.side === "escorts" ? -1 : S.cmd;
     S.k = (S.k || 0) + 1;
     E.each(S, ev, s => {
       const i = S.subs.indexOf(s), due = S.cmd === mine || !s.det || (S.k + i) % LOOK_EVERY === 0;
@@ -111,7 +122,7 @@
   E.tick = (S, cmd = {}, aids = null) => {
     const ev = [];
     if (S.phase !== "sea") return ev;
-    orders(S, cmd, ev, aids);
+    if (S.side === "escorts") escOrders(S, cmd, ev); else orders(S, cmd, ev, aids);
     captains(S, ev);
     const idx = Math.min(S.tcReq, S.tcCap), dt = C.DT * C.TC[idx];
     /* the weather turns, now and then */
@@ -130,7 +141,15 @@
     const mine = S.cmd;
     E.each(S, ev, () => W.tdcStep(S, dt, ev, S.cmd === mine ? aids : null));
     const det = look(S, dt, ev);
-    if (S.sub.lost) { const i = S.subs.findIndex(q => !q.lost); if (i >= 0) E.command(S, i, ev); }
+    if (S.sub.lost && S.side !== "escorts") { const i = S.subs.findIndex(q => !q.lost); if (i >= 0) E.command(S, i, ev); }
+    /* the escorts' side: the escort you were aboard sunk, command passes to the next; with none left, it is over */
+    if (S.side === "escorts" && !Esc.flag(S)) {
+      const next = Esc.mine(S)[0];
+      if (next) Esc.take(S, next, ev);
+      else if (S.phase === "sea" && !S.ships.some(q => q.role === "escort" && q.sinking && !q.sunk)) { S.phase = "over"; S.end = { why: "fleetLost", t: S.t }; ev.push({ t: "actionOver", why: "fleetLost" }); }
+    }
+    /* a mission's time limit */
+    if (S.phase === "sea" && S.endT && S.t >= S.endT) { S.phase = "over"; S.end = { why: "time", t: S.t }; ev.push({ t: "actionOver", why: "time" }); }
     E.traffic(S, dt);
     S.det = det;
     S.t += dt;
@@ -208,23 +227,28 @@
    * lost, every weapon's fired, hits and kills, every boat of the pack, and one of eleven ratings ----
    * The score (ours): the share of the tonnage on offer sunk, counted for 85, and the share of the pack
    * brought home for 15; a mission with no merchants, slipped away, is half won for the slipping. */
-  E.RATINGS = ["Relieved of command", "Reprimanded", "Found wanting", "Overcautious", "Steady", "Capable", "Bold", "Skilled", "Formidable", "Decorated", "A legend of the pride"];
+  /* the ratings by side: the Wolf Empire's for its pack, the PDF's for its escorts (ours) */
+  E.RATINGS = ["Relieved of command", "Reprimanded", "Found wanting", "Overcautious", "Steady", "Capable", "Bold", "Skilled", "Formidable", "Decorated", "A legend of the pack"];
+  E.RATINGS_PDF = ["Relieved of command", "Reprimanded", "Found wanting", "Overcautious", "Steady", "Capable", "Bold", "Skilled", "Formidable", "Decorated", "A hero of Pumacity"];
+  /* on the escorts' side the score is the escort commander's: the tonnage saved for 60, the pack sunk for 40 */
   E.debrief = S => {
     const st = S.stats, sunk = st.sunk || [], afloat = S.subs.filter(q => !q.lost).length, boats = S.subs.length;
     const share = S.potential ? Math.min(1, st.tons / S.potential) : 0, home = boats ? afloat / boats : 0;
     let score = 85 * share + 15 * home;
     if (S.end && S.end.why === "slipped") score = Math.max(score, 50 + 35 * share + 15 * home);
+    const esc = S.side === "escorts";
+    if (esc) score = 60 * (S.goal === "escort" ? (S.end && (S.end.why === "allSunk" || S.end.why === "fleetLost") ? 0 : 1) : 1 - share) + 40 * (1 - home);
     score = Math.round(Math.max(0, Math.min(100, score)));
-    const rating = E.RATINGS[Math.min(10, Math.floor(score / 10))];
+    const rating = (S.side === "escorts" ? E.RATINGS_PDF : E.RATINGS)[Math.min(10, Math.floor(score / 10))];
     const kills = k => sunk.filter(x => x.kind === k).length, lost = st.lost || [];
     const start = S.start || { merch: 0, esc: 0, boats };
     const merchSunk = sunk.filter(x => x.role === "merchant").length, escSunk = sunk.filter(x => x.role === "escort").length;
     return {
-      score, rating, winner: !afloat ? "escorts" : score >= 50 ? "pack" : "escorts",
+      score, rating, side: esc ? "escorts" : "pack", winner: !afloat ? "escorts" : (esc ? score < 50 : score >= 50) ? "pack" : "escorts",
       tons: st.tons, potential: S.potential, escSunk,
       sides: { pack: { start: boats, lost: boats - afloat }, fleet: { start: start.merch + start.esc, lost: merchSunk + escSunk, merch: start.merch, esc: start.esc } },
       pack: [["Torpedoes", st.fired, st.hits, kills("torp")], ["Deck gun", st.shells || 0, st.gunHits || 0, kills("shell")]],
-      fleet: [["Depth charges", st.charges, st.dcNear, lost.filter(x => x.kind === "dc").length], ["Guns", st.escShots || 0, st.escHits || 0, lost.filter(x => x.kind === "gun").length], ["Ramming", st.rams || 0, st.rams || 0, lost.filter(x => x.kind === "ram").length]],
+      fleet: [["Depth charges", st.charges, st.dcNear, lost.filter(x => x.kind === "dc").length], ["Hedgehogs", st.hedgehogs || 0, st.hhHits || 0, lost.filter(x => x.kind === "hedgehog").length], ["Guns", st.escShots || 0, st.escHits || 0, lost.filter(x => x.kind === "gun").length], ["Ramming", st.rams || 0, st.rams || 0, lost.filter(x => x.kind === "ram").length]],
       boats: S.subs.map(q => ({ name: q.name, cls: q.cls, capt: q.capt || "", lost: q.lost, damage: Math.round((1 - q.hull) * 100), fired: q.fired || 0, sank: q.sank || 0, tons: q.tons || 0 })),
     };
   };

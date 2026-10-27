@@ -60,7 +60,8 @@
   /* the continuous part of the orders, for one step of stepMs real milliseconds */
   I.cmd = (S, ui, stepMs) => {
     const c = { dHdg: 0, dTrain: 0, dGun: 0, acts: I.queue.splice(0) };
-    const sec = stepMs / 1000, fast = I.held.has("shift") ? 3 : 1, st = ui.station;
+    /* the screen as drawn (the view is the periscope or the bridge), not as chosen */
+    const sec = stepMs / 1000, fast = I.held.has("shift") ? 3 : 1, st = S ? PP.Render.stationOf(S, ui) : ui.station;
     /* the helm: A and D everywhere; the arrows on the chart and the instruments */
     let h = 0;
     if (on("hL") || ((st === "chart" || st === "damage") && on("aL"))) h -= 1;

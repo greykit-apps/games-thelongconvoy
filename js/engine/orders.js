@@ -47,8 +47,9 @@
       case "evade": {
         const bot = Sea.depthAt(s.x, s.y);
         if (Sub.surfaced(s) && s.ordDepth === 0) A({ a: "crash" });
-        else depth(PP.clamp(Math.floor((bot - 40) / 5) * 5, C.PD, Sub.testDepth(s) - 30));
-        quiet(true); bell(2); scope(false);
+        else depth(PP.clamp(Math.floor((bot - 60) / 5) * 5, C.PD, Sub.testDepth(s) - 30));
+        /* quiet, unless there is water in her: then the pumps must run, heard or not */
+        quiet(s.water < 0.12); bell(2); scope(false);
         const [h] = nearEscort();
         if (h) helm(PP.angTo(h.x, h.y, s.x, s.y) + (s.id % 2 ? 0.8 : -0.8));
         return act;

@@ -70,7 +70,7 @@
       if (esc && sub) {
         const Rh = D.hyd * Sub.noise(s) * e.asw * C.SHIPS[sh.cls].sonar * (sh.spd > D.hydFastKn ? D.hydFast : 1) * (1 - S.wx.sea * 0.06) * (1 + expert * 0.25);
         if (d < Rh) { const q = 0.22 * (1 - d / Rh); if (q > p) { p = q; how = "ear"; } }
-        if (ai.st === "search" || ai.st === "attack" || ai.st === "hold") {
+        if (ai.st === "search" || ai.st === "attack" || ai.st === "hold" || (ai.st === "user" && sh.ping)) {
           const Rs = e.sonar * k.sonar * (1 + expert * 0.15), rel = Math.abs(PP.angDiff(sh.hdg, PP.angTo(sh.x, sh.y, s.x, s.y)));
           if (d > D.sonarMin && d < Rs && rel < D.sonarCone) { const q = D.ping * Math.sqrt(1 - d / Rs) * (1 - s.depth / 1400) * (s.bottomed ? 0.5 : 1) * (!expert && s.depth > 220 ? 0.55 : 1); if (q > p) { p = q; how = "sonar"; } }
           if (d < Rs * 1.3) out.pinged = true;
@@ -80,11 +80,19 @@
         const err = (how === "sonar" ? C.ESC.posErr[expert] : how === "ear" ? 220 + d * 0.12 : 60) * (0.5 + R(S));
         const a = R(S) * PP.TAU;
         const dz = how === "sonar" ? s.depth + PP.gauss(() => R(S)) * C.ESC.depthErr[expert] : how === "ear" ? 150 + PP.gauss(() => R(S)) * 40 : 0;
+        /* a boat seen on the surface or at her periscope is marked where she is: the escorts' side draws her */
+        if (how === "eye" || how === "radar") s.seenT = S.t;
         if (esc) {
           const fresh = !ai.contact || S.t - ai.contact > 120;
+          const nd = { x: s.x + Math.sin(a) * err, y: s.y + Math.cos(a) * err, t: S.t, vx: PP.hx(s.hdg) * s.spd * PP.KN, vy: PP.hy(s.hdg) * s.spd * PP.KN };
+          /* the escort you are aboard keeps a plot: a fresh contact by the same means on the same boat, within
+           * half a minute, is averaged into the last (run on to now), so her estimate settles the longer she holds it */
+          if (ai.st === "user" && ai.datum && ai.how === how && ai.tgt === s.id && S.t - ai.contact < 30) {
+            const age = S.t - ai.datum.t, px = ai.datum.x + (ai.datum.vx || 0) * age, py = ai.datum.y + (ai.datum.vy || 0) * age, w = 0.3;
+            nd.x = px + (nd.x - px) * w; nd.y = py + (nd.y - py) * w; ai.dz = ai.dz + (Math.max(30, dz) - ai.dz) * w;
+          } else ai.dz = Math.max(30, dz);
           ai.contact = S.t; ai.how = how; ai.tgt = s.id;
-          ai.datum = { x: s.x + Math.sin(a) * err, y: s.y + Math.cos(a) * err, t: S.t, vx: PP.hx(s.hdg) * s.spd * PP.KN, vy: PP.hy(s.hdg) * s.spd * PP.KN };
-          ai.dz = Math.max(30, dz);
+          ai.datum = nd;
           if (fresh && how !== "ear") ev.push({ t: "escortContact", id: sh.id, how });
         }
         const cv = Sh.convoy(S, sh.conv);

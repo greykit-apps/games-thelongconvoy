@@ -125,7 +125,9 @@
     crests(g, S, o, f, hz, x0, x1, y1, eyeYd, tt);
     /* ---- the ships, far to near ---- */
     const drawn = [];
-    const list = S.ships.filter(sh => !(sh.sunk && S.t - sh.sunkT > 60)).map(sh => ({ sh, d: PP.dist(o.x, o.y, sh.x, sh.y), b: PP.angTo(o.x, o.y, sh.x, sh.y) })).filter(q => q.d > 30 && inView(q.b)).sort((a, b) => b.d - a.d);
+    /* the boats of the pack on the surface, as ships to the eye (the one looking is under 30 yards, and left out) */
+    const boats = (S.subs || []).filter(q => !q.lost && q.depth <= 2).map(q => ({ id: "b" + q.id, boat: true, cls: "sub", x: q.x, y: q.y, hdg: q.hdg, spd: q.spd, sinking: 0, fire: 0, lit: false }));
+    const list = S.ships.concat(boats).filter(sh => !(sh.sunk && S.t - sh.sunkT > 60)).map(sh => ({ sh, d: PP.dist(o.x, o.y, sh.x, sh.y), b: PP.angTo(o.x, o.y, sh.x, sh.y) })).filter(q => q.d > 30 && inView(q.b)).sort((a, b) => b.d - a.d);
     const lk = lightKey(L);
     for (const q of list) {
       const sh = q.sh, k = C.SHIPS[sh.cls];
@@ -166,7 +168,7 @@
         g.fillStyle = "rgba(255,250,215,.8)"; K.disc(g, lx, ly, 1.5, 1.5);
       }
       if (sh.fire > 0.05 && Math.random() < sh.fire * 0.25) FX.smoke(sh.x + (Math.random() - 0.5) * k.len * 0.5, sh.y + (Math.random() - 0.5) * 20, 20, { r: 10 + k.len * 0.1, dark: 0.85 });
-      drawn.push({ id: sh.id, x, y: wl - spr.top * kk * 0.5, top: wl - spr.top * kk, wl, d: q.d, px, haze });
+      if (!sh.boat) drawn.push({ id: sh.id, x, y: wl - spr.top * kk * 0.5, top: wl - spr.top * kk, wl, d: q.d, px, haze });
     }
     /* ---- our torpedoes' wakes, by day ---- */
     if (L > 0.35) for (const tp of S.torps) {

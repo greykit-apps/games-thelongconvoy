@@ -1,6 +1,6 @@
 # PumaPack
 
-**A pack of puma submarines against the Wolf Empire's convoys.** A remake of *Wolfpack* (NovaLogic, 1990, DOS): command a pack of boats one at a time while the rest hunt under their own captains, and bring them in on the convoy together, in modern hi-bit pixel art, in a boat rigged for red light.
+**The Wolf Empire's wolfpack against Pumacity's convoys, and the fleet that escorts them.** A remake of *Wolfpack* (NovaLogic, 1990, DOS): command the wolfpack's boats one at a time while the rest sail under their orders, or sail with the Pumacity Defense Fleet (the PDF) and bring the city's shipping through, in modern hi-bit pixel art, in a boat rigged for red light.
 
 ## Play
 
@@ -10,7 +10,7 @@ No install required. Plain scripts, no build step, nothing fetched at play time:
 
 ## How it plays
 
-The Empire's convoys carry its oil, its ore and its troops between its islands, and its escorts ring them round. You have a pack.
+Pumacity's convoys carry its oil, its ore and its troops between the islands, and the PDF's escorts ring them round. The Wolf Empire has a pack.
 
 - **The map runs the battle**, as in 1990: the depth in hard bands, every boat of the pack, the convoy as the pack has seen it. Click a boat to select her: her class, captain, depth and order, and the orders to give her.
 - **Every boat sails under her order:** Attack (her captain finds the convoy and goes in), Shadow, Patrol (her waypoints: a right click on the map), Evade, Drift, Charge, Periscope depth, Hold.
@@ -18,7 +18,11 @@ The Empire's convoys carry its oil, its ore and its troops between its islands, 
 - **Select and fire.** `T` or a click selects a ship; `Space` fires at her, or at the nearest in range. The boat's fire control aims the shot, and says so when the angle is wrong for those tubes or the range too long. Ships are traced from 3D models at their true angle on the bow; escorts hear, see and ping, and lay depth charges.
 - **The pack shares what it sees**, and its news comes in its boats' names: who is firing, who is hunted, who is lost. When the boat you are on goes down, command passes to the next.
 
-Five missions after the 1990 game's, set in the Wolf War, from two boats against five unescorted ships to six boats strung across a strait, and a custom mission of your own making. The original let you play either side; the escorts' side, with the destroyers under your command, is the next milestone.
+Five missions after the 1990 game's, set in the Wolf War, from two boats against five unescorted ships to six boats strung across a strait, and a custom mission of your own making.
+
+**Or play the other side**, as the original let you: the **Pumacity Defense Fleet**, aboard one of the convoy's escorts, against a wolfpack whose boats sail under their own captains. Sprint and drift to hear them, ping with the sonar, run in over a contact and lay a pattern of depth charges set to its depth, throw the hedgehog late in the war, and give the other escorts their orders from the map (screen, hunt, patrol, hold). Five missions have the escorts' side, among them the night defence of an anchorage.
+
+Every mission ends with the 1990 game's debrief: who won, a score and one of eleven ratings, each side's vessels at the start and lost, every weapon's fired, hits and kills, and every boat by name.
 
 ## Reality, and Classic and Field
 
@@ -40,6 +44,8 @@ Five missions after the 1990 game's, set in the Wolf War, from two boats against
 | `X` / `Y` / `G` | silent running / radar / man the deck gun |
 | `+` `−` / `Backspace` | time compression / back to 1x |
 | `Esc` / `L` / `M` / `?` | pause / Classic or Field / sound / every key |
+
+On the PDF's side: `W` `S` and `A` `D` her speed and helm, `X` sonar, `Q` `E` the charges' depth, `Space` a pattern, `F` the hedgehog, `G` the guns, `N` the next escort, and on the map `O` and a right click for the others' orders.
 
 A gamepad works too; Help has its map.
 

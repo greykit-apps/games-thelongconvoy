@@ -181,18 +181,23 @@
   const escorts = A => { const n = A.conv.esc ? A.conv.esc.length : A.conv.escorts; return n ? `${n} escort${n > 1 ? "s" : ""}` : "unescorted"; };
   UI.actions = () => {
     const real = Object.assign({}, PP.prefs.real), f = PP.fame();
+    /* the side you play: the pack, or the escorts (the 1990 game let you play either) */
+    let side = PP.prefs.side === "escorts" ? "escorts" : "pack";
+    const list = () => E.ACTIONS.filter(A => (A.sides || ["pack"]).includes(side));
     UI.open("Missions", { wide: true, back: () => PP.game.toTitle(),
-      html: () => `<p class="lede">One engagement, one pack, one night or day of the war.</p>
-        <div class="diffs acts">${E.ACTIONS.map((A, i) => `<button data-a="${A.id}"><b><kbd>${i + 1}</kbd>${esc(A.name)}</b><span>${esc(A.note)}</span><span class="meta">${esc(C.dateStr(C.monthStart(A.mi) + ((A.day || 10) - 1) * C.DAY))} · ${A.boats.length} boat${A.boats.length > 1 ? "s" : ""} · ${A.conv.n ? A.conv.n + " ships" : "no merchants"} · ${escorts(A)}${f.actions[A.id] ? ` · best ${num(f.actions[A.id].tons)} t` : ""}</span></button>`).join("")}
-          <button data-a="custom"><b><kbd>9</kbd>Custom mission</b><span>The year, the pack, the convoy, the time and the weather of your choosing.</span></button></div>
+      html: () => `<div class="row">${pill(side === "pack", "The Wolfpack", "side:pack")}${pill(side === "escorts", "The PDF", "side:escorts")}</div>
+        <p class="lede">${side === "pack" ? "The Wolf Empire's wolfpack against Pumacity's shipping: one engagement, one night or day of the war." : "The Pumacity Defense Fleet, escorting the city's shipping against the wolfpack: you are aboard one escort, the others keep their stations under your orders."}</p>
+        <div class="diffs acts">${list().map((A, i) => `<button data-a="${A.id}"><b><kbd>${i + 1}</kbd>${esc(side === "escorts" ? A.escName || A.name : A.name)}</b><span>${esc(side === "escorts" ? A.escNote || A.note : A.note)}</span><span class="meta">${esc(C.dateStr(C.monthStart(A.mi) + ((A.day || 10) - 1) * C.DAY))} · ${A.boats.length} boat${A.boats.length > 1 ? "s" : ""} · ${A.conv.n ? A.conv.n + " ships" : "no merchants"} · ${escorts(A)}${f.actions[A.id] ? ` · best ${num(f.actions[A.id].tons)} t` : ""}</span></button>`).join("")}
+          ${side === "pack" ? `<button data-a="custom"><b><kbd>9</kbd>Custom mission</b><span>The year, the pack, the convoy, the time and the weather of your choosing.</span></button>` : ""}</div>
         ${realLine(real, "real")}`,
-      onKey: ev => { const n = +ev.key; if (n >= 1 && n <= E.ACTIONS.length) { ev.preventDefault(); go(E.ACTIONS[n - 1].id); return true; } if (ev.key === "9") { ev.preventDefault(); go("custom"); return true; } return false; },
+      onKey: ev => { const n = +ev.key, L = list(); if (n >= 1 && n <= L.length) { ev.preventDefault(); go(L[n - 1].id); return true; } if (ev.key === "9" && side === "pack") { ev.preventDefault(); go("custom"); return true; } return false; },
       onClick: (b, api) => {
         if (b.dataset.a) return go(b.dataset.a);
         const v = b.dataset.set; if (v && v.startsWith("real:")) { const k = v.slice(5); real[k] = !real[k]; PP.prefs.real = Object.assign({}, real); PP.savePrefs(); api.refresh(); }
+        if (v && v.startsWith("side:")) { side = v.slice(5); PP.prefs.side = side; PP.savePrefs(); api.refresh(); }
       },
     });
-    function go(id) { if (id === "custom") { UI.close(true); UI.custom(real); return; } UI.close(true); PP.game.startAction(id, real); }
+    function go(id) { if (id === "custom") { UI.close(true); UI.custom(real); return; } UI.close(true); PP.game.startAction(id, real, null, side); }
   };
   UI.custom = real => {
     const last = PP.store.get(PP.KEY_LAST, null) || {};
@@ -271,7 +276,7 @@
     return `<table class="tally">${rows.map(([a, b]) => `<tr><td>${a}</td><td class="num">${b}</td></tr>`).join("")}</table>`; };
   /* ---- the debrief: who won, the score and its rating, both sides' vessels, every weapon, every boat ---- */
   const FATE = { crushed: "crushed", flooded: "flooded" };
-  const KIND = { dc: "depth charges", gun: "gunfire", ram: "rammed", air: "bombs", torpedo: "her own torpedo", ground: "aground" };
+  const KIND = { dc: "depth charges", hedgehog: "the hedgehog", gun: "gunfire", ram: "rammed", air: "bombs", torpedo: "her own torpedo", ground: "aground" };
   const weaponTable = (head, rows) => `<table class="tally deb"><tr><th>${esc(head)}</th><th class="num">Fired</th><th class="num">Hits</th><th class="num">Kills</th></tr>${rows.filter(r => r[1] || r[3]).map(([n, f, h, k]) => `<tr><td>${esc(n)}</td><td class="num">${num(f)}</td><td class="num">${num(h)}</td><td class="num">${num(k)}</td></tr>`).join("") || `<tr><td colspan="4" class="note">None used.</td></tr>`}</table>`;
   const boatTable = (D, S) => `<table class="tally deb"><tr><th>Boat</th><th>Captain</th><th class="num">Fired</th><th class="num">Sunk</th><th class="num">Damage</th></tr>${D.boats.map(b => {
     const l = b.lost && (S.stats.lost || []).find(x => x.name === b.name);
@@ -281,25 +286,26 @@
     const pct = C.realPct(S.real), D = E.debrief(S), rating = D.rating, lost = S.end && (S.end.why === "crushed" || S.end.why === "flooded");
     const rec = { tons: S.stats.tons, pts: Math.round(S.stats.tons * pct / 100), pct, rating, score: D.score, code: !!S.cheated, at: Date.now() };
     const best = S.mode === "action" && !lost && S.stats.tons > 0 ? PP.addAction(S.scn, rec) : false;
-    const why = { allSunk: S.goal === "escort" ? "The hunter is on the bottom." : "Every merchant in the convoy is on the bottom.", escaped: "The rest of the convoy got away.", slipped: "The pack slipped away from the hunter.", crushed: "The last of the pack is lost.", flooded: "The last of the pack is lost.", ended: "You broke off the action." }[S.end ? S.end.why : "ended"] || "";
+    const why = { allSunk: S.goal === "escort" ? "The hunter is on the bottom." : "Every merchant in the convoy is on the bottom.", escaped: "The rest of the convoy got away.", slipped: "The pack slipped away from the hunter.", crushed: "The last of the pack is lost.", flooded: "The last of the pack is lost.", ended: "You broke off the action.", time: "The time was up.", fleetLost: "Every escort is sunk." }[S.end ? S.end.why : "ended"] || "";
     if (S.mode === "action") {
       const sd = D.sides;
       UI.open("Debrief", { wide: true, closable: false,
-        html: () => `<div class="report"><div><h3 class="mname big${D.winner === "pack" ? " ok" : " danger"}">${D.winner === "pack" ? "The pack wins" : "The escorts win"}</h3>
+        html: () => `<div class="report"><div><h3 class="mname big${D.winner === D.side ? " ok" : " danger"}">${D.winner === "pack" ? "The wolfpack wins" : "The PDF wins"}</h3>
           <p class="meta">${esc(S.scnName || "")}. ${esc(why)}</p>
           <p class="rank">Score <b>${D.score}%</b>: <b>${esc(rating)}</b>${best ? ", your best here" : ""}.</p>
-          <p>${num(S.stats.tons)} of ${num(S.potential)} tons sunk${D.escSunk && S.goal !== "escort" ? `, and ${D.escSunk} escort${D.escSunk > 1 ? "s" : ""}` : ""}.</p>
+          <p>${D.side === "escorts" ? `The convoy lost ${num(S.stats.tons)} of ${num(S.potential)} tons; ${sd.pack.lost} of the pack's ${sd.pack.start} boats sunk.` : `${num(S.stats.tons)} of ${num(S.potential)} tons sunk${D.escSunk && S.goal !== "escort" ? `, and ${D.escSunk} escort${D.escSunk > 1 ? "s" : ""}` : ""}.`}</p>
           <table class="tally deb"><tr><th></th><th class="num">At the start</th><th class="num">Lost</th></tr>
-            <tr><td>The pack</td><td class="num">${sd.pack.start} boat${sd.pack.start > 1 ? "s" : ""}</td><td class="num">${sd.pack.lost}</td></tr>
+            <tr><td>The wolfpack</td><td class="num">${sd.pack.start} boat${sd.pack.start > 1 ? "s" : ""}</td><td class="num">${sd.pack.lost}</td></tr>
             <tr><td>The convoy</td><td class="num">${sd.fleet.merch ? `${sd.fleet.merch} ships, ` : ""}${sd.fleet.esc} escort${sd.fleet.esc === 1 ? "" : "s"}</td><td class="num">${sd.fleet.lost}</td></tr></table>
-          ${!S.stats.tons && !lost ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of her and off her track, under 3,000 yards.") : "No torpedoes away. Put the pack ahead of the convoy, on Attack, and take command of the boat nearest it."}</p>` : ""}
-          <p class="note">Reality ${pct}%. The score is the share of the tonnage sunk, and of the pack brought home.</p></div>
-          <div><h3>The pack</h3>${boatTable(D, S)}<h3>Weapons</h3>${weaponTable("The pack's", D.pack)}${weaponTable("The escorts'", D.fleet)}
+          ${D.side === "pack" && !S.stats.tons && !lost ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of her and off her track, under 3,000 yards.") : "No torpedoes away. Put the pack ahead of the convoy, on Attack, and take command of the boat nearest it."}</p>` : ""}
+          ${D.side === "escorts" && !sd.pack.lost ? `<p class="lesson">No boat sunk. Sprint, then slow under 15 knots to hear them; run in over a fresh contact and lay the pattern at its depth.</p>` : ""}
+          <p class="note">Reality ${pct}%. ${D.side === "escorts" ? "The score is the share of the convoy's tonnage saved, and of the pack sunk." : "The score is the share of the tonnage sunk, and of the pack brought home."}</p></div>
+          <div><h3>The wolfpack</h3>${boatTable(D, S)}<h3>Weapons</h3>${weaponTable("The wolfpack's", D.pack)}${weaponTable("The PDF's", D.fleet)}
           ${S.stats.sunk.length ? `<h3>Sunk</h3>${sunkTable(S.stats.sunk)}` : ""}</div></div>
           <div class="row end"><button data-act="again" class="primary">Fight it again</button><button data-act="actions">Missions</button><button data-act="title">Main menu</button></div>`,
         onClick: b => {
           const a = b.dataset.act;
-          if (a === "again") { UI.close(true); PP.game.startAction(S.scn, S.real, PP.game.lastCustom); }
+          if (a === "again") { UI.close(true); PP.game.startAction(S.scn, S.real, PP.game.lastCustom, S.side || "pack"); }
           if (a === "actions") { UI.close(true); UI.actions(); }
           if (a === "title") { UI.close(true); PP.game.toTitle(); }
         },
@@ -403,11 +409,15 @@
   /* the angle on the bow, drawn: the target's course, the line of sight to you, the angle between */
   const keys = rows => `<table class="keys">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table>`;
   UI.helpTabs = () => [
-    ["The pack", `<div class="cols"><p><b>You lead a pack, from the map.</b> The map (<kbd>1</kbd>) is where the battle is run: every boat of the pack, the convoy as the pack has seen it, the escorts. A click on a boat <b>selects</b> her: the panel on the left shows her class, her captain, her depth and her order, and gives her another.</p>
+    ["The pack", `<div class="cols"><p><b>You lead the Wolf Empire's wolfpack against Pumacity's convoys, from the map.</b> The map (<kbd>1</kbd>) is where the battle is run: every boat of the pack, the convoy as the pack has seen it, the escorts. A click on a boat <b>selects</b> her: the panel on the left shows her class, her captain, her depth and her order, and gives her another.</p>
       <p>Every boat you are not aboard sails under <b>her order</b>: <b>Attack</b> (her captain finds the convoy and goes in), <b>Shadow</b> (keep it in reach, out of its sight, and never fire), <b>Patrol</b> (run her waypoints, then hold), <b>Evade</b>, <b>Drift</b>, <b>Charge</b>, <b>Periscope depth</b> and <b>Hold</b>. <kbd>O</kbd> gives the boat selected the next order; a right click on the map adds a waypoint for her.</p>
       <p><b>Take command</b> of the boat selected with <kbd>Enter</kbd>, or a second click on her; <kbd>N</kbd> takes you straight to the next boat afloat. Aboard her, everything is yours: the helm, the telegraph, the periscope, the torpedoes. Her order waits for you to leave her.</p>
       <p>The pack shares what it sees, and its news comes in its boats' names: who is firing, who is hunted, who is lost. When the boat you are on is lost, command passes to the next; the mission ends when the convoy is gone or the last boat is.</p></div>`],
-    ["The boat", `<div class="cols"><p><b>Sink the Wolf Empire's merchant ships, and live.</b> On the surface the diesels drive her and charge the battery; under the water the battery does everything, and runs down the faster you go.</p>
+    ["The PDF", `<div class="cols"><p><b>The other side: the Pumacity Defense Fleet.</b> Choose <b>The PDF</b> on the Missions page and you are aboard one of the escorts bringing Pumacity's shipping through; the Wolf Empire's pack is against you, every boat under her own captain. Keep the convoy, and sink what comes for it.</p>
+      <p>The telegraph (<kbd>W</kbd> <kbd>S</kbd>) and the helm (<kbd>A</kbd> <kbd>D</kbd>) are hers. Her hydrophones hear a boat that runs fast, but not over her own noise above 15 knots: <b>sprint, then slow and listen</b>. <kbd>X</kbd> turns her sonar on: it finds a boat ahead of her, and the boat hears it. Every escort's contact is on the map, a ring where she has it, fading as it ages; the panel gives the freshest, its bearing, range and depth.</p>
+      <p>Run in over the contact and <kbd>Space</kbd> lays a <b>pattern</b>: two charges off the throwers and four off the rails along her track, set to the depth on the panel (<kbd>Q</kbd> <kbd>E</kbd> shallower and deeper). Later in the war the <b>hedgehog</b> (<kbd>F</kbd>) throws a ring of bombs ahead of her that go off only on a hull. <kbd>G</kbd> fires her guns at a boat up in sight; she will ram one she runs down.</p>
+      <p>On the map a click on another escort selects her, and <kbd>O</kbd> gives her an order: <b>Screen</b> (her station on the convoy), <b>Hunt</b> (the freshest contact anywhere), <b>Patrol</b> (her waypoints, a right click) or <b>Hold</b>. <kbd>Enter</kbd>, a second click, or <kbd>N</kbd> for the next, takes you aboard her.</p></div>`],
+    ["The boat", `<div class="cols"><p><b>Sink Pumacity's merchant ships, and live.</b> On the surface the diesels drive her and charge the battery; under the water the battery does everything, and runs down the faster you go.</p>
       <p>The <b>telegraph</b> (<kbd>W</kbd> <kbd>S</kbd>) orders her speed a bell at a time: Back, Stop, 1/3, 2/3, Standard, Full, Flank. The <b>helm</b> (<kbd>A</kbd> <kbd>D</kbd>) orders her course: a tap turns it five degrees, a hold swings it.</p>
       <p>Periscope depth is ${C.PD} feet (<kbd>P</kbd>); <kbd>Q</kbd> <kbd>E</kbd> take her up and down; <kbd>U</kbd> surfaces; <kbd>C</kbd> crash dives, at full speed. Below the <b>test depth</b> the hull groans; below the <b>crush depth</b> it fails. Damage lowers the crush depth.</p>
       <p>Time compression (<kbd>+</kbd> <kbd>−</kbd>) is held back when ships are near; the clock says why.</p>
@@ -443,7 +453,7 @@
       ["Menus", "the d-pad moves, <kbd>pad:A</kbd> chooses, <kbd>pad:B</kbd> goes back, <kbd>pad:LB</kbd> <kbd>pad:RB</kbd> turn these pages"]]) + `<p class="gk-credit">${CREDIT}</p>`],
   ];
   UI.help = (tab = 0, after) => UI.open("Help", { wide: true, tab, tabs: UI.helpTabs(), onClose: after });
-  UI.aboutHTML = () => `<p>Lead a pack of submarines against the Wolf Empire's convoys in this homage to NovaLogic's <i>Wolfpack</i> (1990). Command any boat of the pack, hand the others to their own captains, and bring them in on the convoy together. With original graphics and modern conveniences.</p>
+  UI.aboutHTML = () => `<p>Lead the Wolf Empire's wolfpack against Pumacity's convoys, or sail with the Pumacity Defense Fleet and bring them through, in this homage to NovaLogic's <i>Wolfpack</i> (1990). Command any vessel of your side, give the others their orders, and fight it out from the map. With original graphics and modern conveniences.</p>
     <p class="gk-credit">${CREDIT}</p>`;
   UI.about = after => UI.open("About", { html: UI.aboutHTML, onClose: after });
 })();

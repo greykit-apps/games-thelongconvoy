@@ -12,10 +12,15 @@
   const R = S => PP.rand(S);
 
   /* ---- making them ---- */
+  /* a name from the pool, none used twice in a game until the pool runs out */
   Sh.name = (S, role) => {
     const list = role === "escort" ? C.ESCORT_NAMES : C.SHIP_NAMES;
     S.nameI = (S.nameI || 0) + 1;
-    return list[(Math.floor(R(S) * list.length) + S.nameI * 7) % list.length];
+    const used = S.names || (S.names = []);
+    let i = (Math.floor(R(S) * list.length) + S.nameI * 7) % list.length;
+    for (let k = 0; k < list.length && used.includes(list[i]); k++) i = (i + 1) % list.length;
+    used.push(list[i]);
+    return list[i];
   };
   /* a convoy's ships: n merchants of the lane's kinds, and escorts by the year */
   Sh.makeComp = (S, { kinds = C.MERCHANTS, n = 4, escorts = null, mi = 0 } = {}) => {

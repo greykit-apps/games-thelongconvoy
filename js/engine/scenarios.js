@@ -19,19 +19,22 @@
    * missions they are; the escorts' side comes in a later milestone */
   const PD = 60;
   E.ACTIONS = [
+    { id: "anchor", name: "The Anchorage at Night", sides: ["escorts"], limit: 5, note: "Eleven ships at anchor waiting to sail, two escorts to guard them, and a pack of three coming in silent in the dark. Find them by ear: sprint, then stop and listen.", mi: 2, hour: 22, day: 4, wx: "clear",
+      at: [342, 380], hdg: 2, spd: 0, conv: { kinds: ["freighter", "freighter", "freighter", "freighter", "freighter", "freighter", "freighter", "tanker", "tanker", "tanker", "tanker"], n: 11, escorts: 0, esc: ["destroyer", "destroyer"], fixed: true },
+      boats: [["caracal", 12000, 6000, PD], ["caracal", 9000, -10000, PD], ["cougar", -11000, 4000, PD]] },
     { id: "easy", name: "Easy Pickings", note: "Five ships forming up for a convoy, no escort yet, in daylight. Two boats: try the attack from each.", mi: 50, hour: 10, day: 6, wx: "clear",
       at: [700, 330], hdg: 260, spd: 3, conv: { kinds: ["freighter", "freighter", "freighter", "tanker", "tanker"], n: 5, escorts: 0, fixed: true },
       boats: [["catamount", 6500, 3200, 0], ["caracal", 5500, -3800, PD]] },
-    { id: "pinned", name: "Pinned Down", note: "One destroyer has two of the pack held down. Sink it, or slip it: deep, slow and quiet.", mi: 50, hour: 14, day: 9, wx: "clear",
+    { id: "pinned", name: "Pinned Down", sides: ["pack", "escorts"], escName: "Hold Them Down", escOrders: ["evade", "evade"], escNote: "Two boats are down in the bay, scared and quiet. Find them with your ears, sprint and drift, and lay your charges on them.", limit: 3, note: "One destroyer has two of the pack held down. Sink it, or slip it: deep, slow and quiet.", mi: 50, hour: 14, day: 9, wx: "clear",
       at: [342, 380], hdg: 2, spd: 0, hunt: true, conv: { kinds: [], n: 0, escorts: 0, esc: ["destroyer"], fixed: true },
       boats: [["caracal", 2600, 900, PD], ["caracal", 1800, -1600, 220]] },
-    { id: "inside", name: "Inside the Convoy", note: "Night, the first year: two boats on the surface in among eighteen ships and eight escorts. Down to periscope depth, and help yourselves.", mi: 2, hour: 1, day: 2, wx: "clear",
+    { id: "inside", name: "Inside the Convoy", sides: ["pack", "escorts"], limit: 6, note: "Night, the first year: two boats on the surface in among eighteen ships and eight escorts. Down to periscope depth, and help yourselves.", mi: 2, hour: 1, day: 2, wx: "clear",
       at: [450, 560], hdg: 270, conv: { kinds: ["freighter", "freighter", "freighter", "liner", "tanker", "coaster"], n: 18, escorts: 8 },
       boats: [["caracal", 300, 450, 0, "with"], ["caracal", -700, -450, 0, "with"]] },
-    { id: "gather", name: "Gather the Pack", note: "A big convoy at night, already under attack. Four boats closing from all round it: bring them in together.", mi: 16, hour: 23, day: 20, wx: "overcast",
+    { id: "gather", name: "Gather the Pack", sides: ["pack", "escorts"], limit: 6, note: "A big convoy at night, already under attack. Four boats closing from all round it: bring them in together.", mi: 16, hour: 23, day: 20, wx: "overcast",
       at: [400, 200], hdg: 315, conv: { kinds: ["freighter", "liner", "tanker", "coaster"], n: 18, escorts: 8 },
       boats: [["caracal", 12000, 5000, PD], ["caracal", 9000, -7000, 0], ["cougar", -6000, 9000, 0], ["caracal", 16000, -1000, PD]] },
-    { id: "strait", name: "The Kessrin Strait", note: "A supply convoy about to clear the strait for open water. Six boats strung across its way out; stop it in the narrows.", mi: 17, hour: 2, day: 6, wx: "clear",
+    { id: "strait", name: "The Kessrin Strait", sides: ["pack", "escorts"], limit: 6, note: "A supply convoy about to clear the strait for open water. Six boats strung across its way out; stop it in the narrows.", mi: 17, hour: 2, day: 6, wx: "clear",
       at: [520, 330], hdg: 300, conv: { kinds: ["freighter", "tanker", "liner", "troopship"], n: 18, escorts: 8 },
       boats: [["cougar", 9000, 0, PD], ["caracal", 8500, 4000, PD], ["caracal", 8500, -4000, PD], ["caracal", 13000, 2500, 0], ["caracal", 13000, -2500, 0], ["caracal", 6000, 7000, PD]] },
   ];
@@ -79,7 +82,7 @@
   /* where the boat sits relative to a convoy: ahead and to starboard of its course */
   const offset = (x, y, hdg, ahead, star) => [x + PP.hx(hdg) * ahead + Math.cos(hdg) * star, y + PP.hy(hdg) * ahead + Math.sin(hdg) * star];
 
-  E.newAction = (id, { seed, real, custom }) => {
+  E.newAction = (id, { seed, real, custom, side = "pack" }) => {
     let A = E.ACTIONS.find(a => a.id === id);
     if (id === "custom") {
       const c = custom, n = E.CUSTOM.size.find(x => x[0] === c.size)[2], mi = c.mi;
@@ -121,10 +124,20 @@
     });
     Sh.spawn(S, cv);
     S.start = { merch: S.ships.filter(q => q.role === "merchant").length, esc: S.ships.filter(q => q.role === "escort").length, boats: S.subs.length };
+    /* the escorts' side: you are aboard the first escort, the others keep their stations under their orders */
+    if (side === "escorts" && (A.sides || ["pack"]).includes("escorts")) {
+      S.side = "escorts";
+      for (const sh of S.ships) if (sh.role === "escort") { sh.ord = "screen"; sh.wps = []; }
+      const first = S.ships.find(q => q.role === "escort");
+      if (first) PP.Escort.take(S, first);
+      S.scnName = A.escName || A.name;
+      (A.escOrders || []).forEach((o, i) => { if (S.subs[i]) S.subs[i].orders = o; });
+    }
+    if (A.limit) S.endT = S.t + A.limit * 3600;
     /* an escort already hunting: it has a contact on the nearest boat */
     if (A.hunt) for (const sh of S.ships) if (sh.role === "escort") {
       const q = S.subs.reduce((a, b) => PP.dist(sh.x, sh.y, b.x, b.y) < PP.dist(sh.x, sh.y, a.x, a.y) ? b : a);
-      Object.assign(sh.ai, { st: "search", t: 0, contact: S.t, how: "ear", tgt: q.id, datum: { x: q.x + 300, y: q.y - 200, t: S.t }, dz: Math.max(60, q.depth) });
+      Object.assign(sh.ai, { st: sh.ai.st === "user" ? "user" : "search", t: 0, contact: S.t, how: "ear", tgt: q.id, datum: { x: q.x + 300, y: q.y - 200, t: S.t }, dz: Math.max(60, q.depth) });
     }
     E.log(S, `${A.name}. ${C.dateStr(S.t)}, ${C.timeStr(S.t)}.`);
     return S;

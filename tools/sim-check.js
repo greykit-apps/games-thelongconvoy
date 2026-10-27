@@ -78,9 +78,9 @@ const finite = (o, path = "S", depth = 0) => {
 };
 const hash = S => { const s = JSON.stringify(S); let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(16); };
 const AIDS = { autoRange: true };
-function play(make, maxSteps, rec, resumeAt) {
+function play(make, maxSteps, rec, resumeAt, pilot = () => PP.Bot.make()) {
   let S = make();
-  const bot = PP.Bot.make();
+  const bot = pilot();
   const cmds = [];
   let steps = 0, charges = 0;
   for (; steps < maxSteps; steps++) {
@@ -95,7 +95,7 @@ function play(make, maxSteps, rec, resumeAt) {
   return { S, steps, cmds, charges };
 }
 let dropped = 0, easyRuns = 0, easyWins = 0, packFired = 0;
-for (const A of E.ACTIONS) for (const [rn, real] of [["easy", C.REAL_NONE], ["full", C.REAL_ALL]]) {
+for (const A of E.ACTIONS.filter(a => (a.sides || ["pack"]).includes("pack"))) for (const [rn, real] of [["easy", C.REAL_NONE], ["full", C.REAL_ALL]]) {
   let sankAny = 0;
   for (let seed = 1; seed <= seeds; seed++) {
     let r;
@@ -125,6 +125,31 @@ if (!packFired) bad("no boat but the first fired a torpedo in any mission: the p
 else ok(`the rest of the pack fired in ${packFired} games`);
 if (!dropped) bad("no escort dropped a single depth charge in any action");
 else ok(`${dropped} depth-charge patterns dropped across the actions; replays and saves match`);
+
+/* ---- the escorts' side: the test pilot sails the escort you would be aboard; the pack is under its own captains.
+ * Every mission with the side is played: patterns are laid, some boat is sunk in one of them, and one game
+ * replays step for step and survives a save and load half way ---- */
+{
+  let pats = 0, kills = 0, played = 0;
+  for (const A of E.ACTIONS.filter(a => (a.sides || []).includes("escorts"))) for (let seed = 1; seed <= seeds; seed++) {
+    let r;
+    const make = () => E.newAction(A.id, { seed, real: C.REAL_NONE, side: "escorts" });
+    try { r = play(make, 70000, null, 0, () => PP.Bot.escort()); } catch (e) { bad(`escorts ${A.id} seed ${seed}: ${e.stack}`); continue; }
+    const S = r.S, lost = S.subs.filter(q => q.lost).length, D = E.debrief(S);
+    played++; pats += S.stats.charges; kills += lost;
+    console.log(`${lost ? "ok   " : "     "}escorts ${A.id} seed ${seed}: ${S.phase === "over" ? S.end.why : "still at it"}, ${S.stats.charges} charges, ${S.stats.hedgehogs || 0} hedgehogs, ${lost} of ${S.subs.length} boats sunk, ${S.stats.sunk.length} ships lost, score ${D.score} (${D.rating})`);
+    if (seed === 1 && A.id === "pinned") {
+      const again = play(make, r.cmds.length, r.cmds, 0, () => PP.Bot.escort());
+      if (hash(again.S) !== hash(S)) bad(`escorts ${A.id}: the replay came out different`);
+      const half = Math.floor(r.steps / 2), saved = play(make, r.cmds.length, r.cmds, half, () => PP.Bot.escort());
+      if (hash(saved.S) !== hash(S)) bad(`escorts ${A.id}: a game saved and loaded at step ${half} came out different`);
+    }
+  }
+  if (!played) bad("no mission has the escorts' side");
+  else if (!pats) bad("the escorts' side never laid a charge");
+  else if (!kills) bad(`the escorts' side never sank a boat in ${played} games`);
+  else ok(`the escorts' side sank ${kills} boats in ${played} games, ${pats} charges laid; the replay and the save match`);
+}
 
 /* ---- a war patrol: out, a hunt, home ---- */
 if (patrolToo) {

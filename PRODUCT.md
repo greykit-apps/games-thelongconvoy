@@ -12,7 +12,7 @@ Desktop players of all kinds, new players first: people who never played *Wolfpa
 
 ## Product Purpose
 
-A remake of NovaLogic's *Wolfpack* (DOS, 1990) where the submarine captains are pumas and the enemy is the Wolf Empire: a pack of boats against an escorted convoy, commanded one boat at a time while the others hunt under their own captains, attacked through the periscope with a torpedo data computer, hunted with sonar and depth charges. The original let you play either side; PumaPack will too, the escorts' side in a later milestone. Success is a player who brings two boats in on a convoy from two sides, sinks ships, and gets most of the pack home.
+A remake of NovaLogic's *Wolfpack* (DOS, 1990): the Wolf Empire's wolfpack of submarines against Pumacity's shipping and the Pumacity Defense Fleet (the PDF) that escorts it (owner's story, 2026-10-27). As the wolfpack: a pack of boats against an escorted convoy, commanded one boat at a time while the others hunt under their own captains, attacked through the periscope with a torpedo data computer, hunted with sonar and depth charges. The original let you play either side, and so does PumaPack: the escorts' side puts you aboard one of the convoy's escorts against a pack under its own captains. Success is a player who brings two boats in on a convoy from two sides, sinks ships, and gets most of the pack home.
 
 ## Positioning
 
@@ -34,7 +34,7 @@ Part of the greykit.games portfolio, served at greykit.com/games/pumapack. It op
 
 ## Brand Commitments
 
-- The name PumaPack. The captains are pumas; the enemy is the Wolf Empire.
+- The name PumaPack, for now: the owner will rename it to fit the story (2026-10-27). The submarines are the Wolf Empire's wolfpack; the convoys are Pumacity's, escorted by the Pumacity Defense Fleet (the PDF).
 - The same fictional archipelago and Wolf War as Puma Service; every place and ship name our own.
 - Modern hi-bit pixel art at about 640 by 360; past the boot, a boat rigged for red light (owner's decision, 2026-10-26): black panels, red-orange light, amber readouts; the view out keeps the world's own colours.
 - The 1990 game's screens, not Puma Service's (owner's note, 2026-10-26): the map runs the battle, the view out of the boat you are on, the damage; orders for every boat; select and fire, no torpedo data computer.

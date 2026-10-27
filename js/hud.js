@@ -18,11 +18,13 @@
   HUD.STATIONS = [["chart", "Map", "1"], ["view", "View", "2"], ["damage", "Damage", "3"]];
   const WHY = { ships: "ships near", contact: "a contact", close: "ships close", torps: "torpedoes running", plane: "aircraft", hunted: "hunted", charges: "depth charges", danger: "danger" };
 
-  HUD.build = () => {
+  HUD.build = (side = "pack") => {
     const el = HUD.el = $("hud");
+    HUD.side = side;
+    const tabs = side === "escorts" ? [["chart", "Map", "1"], ["view", "Bridge", "2"]] : HUD.STATIONS;
     el.innerHTML = `
       <div class="h-labels" aria-hidden="true"></div>
-      <nav class="hp" id="h-tabs" aria-label="Stations">${HUD.STATIONS.map(([k, n, key]) => `<button data-st="${k}"><kbd>${key}</kbd>${n}</button>`).join("")}</nav>
+      <nav class="hp" id="h-tabs" aria-label="Stations">${tabs.map(([k, n, key]) => `<button data-st="${k}"><kbd>${key}</kbd>${n}</button>`).join("")}</nav>
       <div class="hp" id="h-clock"><div class="hc-time num">0000</div><div class="hc-date"></div><div class="hc-tc"><span class="why"></span><span class="lbl">Time</span> <b>1x</b></div></div>
       <div class="hp" id="h-boat">
         <div class="hb-pack" aria-label="The pack"></div>
@@ -107,6 +109,52 @@
     if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "PumaPack: " + t); }
   }
 
+  /* ---- the escorts' side: the escort you are aboard, her contact, and the map's orders for the others ---- */
+  function drawEsc(S, ui, st) {
+    const el = HUD.el, f = PP.Escort.flag(S); if (!f) return;
+    const k = C.SHIPS[f.cls], X = C.ESC_SIDE;
+    set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String((b.dataset.st === "view") === (st === "ebridge"))); });
+    set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });
+    set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
+    const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
+    set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
+    /* her panel */
+    const mine = PP.Escort.mine(S), hh = C.monthOf(S.t) >= X.hedgehogFrom;
+    const key = [f.id, f.spd.toFixed(1), f.bell, PP.deg3(f.hdg), PP.deg3(f.ordHdg), f.dcSet, f.dcLeft, f.hhLeft, f.ping, !!f.pat, Math.round(f.dmg * 20), mine.map(q => q.id).join("."), PP.Input.device].join(":");
+    set(el.querySelector("#h-boat"), "escBoat", key, x => {
+      const hull = Math.max(0, 1 - f.dmg / k.hp);
+      x.innerHTML = PP.Input.caps(`<div class="hb-pack">${mine.map(q => `<span class="pk${q === f ? " on" : ""}">${esc(q.name)}</span>`).join("")}${mine.length > 1 ? `<span class="pk-key"><kbd>N</kbd> next</span>` : ""}</div>
+        <div class="hb-row"><span class="lbl">Ship</span><b class="v sm">${esc(k.name)}</b><span></span></div>
+        <div class="hb-row"><span class="lbl">Speed</span><b class="v">${f.spd.toFixed(1)} kn</b><span class="ord">${C.ESC_BELLS[f.bell]}</span></div>
+        <div class="hb-row"><span class="lbl">Course</span><b class="v">${PP.deg3(f.hdg)}</b><span class="ord">${Math.abs(PP.angDiff(f.hdg, f.ordHdg)) > 0.02 ? PP.deg3(f.ordHdg) : ""}</span></div>
+        <div class="hb-row"><span class="lbl">Charges</span><b class="v">${f.dcLeft}</b><span class="ord">${f.pat ? "laying" : "set " + f.dcSet + " ft"}</span></div>
+        ${hh ? `<div class="hb-row"><span class="lbl">Hedgehog</span><b class="v">${f.hhLeft}</b><span></span></div>` : ""}
+        <div class="hb-row${hull < 0.5 ? " crit" : hull < 0.8 ? " warn" : ""}"><span class="lbl">Hull</span><b class="v">${Math.round(hull * 100)}%</b><span></span></div>
+        <div class="hb-flags">${f.ping ? '<span class="on">Sonar pinging</span>' : '<span>Sonar listening</span>'}${f.spd > C.DET.hydFastKn ? '<span title="Above 15 knots her own noise deafens her hydrophones">Too fast to hear</span>' : ""}</div>`);
+    });
+    /* the freshest contact any escort has, from her */
+    const best = mine.filter(q => q.ai.datum && q.ai.contact).sort((a, b) => b.ai.contact - a.ai.contact)[0];
+    let ct = `<div class="ht-name">Contacts</div><p class="ht-none">None. Sprint, then slow under 15 knots and listen; <kbd>X</kbd> pings with the sonar, which they hear too.</p>`;
+    if (best && S.t - best.ai.contact < 900) {
+      const d = best.ai.datum, age = S.t - best.ai.contact, r = PP.dist(f.x, f.y, d.x, d.y);
+      ct = `<div class="ht-name">${best.ai.how === "sonar" ? "Sonar contact" : best.ai.how === "ear" ? "Heard" : "Sighted"}</div><div class="ht-cls">${best === f ? "Her own" : "From " + esc(best.name)}, ${age < 60 ? "now" : Math.round(age / 60) + " min ago"}</div>
+        <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(PP.angTo(f.x, f.y, d.x, d.y))}</b><span class="lbl">Range</span><b>${PP.num(Math.round(r / 50) * 50)}</b>
+        <span class="lbl">Depth, about</span><b>${best.ai.how === "eye" || best.ai.how === "radar" ? "surface" : Math.round((best.ai.dz || 150) / 25) * 25 + " ft"}</b><span class="lbl">Charges</span><b>${f.dcSet} ft</b></div>
+        <div class="ht-sol ${r < 300 && age < 60 ? "ok" : "no"}"><span class="ht-lamp"></span><span>${r < 300 && age < 60 ? "Over her: <kbd>Space</kbd> a pattern" : "Run in to her"}</span></div>`;
+    }
+    set(el.querySelector("#h-tdc"), "tdc", ct + PP.Input.device, x => { x.innerHTML = PP.Input.caps(ct); });
+    /* the map's orders for the escort selected there */
+    const onMap = st === "chart" && mine.length > 1, q = mine.find(o => o.id === ui.sel) || f;
+    set(el.querySelector("#h-orders"), "orders", onMap ? `${q.id}:${q.ord}:${q === f}:${(q.wps || []).length}` : "", x => {
+      x.hidden = !onMap; if (!onMap) return;
+      x.innerHTML = PP.Input.caps(`<div class="ht-name">${esc(q.name)}</div><div class="ht-cls">${esc(C.SHIPS[q.cls].name)}</div>
+        <p class="ho-now">${q === f ? "You are aboard her. Her order, when you leave her:" : "Her order:"} <b>${esc((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1])}</b></p>
+        <div class="ho-list">${C.ESC_ORDERS.map(([o, n, note]) => `<button data-eorder="${o}" title="${esc(note)}" aria-pressed="${q.ord === o}"${q.ord === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
+        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== f ? " · <kbd>Enter</kbd> or click her again: take command" : ""}</p>`);
+    });
+    el.querySelector("#h-hull").hidden = true; el.querySelector("#h-dmg").hidden = true; el.querySelector("#h-port").hidden = true;
+  }
+
   /* ---- the damage report's panels: the hull and the water on the left, the repairs on the right ---- */
   const segs = (v, cls) => `<span class="hb-bar${cls}">${Array.from({ length: 10 }, (_, i) => `<i${i < Math.ceil(v * 10) ? ' class="on"' : ""}></i>`).join("")}</span>`;
   const mins = sec => sec < 90 ? "a minute" : Math.round(sec / 60) + " min";
@@ -131,7 +179,8 @@
 
   /* ---- every frame ---- */
   HUD.draw = (S, ui) => {
-    if (!HUD.built) HUD.build();
+    const side = S.side === "escorts" ? "escorts" : "pack";
+    if (!HUD.built || HUD.side !== side) HUD.build(side);
     const el = HUD.el, s = S.sub, now = performance.now();
     HUD.toasts = HUD.toasts.filter(t => { if (t.until > now) return true; t.d.remove(); return false; });
     const st = PP.Render.stationOf(S, ui);
@@ -142,6 +191,7 @@
     if (now - (HUD.safeAt || 0) > 250) { HUD.safeAt = now; safe(); describe(S, ui, st); }
     labels(PP.Render.labels || []);
     if (dmg) damage(S);
+    if (side === "escorts") { drawEsc(S, ui, st); return; }
     const tab = st === "bridge" || st === "scope" ? "view" : st;
     set(el.querySelector("#h-tabs"), "tabs", tab + ":" + Sub.surfaced(s), e => { for (const b of e.querySelectorAll("button")) { b.setAttribute("aria-current", String(b.dataset.st === tab)); if (b.dataset.st === "view") b.lastChild.textContent = Sub.surfaced(s) ? "Bridge" : "Periscope"; } });
     set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });

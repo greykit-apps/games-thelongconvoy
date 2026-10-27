@@ -66,7 +66,7 @@
         <h1 class="ps-mark" aria-label="${esc(cfg.name)}"><span class="puma">Puma</span><span class="svc">Pack</span></h1>
         <nav class="ps-menu ps-msg paper" aria-label="Main menu">
           <header class="msg-hd"><span>The pack board</span><span>${esc(m.prec)}</span></header>
-          <dl class="msg-f">${field("Boats", m.to)}${field("Date-time group", m.dtg)}${field("Contact", "Wolf convoy, steering west. Attack at will", "w")}</dl>
+          <dl class="msg-f">${field("Boats", m.to)}${field("Date-time group", m.dtg)}${field("Contact", "PDF convoy out of Pumacity, steering west. Attack at will", "w")}</dl>
           <p class="msg-l" aria-hidden="true">Orders</p>
           <div class="msg-t">${main.map(it => btn(it, true)).join("")}</div>
           <div class="util">${util.map(it => btn(it, false)).join("")}</div>
@@ -149,7 +149,7 @@
 
   /* ---- a game ---- */
   const seed = () => 1 + Math.floor(Math.random() * 2 ** 30);
-  game.startAction = (id, real, custom) => { PP.clearGame(); game.lastCustom = custom || null; startPlay(E.newAction(id, { seed: seed(), real, custom }), true); };
+  game.startAction = (id, real, custom, side = "pack") => { PP.clearGame(); game.lastCustom = custom || null; startPlay(E.newAction(id, { seed: seed(), real, custom, side }), true); };
   game.startPractice = kind => { PP.clearGame(); startPlay(E.newPractice({ seed: seed(), real: PP.prefs.real, kind }), true); };
   game.startPatrol = (S, car) => { game.car = car; E.depart(S); startPlay(S, true); checkpoint(true); };
   function startPlay(S, fresh) {
@@ -165,7 +165,8 @@
     const u = game.ui;
     u.track = []; u.trackT = 0; u.chartAt = null; u.bino = false;
     u.station = Sub.surfaced(S.sub) ? (S.mode === "patrol" ? "chart" : "bridge") : "scope";
-    u.look = S.sub.hdg; u.chartZoom = S.mode === "patrol" ? 5 : 3;
+    u.look = PP.Chart.me(S).hdg; u.chartZoom = S.mode === "patrol" ? 5 : 3;
+    u.sel = null;
     /* a mission opens on the map, where the pack is run */
     if (fresh) u.station = "chart";
     game.syncAids(); fit();
@@ -238,8 +239,41 @@
       case "torpHitUs": toast(`${n} was hit by her own torpedo`, "red", 3000); break;
     }
   }
+  /* the escorts' side's news: what the escorts find and do, what happens to the convoy and to the pack */
+  function escEvents(S, evs) {
+    const f = PP.Escort.flag(S);
+    for (const e of evs) {
+      switch (e.t) {
+        case "command": SFX.play("menu"); toast(`Aboard ${e.name}`, "", 2000); game.ui.track = []; break;
+        case "ordered": if (e.what === "bell") SFX.play("bell"); break;
+        case "eorders": toast(`${e.name}: ${(C.ESC_ORDERS.find(o => o[0] === e.v) || C.ESC_ORDERS[0])[1].toLowerCase()}${f && e.id === f.id ? ", when you leave her" : ""}`, "", 2000); break;
+        case "dcSet": toast(`Charges set for ${e.v} feet`, "", 1200); break;
+        case "ping": toast(e.on ? "Sonar pinging: it finds them ahead, and they hear it" : "Sonar off: listening", "", 2000); break;
+        case "patternAway": SFX.play("splashes", 0.8); toast("Pattern away!", "amber", 1600); break;
+        case "noCharges": toast("No depth charges left", "red", 2000); break;
+        case "hedgehogAway": SFX.play("splashes", 0.5); toast("Hedgehog away", "amber", 1600); break;
+        case "noHedgehog": toast(e.empty ? "The hedgehog is empty" : "No hedgehog fitted yet", "amber", 1800); break;
+        case "noGunTarget": toast("No boat in sight on the surface", "amber", 1600); break;
+        case "escortGun": SFX.play("gun", 0.6); break;
+        case "eGunHit": SFX.play("shellHit", 0.7); toast("A hit on her!", "green", 1400); break;
+        case "eGunMiss": SFX.play("splash", 0.5); break;
+        case "dcBoom": { const d = f ? PP.dist(e.x, e.y, f.x, f.y) : 9999; SFX.play(e.hh ? "dcNear" : "dc", PP.clamp(1.2 - d / 3000, 0.15, 1)); if (e.hh) toast("A hedgehog has hit something!", "green", 2400); break; }
+        case "escortContact": if (S.t - (game.warned.contact || -1e9) > 30) { game.warned.contact = S.t; const q = S.ships.find(o => o.id === e.id); SFX.play(e.how === "sonar" ? "pingNear" : "sighted"); toast(`${q ? q.name : "An escort"}: ${e.how === "sonar" ? "sonar contact" : e.how === "eye" ? "a boat sighted" : e.how === "radar" ? "radar contact" : "contact"}`, "amber", 2400); } break;
+        case "subLost": SFX.play("sunk"); toast(`A boat is sunk${e.why === "crushed" ? ": crushed" : ": she flooded"}`, "green", 3600); break;
+        case "rammed": if (e.ours) { SFX.play("bigHit"); toast("Rammed her!", "green", 2400); } break;
+        case "fired": if (S.t - (game.warned.fired || -1e9) > 20) { game.warned.fired = S.t; } break;
+        case "torpHit": SFX.play("bigHit", 0.7); toast(`Torpedo hit: the ${cls(e.ship)}`, "red", 2400); break;
+        case "shipSinking": SFX.play("breakup", 0.5); break;
+        case "shipSunk": SFX.play("over", 0.6); toast(`${C.SHIPS[e.cls].name} ${e.name} sunk`, "red", 3000); break;
+        case "wakeSeen": toast("Torpedo wake!", "red", 1800); break;
+        case "convoyTurns": toast("The convoy turns away", "", 2000); break;
+        case "actionOver": SFX.play(e.why === "fleetLost" || e.why === "allSunk" ? "over" : "won"); HUD.end(e.why === "fleetLost" ? "The escorts are gone" : e.why === "allSunk" ? "The convoy is lost" : e.why === "time" ? "Time" : "The pack has drawn off", "", e.why === "fleetLost" || e.why === "allSunk" ? "danger" : "ok"); break;
+      }
+    }
+  }
   function events(S, evs) {
     R.events(S, evs);
+    if (S.side === "escorts") return escEvents(S, evs);
     const s = S.sub;
     for (const e of evs) {
       /* the boat you are on is news; another boat's only when it matters */
@@ -333,6 +367,7 @@
   /* the sounds that go on */
   function loops(S) {
     if (SFX.muted || !SFX.ctx) return;
+    if (S.side === "escorts") { const f = PP.Escort.flag(S), v = f ? f.spd / 30 : 0; SFX.loop("diesel", 0.3 + v * 0.6, v); SFX.loop("sea", 0.5 + S.wx.sea * 0.1, S.wx.sea / 6); SFX.loop("motor", 0, 0); SFX.loop("screws", 0, 0); return; }
     const s = S.sub, surf = Sub.surfaced(s), f = Math.abs(s.spd) / 20;
     SFX.loop("diesel", surf && s.fuel > 0 ? 0.4 + f : 0, f);
     SFX.loop("sea", surf ? 0.5 + S.wx.sea * 0.1 : 0, S.wx.sea / 6);
@@ -403,6 +438,12 @@
     if (sol && sol.why === "range") return `Out of range: let her close${SEP}${chip("helm", "steer for her track")}${eye}`;
     return `When the TDC lamp is green, ${chip("fire", "fires")}${eye}`;
   }
+  function escStrip(S) {
+    const st = R.stationOf(S, game.ui), m = PP.Escort.mine(S), fresh = m.some(q => q.ai.contact && S.t - q.ai.contact < 60);
+    const C2 = (k, w) => k.map(I.cap).join("") + " " + w;
+    if (fresh) return ["danger", "Contact", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["Q", "E"], "charges' depth"), C2(["Space"], "pattern"), C2(["F"], "hedgehog")]];
+    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "her orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
+  }
   function strip(S) {
     const s = S.sub, st = R.stationOf(S, game.ui), surf = Sub.surfaced(s), locked = S.tdc.tgt !== null;
     if (surf && S.planes.some(p => p.seen)) return ["danger", "Aircraft", ["crash"]];
@@ -421,11 +462,11 @@
   function hints() {
     const S = game.S;
     if (!S) { HUD.hint(null); return; }
-    const c = coach(S);
+    const c = S.side === "escorts" ? null : coach(S);
     if (c) { HUD.hint(pieces(`<b class="hl">Practice</b>${SEP}${c}`), "coach"); return; }
     if (!game.ui.aids.hints) { HUD.hint(null); return; }
-    const [tone, lead, list] = strip(S);
-    const parts = list.map(n => Array.isArray(n) ? chip(n[0], n[1]) : chip(n)).filter(Boolean);
+    const [tone, lead, list] = S.side === "escorts" ? escStrip(S) : strip(S);
+    const parts = S.side === "escorts" ? list : list.map(n => Array.isArray(n) ? chip(n[0], n[1]) : chip(n)).filter(Boolean);
     HUD.hint(pieces((lead ? `<b class="hl">${lead}</b>${SEP}` : "") + parts.join(SEP) + `${SEP}<span class="more">${chip("keys")}</span>`), tone);
   }
   /* the boat selected on the map (her orders, her waypoints): the one in command until another is clicked */
@@ -434,7 +475,7 @@
     const S = game.S; if (!S) return;
     if (st === "log") { UI.log(S, () => game.unpause()); return; }
     if (st === "bridge" || st === "scope") st = "view";
-    if (st === "view" && game.ui.station !== "view") game.ui.look = S.sub.hdg;
+    if (st === "view" && game.ui.station !== "view") game.ui.look = PP.Chart.me(S).hdg;
     if (st !== game.ui.station) game.ui.chartAt = null;
     game.ui.station = st; SFX.play("menu"); hints();
   };
@@ -536,7 +577,42 @@
   }
 
   /* ---- the orders the keys give ---- */
+  /* ---- the escorts' side's keys: the escort you are aboard, and the others from the map ---- */
+  const escSel = S => { const m = PP.Escort.mine(S); return m.find(q => q.id === game.ui.sel) || PP.Escort.flag(S); };
+  function escAct(a, ev) {
+    const S = game.S, u = game.ui, st = R.stationOf(S, u), shift = ev && ev.shiftKey, f = PP.Escort.flag(S);
+    if (!f) return;
+    const onMap = st === "chart";
+    switch (a) {
+      case "tU": I.push({ a: "bell", d: 1 }); break;
+      case "tD": I.push({ a: "bell", d: -1 }); break;
+      case "hL": case "hR": if (!ev || !ev.repeat) I.tapHelm(a === "hL" ? -1 : 1); break;
+      case "aL": case "aR": if (onMap && (!ev || !ev.repeat)) I.tapHelm(a === "aL" ? -1 : 1); break;
+      case "aU": case "aD": if (onMap) I.push({ a: "bell", d: a === "aU" ? 1 : -1 }); else u.bino = a === "aU"; break;
+      case "shallower": I.push({ a: "dcSet", d: -25 }); break;
+      case "deeper": I.push({ a: "dcSet", d: 25 }); break;
+      case "fire": I.push({ a: "pattern" }); break;
+      case "bank": I.push({ a: "hedgehog" }); break;
+      case "gun": I.push({ a: "egun" }); break;
+      case "silent": I.push({ a: "ping" }); break;
+      case "zoom": if (onMap) { u.chartZoom = (u.chartZoom + (shift ? PP.Chart.ZOOMS.length - 1 : 1)) % PP.Chart.ZOOMS.length; u.chartAt = null; SFX.play("menu"); } else u.bino = !u.bino; break;
+      case "tcU": I.push({ a: "tc", d: 1 }); break;
+      case "tcD": I.push({ a: "tc", d: -1 }); break;
+      case "tc1": I.push({ a: "tc", v: 0 }); break;
+      case "st1": case "st3": case "st4": game.setStation("chart"); break;
+      case "st2": game.setStation("view"); break;
+      case "st6": game.setStation("log"); break;
+      case "stNext": case "stPrev": game.setStation(st === "chart" ? "view" : "chart"); break;
+      case "boatNext": { const m = PP.Escort.mine(S), i = m.indexOf(f); if (m.length > 1) I.push({ a: "commandEsc", id: m[(i + (shift ? m.length - 1 : 1)) % m.length].id }); else toast("No other escort afloat", "amber", 1600); break; }
+      case "orders": { const q = escSel(S), L = C.ESC_ORDERS.map(o => o[0]), j = L.indexOf(q.ord || "screen"); I.push({ a: "eorders", id: q.id, v: L[(j + (shift ? L.length - 1 : 1)) % L.length] }); break; }
+      case "takeCmd": { const q = escSel(S); if (onMap && q !== f) I.push({ a: "commandEsc", id: q.id }); break; }
+      case "pause": game.pause(); break;
+      case "aids": PP.flipAids(); game.syncAids(); hints(); break;
+      case "help": UI.help(1, () => game.unpause()); break;
+    }
+  }
   function act(a, ev) {
+    if (game.S && game.S.side === "escorts") return escAct(a, ev);
     const S = game.S, s = S.sub, u = game.ui, st = R.stationOf(S, u), shift = ev && ev.shiftKey;
     const helmSt = st === "chart" || st === "damage";
     switch (a) {
@@ -580,7 +656,7 @@
       case "dock": if (S.mode === "patrol") dock(); break;
       case "scope": I.push({ a: "scope" }); break;
       case "level": I.push({ a: Sub.surfaced(s) || s.depth > C.PD + 6 ? "pd" : "surface" }); break;
-      case "help": UI.help(5, () => game.unpause()); break;
+      case "help": UI.help(6, () => game.unpause()); break;
       /* the pack: the next boat afloat (Shift, the one before) */
       case "boatNext": {
         const n = S.subs.length, d = shift ? n - 1 : 1;
@@ -631,7 +707,7 @@
     if (game.mode !== "play") return;
     let a = I.actionFor(ev.code);
     if (!a && (ev.key === "+" || ev.key === "=")) a = "tcU";
-    if (!a && ev.key === "?") { UI.help(4, () => game.unpause()); return; }
+    if (!a && ev.key === "?") { UI.help(game.S && game.S.side === "escorts" ? 1 : 5, () => game.unpause()); return; }
     if (ev.code === "F5" || ev.code === "F12") return;
     if (a || /^F\d+$/.test(ev.code)) ev.preventDefault();
     if (!ev.repeat) konamiStep("keys", ev.code);
@@ -664,14 +740,20 @@
     ev.preventDefault();
     const S = game.S; if (!S || game.mode !== "play" || UI.sheet || R.stationOf(S, game.ui) !== "chart") return;
     const cv = $("screen"), r = cv.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * cv.width, py = (ev.clientY - r.top) / r.height * cv.height;
-    const p = PP.Chart.toSea(S, game.ui, px, py, cv.width, cv.height), i = game.selIdx();
+    const p = PP.Chart.toSea(S, game.ui, px, py, cv.width, cv.height);
+    if (S.side === "escorts") {
+      const q = escSel(S); if (!q || q.id === S.flag) return;
+      I.push({ a: "ewp", id: q.id, x: p.x, y: p.y, clear: ev.shiftKey }); if (q.ord !== "patrol") I.push({ a: "eorders", id: q.id, v: "patrol" }); SFX.play("menu"); return;
+    }
+    const i = game.selIdx();
     I.push({ a: "wp", i, x: p.x, y: p.y, clear: ev.shiftKey });
     if (S.subs[i].orders !== "patrol") I.push({ a: "orders", i, v: "patrol" });
     SFX.play("menu");
   });
   /* the orders panel on the map: a click on an order gives it to the boat selected there */
   $("hud").addEventListener("click", ev => {
-    const b = ev.target.closest("[data-order], [data-take]"), S = game.S; if (!b || !S || game.mode !== "play") return;
+    const b = ev.target.closest("[data-order], [data-eorder], [data-take]"), S = game.S; if (!b || !S || game.mode !== "play") return;
+    if (b.dataset.eorder) { const q = escSel(S); if (q) I.push({ a: "eorders", id: q.id, v: b.dataset.eorder }); return; }
     if (b.dataset.order) I.push({ a: "orders", i: game.selIdx(), v: b.dataset.order });
     else if (game.selIdx() !== S.cmd) I.push({ a: "command", i: game.selIdx() });
   });
@@ -686,6 +768,12 @@
       const p = PP.Chart.toSea(S, game.ui, px, py, cv.width, cv.height), z = PP.Chart.view(S, game.ui, cv.width, cv.height).z;
       const hit = S.ships.filter(sh => PP.Detect.known(S, sh) && PP.Ships.alive(sh)).map(sh => ({ sh, d: PP.dist(sh.x, sh.y, p.x, p.y) })).sort((a, b) => a.d - b.d)[0];
       if (hit && hit.d < 10 * z) { I.push({ a: "lock", id: hit.sh.id }); return; }
+      /* the escorts' side: an escort selects her, a second click takes command */
+      if (S.side === "escorts") {
+        const m = PP.Escort.mine(S).map(q => ({ q, d: PP.dist(q.x, q.y, p.x, p.y) })).sort((a, b) => a.d - b.d)[0];
+        if (m && m.d < 10 * z) { if (game.ui.sel === m.q.id && m.q.id !== S.flag) I.push({ a: "commandEsc", id: m.q.id }); else { game.ui.sel = m.q.id; SFX.play("menu"); } }
+        return;
+      }
       /* a boat of the pack: select her, for her orders; a second click on her (or Enter) takes command */
       const mate = S.subs.map((q, i) => ({ q, i, d: PP.dist(q.x, q.y, p.x, p.y) })).filter(m => !m.q.lost).sort((a, b) => a.d - b.d)[0];
       if (mate && mate.d < 10 * z) { if (game.selIdx() === mate.i && mate.i !== S.cmd) I.push({ a: "command", i: mate.i }); else { game.ui.sel = mate.q.id; SFX.play("menu"); } return; }

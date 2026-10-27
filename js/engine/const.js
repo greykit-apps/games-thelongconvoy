@@ -5,6 +5,10 @@
  * owed real play: anything not taken from a source is marked UNCERTAIN.
  * The boats, the ships and the torpedoes are our own, after their kind.
  *
+ * The story (owner's, 2026-10-27): the Wolf Empire's wolfpack of submarines
+ * against Pumacity's shipping and the Pumacity Defense Fleet (the PDF) that
+ * escorts it. You can command either side.
+ *
  * The calendar is the war's own: Year I to Year V of the Wolf War, twelve
  * months of the usual lengths, the clock counting game seconds from
  * midnight on 1 January, Year I. */
@@ -100,22 +104,22 @@
   C.RADAR_DEPTH = 45;
   C.SUBS = {
     ocelot: {
-      name: "Ocelot", note: "An old coastal boat: short-legged, shallow, four tubes forward and one aft.",
+      name: "Jackal", note: "An old coastal boat: short-legged, shallow, four tubes forward and one aft.",
       surf: 14, sub: 9, test: 200, crush: 300, tubesF: 4, tubesA: 1, torps: 12, shells: 60, gun: "3-inch",
       bat: 0.75, fuel: 0.55, dive: 50, len: 72, from: 0,
     },
     caracal: {
-      name: "Caracal", note: "The fleet boat the war began with: six tubes forward, four aft, legs for the long patrols.",
+      name: "Timber", note: "The fleet boat the war began with: six tubes forward, four aft, legs for the long patrols.",
       surf: 20, sub: 8.8, test: 250, crush: 400, tubesF: 6, tubesA: 4, torps: 24, shells: 80, gun: "3-inch",
       bat: 1, fuel: 1, dive: 40, len: 100, from: 0,
     },
     cougar: {
-      name: "Cougar", note: "Bigger, quieter, deeper: the boat that carried the war.",
+      name: "Dire", note: "Bigger, quieter, deeper: the boat that carried the war.",
       surf: 21, sub: 9, test: 300, crush: 450, tubesF: 6, tubesA: 4, torps: 24, shells: 90, gun: "4-inch",
       bat: 1.05, fuel: 1.1, dive: 35, len: 104, from: 6,
     },
     catamount: {
-      name: "Catamount", note: "A thick hull: four hundred feet and more, and a heavier gun.",
+      name: "Fenris", note: "A thick hull: four hundred feet and more, and a heavier gun.",
       surf: 20.5, sub: 9, test: 400, crush: 620, tubesF: 6, tubesA: 4, torps: 24, shells: 100, gun: "5-inch",
       bat: 1.05, fuel: 1.1, dive: 35, len: 104, from: 20,
     },
@@ -145,14 +149,24 @@
     frigate: { name: "Frigate", tons: 950, len: 86, beam: 10, draft: 10, mast: 58, kn: 19, hp: 0.9, role: "escort", guns: 1, dc: 7, sonar: 1.15 },
     chaser: { name: "Sub-chaser", tons: 420, len: 55, beam: 7, draft: 7, mast: 40, kn: 18, hp: 0.6, role: "escort", guns: 1, dc: 5, sonar: 0.9 },
   };
+  /* a boat of the pack as the view out draws her (ShipArt's "sub" model): never part of a convoy */
+  C.SHIPS.sub = { name: "Submarine", tons: 1500, len: 100, beam: 9, draft: 15, mast: 22, kn: 20, hp: 1, role: "sub" };
   C.MERCHANTS = ["coaster", "freighter", "liner", "tanker", "troopship"];
+  /* ---- the escorts' side: the escort you sail yourself ---- */
+  C.ESC_BELLS = ["Back", "Stop", "1/3", "2/3", "Std", "Full", "Flank"];
+  C.ESC_BELL_F = [-0.2, 0, 0.25, 0.45, 0.65, 0.85, 1];
+  C.ESC_SIDE = { charges: 60, pattern: 6, dcSet: [50, 600], hedgehogFrom: 30, hedgehogs: 8, hhRange: 250, hhSink: 23, hhRing: 40, hhHit: 14, gunReload: 4 };
+  /* the orders for an escort you are not aboard (the 1990 game's, for its side) */
+  C.ESC_ORDERS = [["screen", "Screen", "Keep her station on the convoy and hunt what comes near it"], ["hunt", "Hunt", "Go after the freshest contact any escort has"],
+    ["patrol", "Patrol", "Run her waypoints, hunting what she finds"], ["hold", "Hold", "Stop where she is and listen"]];
   C.ESCORTS = ["destroyer", "frigate", "chaser"];
-  /* the Empire names its ships for winter, iron and old wolves (ours) */
-  C.SHIP_NAMES = ["Hoarfrost", "Grimtooth", "Ironmaw", "Coldharbour", "Ashvane", "Snowfang", "Vargr", "Duskmane", "Frostgrave", "Blackpelt",
-    "Wintermark", "Rimewood", "Greymaw", "Stonejaw", "Nightrun", "Ulfhild", "Hrimstead", "Fenmark", "Skoll", "Hati", "Gloomwater", "Iceholm",
-    "Silverhowl", "Bitterwind", "Ravenmoor", "Cinderwolf", "Hollowtusk", "Grauholm", "Wolfsgate", "Steppe Star", "Lantern Moon", "Ironhowl",
-    "Bleakfell", "Coldmarch", "Thornpelt", "Shardjaw", "Mistfang", "Ulmar", "Varden", "Kaltberg"];
-  C.ESCORT_NAMES = ["Fang", "Howl", "Snarl", "Prowl", "Hackle", "Bayer", "Ruff", "Tracker", "Harrier", "Lurcher", "Packleader", "Sentinel", "Warden", "Bristle"];
+  /* Pumacity names its merchant ships for its high desert and mountains (ours) */
+  C.SHIP_NAMES = ["Talus", "Scree", "Mesa", "Arroyo", "Juniper", "Tamarack", "Ridgeline", "Sagebrush", "Cliffrunner", "Ponderosa", "Granite", "Canyon",
+    "Sierra", "Chaparral", "Bitterroot", "Cascade", "Rimrock", "Highpass", "Saltcedar", "Manzanita", "Piñon", "Basin", "Cougar Peak", "Sandstone",
+    "Red Butte", "Silver Sage", "Painted Rock", "Ochre Point", "Copper Hill", "Lantern Hill", "Prairie Wind", "Sunmesa", "Amber Coast", "Dune Runner",
+    "Tawny Star", "Goldgrass", "Cliff Haven", "Sierra Dawn", "Arroyo Queen", "Canyon Light"];
+  /* and the PDF its escorts for the hunt */
+  C.ESCORT_NAMES = ["Talon", "Pounce", "Prowler", "Ambush", "Claw", "Whisker", "Tawny", "Panther", "Swiftpaw", "Stalker", "Highcrag", "Sentry", "Guardian", "Ridgeback"];
 
   /* ---- the convoy ---- */
   C.CONVOY = {
@@ -177,7 +191,8 @@
     depthErr: [75, 28],                         /* feet, normal and expert */
     posErr: [90, 45],                           /* yards */
   };
-  C.DC = { sink: 9, spacing: 28, throw: 60, kill: 22, hurt: 100, sev: 0.65 };   /* ft/s; yards; feet */
+  /* ft/s; yards; feet. kill and hurt UNCERTAIN: widened 2026-10-27 so a pattern over a fair contact can sink a boat; owed real play */
+  C.DC = { sink: 9, spacing: 28, throw: 60, kill: 30, hurt: 135, sev: 0.7 };
 
   /* ---- aircraft (UNCERTAIN) ---- */
   C.AIR = { kn: 150, perHour: 0.1, searchT: 2400, bombR: 90, bombDepth: 60, eyes: 11000 };
@@ -233,11 +248,14 @@
   C.MEDALS = [[12000, "Letter of Commendation"], [22000, "Bronze Paw"], [35000, "Silver Paw"], [52000, "Puma Cross"], [75000, "Medal of the Pride"]];
   C.PATROL_DAYS = 50;
   C.REFIT_DAYS = [14, 24];
-  C.BOAT_NAMES = ["Talus", "Scree", "Mesa", "Arroyo", "Juniper", "Tamarack", "Ridgeline", "Sagebrush", "Cliffrunner", "Ponderosa", "Granite", "Canyon",
-    "Sierra", "Chaparral", "Bitterroot", "Cascade", "Rimrock", "Highpass", "Saltcedar", "Manzanita", "Piñon", "Basin", "Cougar Peak", "Sandstone"];
-  /* the pack's captains (ours): one to a boat */
-  C.CAPTAINS = ["Ardent", "Bramble", "Cinder", "Dusk", "Ember", "Flint", "Gorse", "Harrow", "Ingle", "Juno", "Kestrel", "Larch", "Marrow", "Nettle",
-    "Ochre", "Pell", "Quarry", "Rowan", "Sable", "Tansy", "Umber", "Vesper", "Wren", "Yarrow"];
+  /* the Wolf Empire names its boats for winter, iron and old wolves (ours) */
+  C.BOAT_NAMES = ["Hoarfrost", "Grimtooth", "Ironmaw", "Coldharbour", "Ashvane", "Snowfang", "Vargr", "Duskmane", "Frostgrave", "Blackpelt",
+    "Wintermark", "Rimewood", "Greymaw", "Stonejaw", "Nightrun", "Ulfhild", "Hrimstead", "Fenmark", "Skoll", "Hati", "Gloomwater", "Iceholm",
+    "Silverhowl", "Bitterwind", "Ravenmoor", "Cinderwolf", "Hollowtusk", "Grauholm", "Wolfsgate", "Ironhowl", "Bleakfell", "Coldmarch",
+    "Thornpelt", "Shardjaw", "Mistfang", "Ulmar", "Varden", "Kaltberg"];
+  /* the pack's captains (ours), one to a boat */
+  C.CAPTAINS = ["Ulfric", "Varga", "Skaldi", "Hrolf", "Ysolde", "Grimmar", "Brann", "Kaelin", "Mordra", "Tyrr", "Askel", "Rurik", "Sigrun", "Halvard",
+    "Ylva", "Fenna", "Isolf", "Rhagar", "Thorna", "Wulfa", "Lupa", "Ragna", "Ketil", "Orm"];
   C.START_MONTHS = [[0, "January, Year I", "The war's first month. Old boats, bad torpedoes, plenty of targets."],
     [12, "January, Year II", "Better boats arrive. The torpedoes are still suspect."],
     [24, "January, Year III", "The torpedoes are fixed by autumn. Their escorts are learning."],

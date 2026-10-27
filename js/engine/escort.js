@@ -39,10 +39,22 @@
     for (const sh of escorts) {
       const s = Esc.quarry(S, sh), ai = sh.ai, k = C.SHIPS[sh.cls], cv = Sh.convoy(S, sh.conv), d = PP.dist(sh.x, sh.y, s.x, s.y);
       ai.t += dt;
+      /* the escort you are aboard: your helm and telegraph, your charges (Esc.user) */
+      if (ai.st === "user") { Esc.user(S, sh, dt, ev); continue; }
+      /* the others, under your orders on the escorts' side */
+      if (sh.ord === "hold" && !(ai.contact && S.t - ai.contact < 6)) { sh.ordSpd = 0; continue; }
+      if (sh.ord === "hunt" && (ai.st === "screen" || ai.st === "lost")) {
+        const best = escorts.filter(q => q.ai.datum && q.ai.contact).sort((a, b) => b.ai.contact - a.ai.contact)[0];
+        if (best && S.t - best.ai.contact < 900) { ai.datum = Object.assign({}, best.ai.datum); ai.dz = best.ai.dz; ai.contact = best.ai.contact; ai.st = "alert"; ai.t = 0; }
+      }
+      if (sh.ord === "patrol" && (ai.st === "screen" || ai.st === "lost")) {
+        const w = sh.wps && sh.wps[0];
+        if (w) { steer(sh, w.x, w.y, C.ESC.listenKn + 4); if (PP.dist(sh.x, sh.y, w.x, w.y) < 600) sh.wps.push(sh.wps.shift()); ai.st = "lost"; ai.t = 0; continue; }
+      }
       /* an escort cannot leave its convoy for ever: back to it after so long, or so far */
       if (ai.st === "screen" || ai.st === "lost") ai.huntT = 0; else ai.huntT = (ai.huntT || 0) + dt;
       const away = cv ? PP.dist(sh.x, sh.y, cv.x, cv.y) : 0, cap = C.ESC.huntT[expert] * (ai.st === "hold" ? 2 : 1);
-      if (ai.st !== "screen" && ai.st !== "lost" && ai.st !== "guns" && (ai.huntT > cap || away > C.ESC.leash[expert] * (ai.st === "hold" ? 2 : 1))) { ai.st = "lost"; ai.t = 0; ev.push({ t: "escortGivesUp", id: sh.id }); }
+      if (ai.st !== "screen" && ai.st !== "lost" && ai.st !== "guns" && sh.ord !== "hunt" && (ai.huntT > cap || away > C.ESC.leash[expert] * (ai.st === "hold" ? 2 : 1))) { ai.st = "lost"; ai.t = 0; ev.push({ t: "escortGivesUp", id: sh.id }); }
       const fresh = ai.contact && S.t - ai.contact < 6;
       sh.lit = Det.night(S) && ai.st !== "screen" && ai.st !== "lost" && (expert || e.mi > 20) && d < 5000;
       /* a boat on the surface, in sight: guns, and the bow */
@@ -140,7 +152,20 @@
 
     /* ---- the charges, sinking to their depth ---- */
     for (const c of S.charges) {
-      c.z += C.DC.sink * dt;
+      c.z += (c.hh ? C.ESC_SIDE.hhSink : C.DC.sink) * dt;
+      /* a hedgehog's bomb goes off only on a hull: it sinks past each boat's depth, and hits her if it is over her */
+      if (c.hh) {
+        for (const s of PP.Engine.afloat(S)) {
+          if (Math.abs(c.z - s.depth) > C.DC.sink * dt + C.ESC_SIDE.hhSink * dt + 6) continue;
+          const u = (c.x - s.x) * PP.hx(s.hdg) + (c.y - s.y) * PP.hy(s.hdg), v = (c.x - s.x) * Math.cos(s.hdg) + (c.y - s.y) * Math.sin(s.hdg);
+          if (Math.abs(u) < C.SUBS[s.cls].len / 2 && Math.abs(v) < 5) {
+            c.done = true; S.stats.hhHits = (S.stats.hhHits || 0) + 1;
+            Sub.hurt(S, 0.75, "mid", ev, s, "hedgehog"); ev.push({ t: "dcBoom", x: c.x, y: c.y, z: c.z, d: 0, near: s.id, hh: true }); break;
+          }
+        }
+        if (c.z > 800 || Sea.depthAt(c.x, c.y) < c.z) c.done = true;
+        continue;
+      }
       if (c.z < c.set) continue;
       c.done = true;
       /* the boom is heard by the whole pack; it hurts the boats within reach of it */
@@ -163,6 +188,89 @@
     Esc.air(S, dt, ev);
   };
   Esc.charge = (S, x, y, set, by) => { S.charges.push({ id: S.nextId++, x, y, z: 0, set: PP.clamp(set, 25, 750), by }); S.stats.charges++; };
+
+  /* ---- the escort you sail yourself ----
+   * Your orders (Esc.order) set her course and speed, her charges' depth, her sonar; the pattern you order
+   * goes off the throwers at once and off the rails along her track; the hedgehog (later in the war)
+   * throws a ring of contact bombs ahead that go off only on a hull; her guns fire on a boat in sight on
+   * the surface; and she rams what she runs down. What she knows of the pack is her contacts (ai.datum),
+   * from the same eyes, ears and sonar every escort has (PP.Detect). */
+  const E_ = () => PP.Engine;
+  Esc.flag = S => S.side === "escorts" ? S.ships.find(q => q.id === S.flag && Sh.alive(q)) || null : null;
+  Esc.mine = S => S.ships.filter(q => q.role === "escort" && Sh.alive(q));
+  Esc.order = (S, a, ev) => {
+    const sh = Esc.flag(S); if (!sh) return;
+    const k = C.SHIPS[sh.cls], X = C.ESC_SIDE;
+    switch (a.a) {
+      case "bell": sh.bell = PP.clamp((sh.bell === undefined ? 3 : sh.bell) + a.d, 0, 6); sh.ordSpd = C.ESC_BELL_F[sh.bell] * k.kn; ev.push({ t: "ordered", what: "bell" }); break;
+      case "setBell": sh.bell = PP.clamp(a.v, 0, 6); sh.ordSpd = C.ESC_BELL_F[sh.bell] * k.kn; break;
+      case "hdg": sh.ordHdg = PP.normAng(a.v); break;
+      case "dcSet": sh.dcSet = PP.clamp((sh.dcSet || 150) + a.d, X.dcSet[0], X.dcSet[1]); ev.push({ t: "dcSet", v: sh.dcSet }); break;
+      case "ping": sh.ping = a.v === undefined ? !sh.ping : !!a.v; ev.push({ t: "ping", on: sh.ping }); break;
+      case "pattern": {
+        if (sh.pat) break;
+        if ((sh.dcLeft || 0) < 2) { ev.push({ t: "noCharges" }); break; }
+        for (const side of [-1, 1]) Esc.charge(S, sh.x + Math.cos(sh.hdg) * C.DC.throw * side, sh.y + Math.sin(sh.hdg) * C.DC.throw * side, sh.dcSet + PP.gauss(() => PP.rand(S)) * 10, sh.id);
+        sh.dcLeft -= 2; sh.pat = { n: Math.min(X.pattern - 2, sh.dcLeft), at: { x: sh.x, y: sh.y }, k: 0 };
+        ev.push({ t: "patternAway", id: sh.id });
+        break;
+      }
+      case "hedgehog": {
+        if (C.monthOf(S.t) < X.hedgehogFrom) { ev.push({ t: "noHedgehog" }); break; }
+        if ((sh.hhLeft || 0) <= 0) { ev.push({ t: "noHedgehog", empty: true }); break; }
+        sh.hhLeft--;
+        const cx = sh.x + PP.hx(sh.hdg) * X.hhRange, cy = sh.y + PP.hy(sh.hdg) * X.hhRange;
+        for (let i = 0; i < 24; i++) { const an = i / 24 * PP.TAU; S.charges.push({ id: S.nextId++, x: cx + Math.cos(an) * X.hhRing, y: cy + Math.sin(an) * X.hhRing, z: 0, set: 900, by: sh.id, hh: true }); }
+        S.stats.hedgehogs = (S.stats.hedgehogs || 0) + 1;
+        ev.push({ t: "hedgehogAway", id: sh.id });
+        break;
+      }
+      case "egun": {
+        if ((sh.gunT || 0) > 0) break;
+        const q = E_().afloat(S).filter(b => Sub.surfaced(b) && b.seenT !== undefined && S.t - b.seenT < 10).map(b => ({ b, d: PP.dist(sh.x, sh.y, b.x, b.y) })).filter(o => o.d < C.ESC.gunRange).sort((p, r) => p.d - r.d)[0];
+        if (!q) { ev.push({ t: "noGunTarget" }); break; }
+        sh.gunT = X.gunReload; S.stats.escShots = (S.stats.escShots || 0) + 1;
+        const p = 0.5 * Math.pow(1 - q.d / C.ESC.gunRange, 1.4) * (0.4 + Det.light(S) * 0.6);
+        if (PP.rand(S) < p) { S.stats.escHits = (S.stats.escHits || 0) + 1; Sub.hurt(S, 0.06 + PP.rand(S) * 0.08, "deck", ev, q.b, "gun"); ev.push({ t: "eGunHit", id: q.b.id }); }
+        else ev.push({ t: "eGunMiss", x: q.b.x + (PP.rand(S) - 0.5) * 120, y: q.b.y + (PP.rand(S) - 0.5) * 120 });
+        ev.push({ t: "escortGun", id: sh.id });
+        break;
+      }
+      case "commandEsc": { const q = S.ships.find(o => o.id === a.id && Sh.alive(o) && o.role === "escort"); if (q && q.id !== S.flag) Esc.take(S, q, ev); break; }
+      case "eorders": { const q = S.ships.find(o => o.id === a.id && Sh.alive(o) && o.role === "escort"); if (q && C.ESC_ORDERS.some(o => o[0] === a.v)) { q.ord = a.v; ev.push({ t: "eorders", id: q.id, name: q.name, v: a.v }); } break; }
+      case "ewp": { const q = S.ships.find(o => o.id === a.id && Sh.alive(o) && o.role === "escort"); if (q) { if (a.clear || !q.wps) q.wps = []; if (a.x !== undefined && q.wps.length < 12) q.wps.push({ x: a.x, y: a.y }); } break; }
+    }
+  };
+  /* take command of escort q: the one you leave goes back to her order, under her own captain */
+  Esc.take = (S, q, ev = []) => {
+    const was = S.ships.find(o => o.id === S.flag);
+    if (was && Sh.alive(was)) { was.ai.st = "lost"; was.ai.t = 0; was.pat = null; }
+    S.flag = q.id; q.ai.st = "user"; q.ord = q.ord || "screen";
+    if (q.bell === undefined) q.bell = 4;
+    q.ordSpd = C.ESC_BELL_F[q.bell] * C.SHIPS[q.cls].kn; q.ordHdg = q.hdg;
+    if (q.dcSet === undefined) q.dcSet = 150;
+    if (q.dcLeft === undefined) q.dcLeft = C.ESC_SIDE.charges;
+    if (q.hhLeft === undefined) q.hhLeft = C.monthOf(S.t) >= C.ESC_SIDE.hedgehogFrom ? C.ESC_SIDE.hedgehogs : 0;
+    ev.push({ t: "command", id: q.id, name: q.name });
+  };
+  Esc.user = (S, sh, dt, ev) => {
+    sh.lit = false;
+    if (sh.gunT > 0) sh.gunT = Math.max(0, sh.gunT - dt);
+    /* the rest of an ordered pattern, off the rails along her track */
+    if (sh.pat) {
+      if (PP.dist(sh.x, sh.y, sh.pat.at.x, sh.pat.at.y) >= C.DC.spacing) {
+        Esc.charge(S, sh.x - PP.hx(sh.hdg) * 20, sh.y - PP.hy(sh.hdg) * 20, sh.dcSet + (sh.pat.k % 2 ? 25 : -10), sh.id);
+        sh.pat.at = { x: sh.x, y: sh.y }; sh.pat.k++; sh.dcLeft--;
+      }
+      if (sh.pat.k >= sh.pat.n || sh.dcLeft <= 0 || sh.spd < 2) sh.pat = null;
+    }
+    /* running down a boat that is up, or nearly */
+    for (const q of E_().afloat(S)) if (PP.dist(sh.x, sh.y, q.x, q.y) < 45 && q.depth < 20 && sh.spd > 6) {
+      S.stats.rams = (S.stats.rams || 0) + 1;
+      Sub.hurt(S, 0.9, "mid", ev, q, "ram"); Sh.hit(S, sh, 0.35, "fore", ev, false, "ram");
+      ev.push({ t: "rammed", id: sh.id, by: q.id, ours: true });
+    }
+  };
 
   /* ---- the air: planes off the Empire's islands, by day (and by night once they carry radar) ---- */
   Esc.airCover = (S) => {

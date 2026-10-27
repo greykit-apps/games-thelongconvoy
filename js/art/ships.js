@@ -7,9 +7,10 @@
  * seen from (seventeen bins from bow-on to stern-on; the other side is the
  * same picture mirrored), at a length in pixels, in a light, and keeps it.
  *
- * Merchants wear black or rust hulls and buff kingposts, the Empire's red
- * band on their funnels; its warships are grey. Our boat is long, low and
- * black, with her teak deck and the conning tower. */
+ * Pumacity's merchants wear black or rust hulls and buff kingposts, the
+ * city's gold band on their funnels; the PDF's escorts are grey. A boat of
+ * the Wolf Empire's pack is long, low and black, with her teak deck and the
+ * conning tower. */
 "use strict";
 (() => {
   const K = PP.K, Mo = PP.Model, A = PP.ShipArt = {};
@@ -52,7 +53,7 @@
     if (win && Math.abs(n[1]) < 0.5 && p[1] > y1 - 1.1 && p[1] < y1 - 0.45) return (Math.abs(n[2]) > 0.5 ? (Math.abs(p[0]) % ws) < ws * 0.55 : (Math.abs(p[2]) % ws) < ws * 0.55) ? "glass" : m;
     return m;
   }));
-  const funnel = (P, z, y0, h, r, band = true, m = "black") => P.push(Cy("y", [0, z], r, [y0, y0 + h], m, (p, n, hit) => hit && hit.cap ? "black" : band && p[1] > y0 + h * 0.62 && p[1] < y0 + h * 0.82 ? "wolfRed" : p[1] > y0 + h - 0.35 ? "black" : m));
+  const funnel = (P, z, y0, h, r, band = true, m = "black") => P.push(Cy("y", [0, z], r, [y0, y0 + h], m, (p, n, hit) => hit && hit.cap ? "black" : band && p[1] > y0 + h * 0.62 && p[1] < y0 + h * 0.82 ? "livery" : p[1] > y0 + h - 0.35 ? "black" : m));
   const mast = (P, z, y0, h, r = 0.18, m = "buff") => { P.push(Cy("y", [0, z], r, [y0, y0 + h], m)); P.push(B([-1.6, y0 + h * 0.62, z - 0.12], [1.6, y0 + h * 0.62 + 0.22, z + 0.12], m)); };
   const kingposts = (P, z, y0, h, w = 2.6) => { for (const x of [-w, w]) P.push(Cy("y", [x, z], 0.2, [y0, y0 + h], "buff")); P.push(B([-w, y0 + h - 0.4, z - 0.15], [w, y0 + h - 0.15, z + 0.15], "buff")); };
   const hatch = (P, z, y, w, l) => P.push(B([-w, y, z - l / 2], [w, y + 0.7, z + l / 2], "canvas"));
