@@ -14,7 +14,8 @@ validate:
     # every script parses
     - for f in js/*.js js/engine/*.js js/art/*.js tools/*.js; do node --check "$f"; done
     # the sea sound, the firing solution true, every convoy action winnable by the bot, and a replay that matches step for step
-    - node tools/sim-check.js --seeds 2
+    # one seed here to keep the pipeline short (a pack is dear to step); run it locally with the default two before a merge
+    - node tools/sim-check.js --seeds 1
     # every script and stylesheet URL carries its content hash, so Cloudflare's 30-day cache never serves an old one
     - node tools/stamp-assets.js --check
 
