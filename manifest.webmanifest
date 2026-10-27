@@ -1,0 +1,14 @@
+{
+  "name": "PumaPack",
+  "short_name": "PumaPack",
+  "description": "Lead a pack of puma submarines against the Wolf Empire's convoys: a remake of Wolfpack, NovaLogic's 1990 classic.",
+  "start_url": ".",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#05070f",
+  "theme_color": "#05070f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

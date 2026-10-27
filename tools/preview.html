@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PumaPack: the ship sheet</title>
+<style>
+  body { margin: 0; background: #0b1018; color: #ece7dc; font: 500 15px/1.4 "Barlow Semi Condensed", system-ui, sans-serif; }
+  header { padding: 16px 20px; display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 24px; }
+  a { color: #f2c14e; }
+  canvas { display: block; image-rendering: pixelated; }
+  .note { color: #aab0b8; }
+</style>
+</head>
+<body>
+<header><h1>The ship sheet</h1>
+  <span class="note">Every class at every angle on the bow, traced from its model. Light:</span>
+  <a href="?light=day">day</a> <a href="?light=dusk">dusk</a> <a href="?light=night">night</a>
+  <span class="note">· ?size=90 sets the small row's length in pixels · ?scale=2</span></header>
+<canvas id="c"></canvas>
+<script src="../js/util.js"></script>
+<script src="../js/engine/const.js"></script>
+<script src="../js/art/kit.js"></script>
+<script src="../js/art/model.js"></script>
+<script src="../js/art/ships.js"></script>
+<script>
+"use strict";
+(() => {
+  const q = new URLSearchParams(location.search), light = q.get("light") || "day", A = PP.ShipArt, K = PP.K;
+  const size = +(q.get("size") || 72), scale = +(q.get("scale") || 2);
+  const classes = A.CLASSES, BIG = [0, 3, 6, 8, 11, 16];
+  const t0 = performance.now();
+  /* the light's sea and sky behind each row */
+  const sky = { day: ["#82acd8", "#b4cfe6"], dusk: ["#5a3a66", "#f09a62"], night: ["#0a1228", "#1a2a4c"] }[light];
+  const sea = { day: "#2f5f86", dusk: "#2c3550", night: "#0a1424" }[light];
+  const colW = Math.round(size * 1.15) + 8, rowH = Math.round(size * 0.55) + 18, bigW = 300, bigH = 130;
+  const W = Math.max(colW * 17 + 120, bigW * BIG.length + 120), H = classes.length * (rowH + bigH) + 40;
+  const cv = document.getElementById("c"); cv.width = W; cv.height = H; cv.style.width = W * scale + "px"; cv.style.height = H * scale + "px";
+  const g = cv.getContext("2d"); g.imageSmoothingEnabled = false;
+  g.fillStyle = "#0b1018"; g.fillRect(0, 0, W, H);
+  const band = (y, h) => { const hz = y + Math.round(h * 0.68); K.vgrad(g, 0, y, W, hz - y, sky); g.fillStyle = sea; g.fillRect(0, hz, W, y + h - hz); return hz; };
+  let y = 10;
+  for (const cls of classes) {
+    const hz = band(y, rowH);
+    K.text5(g, cls, 6, y + 4, "#ece7dc", "#000");
+    for (let b = 0; b <= 16; b++) {
+      const sp = A.sprite(cls, b, size, light), x = 110 + b * colW + colW / 2;
+      g.drawImage(sp, Math.round(x - sp.ox), Math.round(hz - sp.oy));
+      if (cls === classes[0]) K.text3(g, String(Math.round(b * 180 / 16)), Math.round(x - 6), y + rowH - 7 - rowH + 6, "#ece7dc");
+    }
+    y += rowH;
+    const hz2 = band(y, bigH);
+    BIG.forEach((b, i) => { const sp = A.sprite(cls, b, 274, light), x = 110 + i * bigW + bigW / 2; g.drawImage(sp, Math.round(x - sp.ox), Math.round(hz2 - sp.oy)); });
+    y += bigH;
+  }
+  const ms = Math.round(performance.now() - t0);
+  document.querySelector("header").insertAdjacentHTML("beforeend", `<span class="note">${K.cache.size} pictures traced in ${ms} ms</span>`);
+})();
+</script>
+</body>
+</html>

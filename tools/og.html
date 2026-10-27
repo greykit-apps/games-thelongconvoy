@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>og.png</title>
+<!-- The share card (og.png, 1200x630), laid out as the family's are (a cyan
+     rule, the wordmark with "Puma" in cyan, the description, a tagline, the
+     icon top right) beside a periscope view drawn by the game's own renderer
+     at three times: a convoy at dusk, one ship hit and burning. Serve the
+     repo over http, open tools/og.html, and save the canvas (window.ogPNG()
+     is its data URL), or screenshot it headless at 1200x630:
+       msedge --headless --hide-scrollbars --window-size=1200,630
+              --screenshot=og.png http://127.0.0.1:8783/tools/og.html
+     The description and tagline are placeholders until the owner words them.
+     Not deployed. -->
+<style>body{margin:0;background:#222;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="og" width="1200" height="630"></canvas>
+<script>
+const SRC = ["../js/util.js", "../js/engine/const.js", "../js/engine/sea.js", "../js/engine/sub.js", "../js/engine/ships.js", "../js/engine/detect.js", "../js/engine/escort.js", "../js/engine/weapons.js",
+  "../js/engine/scenarios.js", "../js/engine/world.js", "../js/art/kit.js", "../js/art/model.js", "../js/art/ships.js", "../js/art/fx.js", "../js/art/view.js"];
+(function next(i) { if (i === SRC.length) return main(); const e = document.createElement("script"); e.src = SRC[i] + "?t=" + Date.now(); e.onload = () => next(i + 1); document.head.appendChild(e); })(0);
+</script>
+<script>
+function main() {
+"use strict";
+(() => {
+  const K = PP.K, E = PP.Engine, V = PP.View, FX = PP.FX;
+  PP.Sea.build();
+  const S = E.newAction("custom", { seed: 11, real: PP.C.REAL_NONE, custom: { mi: 20, cls: "cougar", pack: "1", size: "medium", escorts: "light", time: "dusk", wx: "clear" } });
+  S.t = Math.floor(S.t / PP.C.DAY) * PP.C.DAY + 18.25 * 3600;
+  const cv0 = S.convoys[0], h = cv0.base;
+  /* the eye: ahead of the convoy and off its bow, low, at periscope height */
+  const ex = cv0.x + PP.hx(h) * 1900 + Math.cos(h) * 1500, ey = cv0.y + PP.hy(h) * 1900 + Math.sin(h) * 1500;
+  const brg = PP.angTo(ex, ey, cv0.x, cv0.y);
+  const hit = S.ships.filter(q => q.role === "merchant").sort((a, b) => Math.abs(PP.angDiff(brg, PP.angTo(ex, ey, a.x, a.y))) - Math.abs(PP.angDiff(brg, PP.angTo(ex, ey, b.x, b.y))))[1];
+  hit.fire = 1;
+  FX.hit(hit.x, hit.y, 1); for (const p of FX.items) p.t = p.life * 0.35;
+  for (let i = 0; i < 10; i++) FX.smoke(hit.x + (Math.random() - 0.5) * 80, hit.y, 20 + i * 14, { r: 14 + i * 4, dark: 0.85, life: 30 });
+  PP.ShipArt.budget = 99;
+  const W = 400, H = 210, sc = K.mk(W, H), g0 = sc.getContext("2d");
+  g0.fillStyle = "#05070a"; g0.fillRect(0, 0, W, H);
+  const r = 90, cx = 280, cy = 114;
+  V.draw(g0, S, { x: ex, y: ey, eyeH: 6, brg, fov: 15 * PP.DEG, cx, cy, r, now: 4000, aids: {}, calm: true, mask: "scope" });
+  /* the periscope's glass: a ring, the reticle */
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x - cx, y - cy); if (d > r || (d > r * 0.88 && K.bayer(x, y) + 0.5 < (d - r * 0.88) / (r * 0.12))) { g0.fillStyle = "#05070a"; g0.fillRect(x, y, 1, 1); } }
+  g0.fillStyle = "rgba(8,12,16,.8)"; g0.fillRect(cx - r, cy, r * 2, 1); g0.fillRect(cx, cy - r, 1, r * 2);
+  for (let i = -6; i <= 6; i++) if (i) { const y = cy + i * 7, w = i % 3 === 0 ? 6 : 3; g0.fillRect(cx - w, y, w * 2 + 1, 1); }
+  const cv = document.getElementById("og"), g = cv.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.drawImage(sc, 0, 0, 1200, 630);
+  const sh = g.createLinearGradient(0, 0, 640, 0);
+  sh.addColorStop(0, "rgba(5,7,15,.96)"); sh.addColorStop(0.7, "rgba(5,7,15,.86)"); sh.addColorStop(1, "rgba(5,7,15,0)");
+  g.fillStyle = sh; g.fillRect(0, 0, 640, 630);
+  g.fillStyle = "#54f2ff"; g.fillRect(0, 0, 1200, 8);
+  const mono = 'Menlo, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
+  g.textBaseline = "alphabetic";
+  g.font = `bold 84px ${mono}`;
+  g.fillStyle = "#54f2ff"; g.fillText("Puma", 72, 150);
+  g.fillStyle = "#e9e9f2"; g.fillText("Pack", 72, 238);
+  g.font = `28px ${mono}`; g.fillStyle = "#b4bac6";
+  const words = "Lead a pack of submarines against the Wolf Empire's convoys: switch between your boats and bring them in on the convoy together.".split(" "), lines = [""];
+  for (const w of words) { const t = lines[lines.length - 1] ? lines[lines.length - 1] + " " + w : w; if (g.measureText(t).width > 500) lines.push(w); else lines[lines.length - 1] = t; }
+  lines.forEach((l, i) => g.fillText(l, 72, 310 + i * 40));
+  g.font = `24px ${mono}`; g.fillStyle = "#54f2ff";
+  g.fillText("A remake of Wolfpack, the 1990 classic", 72, 566);
+  const img = new Image();
+  img.onload = () => { g.drawImage(img, 1040, 40, 120, 120); window.ogReady = true; document.title = "ready"; };
+  img.src = "../icon.svg?" + Date.now();
+  window.ogPNG = () => cv.toDataURL("image/png");
+})();
+}
+</script>
+</body>
+</html>

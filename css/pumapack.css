@@ -1,0 +1,540 @@
+/* PumaPack -- the page around the play screen, and the HUD over it:
+ * flat dark panels over the sea, hairline edges, warm
+ * off-white words in a condensed sans, the keys and the readings in it too
+ * (tabular figures; only the clock is in the pixel face, which merges T and
+ * the up arrow, S and 5, O and 0, so it never sets a key or a letter),
+ * brass for what is ready and chosen, sonar green for good news, amber for
+ * a warning, red-orange for danger. Where a control can be chosen as well
+ * as focused, the focus is an off-white ring and only "chosen" is brass.
+ * That is the HUD's world. Every screen with words on it (the title's menu,
+ * the pause, the sheets, the questions) is signal paper instead: naval
+ * message blanks, printed labels, typed entries (Courier Prime), ink for
+ * chosen, the red pencil (a tick and an underline) for the focus, see
+ * "signal paper" below. The stations themselves are pixel art (js/art/).
+ * The canon palette (css/gk-tokens.css) still comes first, for the
+ * greykit.games boot; nothing here gives a canon name another value
+ * (games-meta STANDARD.md §4). A
+ * desktop game: small screens get a note. */
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; font-display: swap; src: url(../fonts/barlow-semi-condensed-500.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 600; font-display: swap; src: url(../fonts/barlow-semi-condensed-600.woff2) format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 700; font-display: swap; src: url(../fonts/barlow-semi-condensed-700.woff2) format("woff2"); }
+@font-face { font-family: "Pixelify Sans"; font-weight: 400 700; font-display: swap; src: url(../fonts/pixelify-sans.woff2) format("woff2"); }
+@font-face { font-family: "Courier Prime"; font-weight: 400; font-display: swap; src: url(../fonts/courier-prime-400.woff2) format("woff2"); }
+@font-face { font-family: "Courier Prime"; font-weight: 700; font-display: swap; src: url(../fonts/courier-prime-700.woff2) format("woff2"); }
+:root {
+  --ui: "Barlow Semi Condensed", "Bahnschrift SemiCondensed", "Bahnschrift", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  --px: "Pixelify Sans", ui-monospace, monospace;
+  --ps-bg: #070b12;                       /* the page behind everything */
+  --ps-panel: rgba(12,18,27,.95);         /* a panel over the bay */
+  --ps-hudpanel: rgba(10,15,23,.86);
+  --ps-raise: #1b2330;                    /* a control at rest */
+  --ps-raise2: #263142;                   /* a control under the cursor */
+  --ps-hair: rgba(233,228,216,.10);
+  --ps-line: rgba(233,228,216,.18);
+  --ps-text: #ece7dc;                     /* 14.6:1 on the panel */
+  --ps-muted: #aab0b8;                    /* 7.9:1 */
+  --ps-faint: #8d949d;                    /* 5.6:1 */
+  --ps-yellow: #e6bd6a;                   /* brass: ready, chosen */
+  --ps-yellow-hi: #f6d590;
+  --ps-green: #7fe0a8;                    /* sonar green: good news */
+  --ps-amber: #f0a43c;                    /* a warning */
+  --ps-red: #e8573a;                      /* danger, as a fill or an edge */
+  --ps-red-text: #ff9a80;                 /* danger as words, 7.4:1 */
+  --ps-tawny: #e2ad6a;                    /* the puma */
+  --ps-ink: #121821;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ps-bg); color: var(--ps-text); font: 500 16px/1.45 var(--ui); }
+body { overflow: hidden; -webkit-text-size-adjust: 100%; caret-color: var(--ps-yellow); -webkit-font-smoothing: antialiased; }
+::selection { background: var(--ps-yellow); color: var(--ps-ink); }
+[hidden] { display: none !important; }
+img.px, .px { image-rendering: pixelated; image-rendering: crisp-edges; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+h1, h2, h3 { font-weight: 600; }
+* { scrollbar-width: thin; scrollbar-color: rgba(233,228,216,.22) transparent; }
+
+/* ---- controls: the pointer moves the focus, so the focused control is the only lit one ---- */
+button { font: 600 16px/1.2 var(--ui); color: var(--ps-text); background: var(--ps-raise); border: 1px solid var(--ps-line); border-radius: 4px; cursor: pointer; padding: 8px 16px; text-align: inherit; transition: background-color .12s, border-color .12s, color .12s; }
+button:focus { outline: none; background: var(--ps-raise2); border-color: var(--ps-text); box-shadow: 0 0 0 1px var(--ps-text); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--ps-yellow); border-color: var(--ps-yellow); color: var(--ps-ink); }
+button.primary:focus { background: var(--ps-yellow-hi); border-color: var(--ps-yellow-hi); box-shadow: 0 0 0 2px var(--ps-bg), 0 0 0 4px var(--ps-text); }
+button.danger { background: transparent; border-color: rgba(232,87,58,.7); color: var(--ps-red-text); }
+button.danger:focus { background: var(--ps-red); border-color: var(--ps-red); color: var(--ps-ink); box-shadow: none; }
+button.pill { display: inline-flex; align-items: center; gap: 10px; background: transparent; color: var(--ps-muted); font-weight: 500; }
+button.pill::before { content: ""; width: 10px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; }
+button.pill.on { color: var(--ps-text); border-color: rgba(230,189,106,.6); background: rgba(230,189,106,.1); }
+button.pill.on::before { background: var(--ps-yellow); border-color: var(--ps-yellow); }
+button.pill:focus { color: var(--ps-text); background: var(--ps-raise2); border-color: var(--ps-text); box-shadow: 0 0 0 1px var(--ps-text); }
+button.pill.on:focus { background: rgba(230,189,106,.16); }
+button.switch { min-width: 84px; }
+/* a key cap: the sans, never the pixel face (which makes T an up arrow, Z a 2 and S a 5); the arrows drawn */
+kbd { display: inline-block; min-width: 1.85em; padding: 3px 5px 2px; font: 600 13px/1 var(--ui); letter-spacing: .03em; text-align: center; color: var(--ps-text); border: 1px solid rgba(233,228,216,.3); border-bottom-width: 2px; border-radius: 3px; background: rgba(233,228,216,.07); }
+kbd .kb-ar { display: block; margin: 0 auto; width: 10px; height: 13px; padding: 1.5px 0; }
+kbd.pad { font-size: 12px; letter-spacing: .02em; color: var(--ps-yellow-hi); border-color: rgba(230,189,106,.45); }
+kbd.pad .kb-ar { display: inline-block; vertical-align: -1px; height: 10px; padding: 0; margin-left: 2px; }
+kbd.pad.face { min-width: 1.6em; border-radius: 999px; }
+.kb-plus { margin: 0 2px; color: var(--ps-faint); }
+a, body .gk-credit a { color: var(--ps-yellow-hi); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--ps-yellow); outline-offset: 2px; border-radius: 2px; }
+input { font: 500 18px var(--ui); color: var(--ps-text); background: var(--ps-bg); border: 1px solid var(--ps-line); border-radius: 4px; padding: 8px 10px; min-width: 0; width: 220px; }
+input:focus { outline: none; border-color: var(--ps-yellow); }
+input::placeholder { color: var(--ps-faint); }
+
+/* ---- a sheet: a page of signal paper over the dimmed bay or title (no blur) ---- */
+.ps-sheet { z-index: 50; }
+.ps-sheet.full { position: fixed; inset: 0; display: grid; place-items: center; padding: 32px; background: rgba(6,10,16,.66); }
+.sh-box, .ps-win { display: flex; flex-direction: column; background: var(--ps-panel); border: 1px solid var(--ps-line); border-radius: 8px; box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04); overflow: hidden; }
+.sh-box { width: min(820px, 100%); max-height: calc(100vh - 64px); }
+.ps-sheet.wide .sh-box { width: min(1080px, 100%); }
+.ps-sheet.tabbed .sh-box { height: min(600px, calc(100vh - 64px)); }
+.sh-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 16px 20px 14px 24px; border-bottom: 1px solid var(--ps-hair); }
+.sh-head h2 { flex: 1; margin: 0; font-size: 26px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-head button { display: inline-flex; align-items: center; gap: 7px; background: transparent; border-color: transparent; color: var(--ps-muted); font-size: 15px; padding: 6px 10px; }
+.sh-head .ic { display: block; flex: none; }
+.sh-head button:focus { color: var(--ps-text); background: var(--ps-raise); border-color: var(--ps-line); box-shadow: none; }
+.sh-tabs { flex: none; display: flex; flex-wrap: wrap; gap: 0 22px; padding: 0 24px; border-bottom: 1px solid var(--ps-hair); }
+.sh-tabs button { background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 12px 0 10px; color: var(--ps-muted); font-weight: 600; letter-spacing: .02em; }
+.sh-tabs button[aria-selected="true"] { color: var(--ps-text); border-bottom-color: var(--ps-yellow); }
+.sh-tabs button:focus { color: var(--ps-text); background: transparent; box-shadow: none; border-bottom-color: var(--ps-yellow-hi); }
+.sh-tabs button:focus-visible { outline: 1px solid var(--ps-text); outline-offset: 2px; }
+.sh-body { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 24px 26px; }
+.sh-body:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(230,189,106,.45); }
+.ps-pop, .ps-ask { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; z-index: 50; }
+/* the pause menu stands on the left, the target and the TDC on the right left clear to study */
+.ps-pop { justify-items: start; align-items: center; padding-left: clamp(24px, 4vw, 64px); background: linear-gradient(90deg, rgba(6,10,16,.7) 0%, rgba(6,10,16,.5) 30%, rgba(6,10,16,.1) 55%, rgba(6,10,16,0) 70%); }
+.ps-ask { z-index: 70; background: rgba(6,10,16,.6); }
+.ps-pop .ps-win { width: min(440px, 100%); }
+.ps-ask .ps-win { width: min(520px, 100%); }
+.ps-ask .sh-body { padding: 20px 24px 22px; }
+/* here the pointer does not take the focus (Enter stays on Cancel), so it lights what it is over */
+@media (hover: hover) {
+  .ps-ask button:not(:focus):hover { background: var(--ps-raise2); border-color: var(--ps-text); }
+  .ps-ask button.danger:not(:focus):hover { background: rgba(232,87,58,.16); border-color: var(--ps-red); }
+  .ps-ask button.primary:not(:focus):hover { background: var(--ps-yellow-hi); border-color: var(--ps-yellow-hi); }
+  .ps-ask .paper button.danger:not(:focus):hover { background: transparent; border-color: var(--p-red); }
+}
+
+/* ---- the words ---- */
+.sh-body p { margin: 0 0 12px; max-width: 62ch; text-wrap: pretty; }
+.sh-body p.lede { font-size: 18px; color: var(--ps-text); }
+.sh-body h3 { margin: 26px 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-muted); }
+.sh-body h3:first-child { margin-top: 0; }
+.sh-body b { font-weight: 600; color: var(--ps-text); }
+.sh-body ol, .sh-body ul { margin: 0 0 12px; padding-left: 24px; }
+.sh-body table { border-collapse: collapse; margin: 0 0 12px; }
+.sh-body td, .sh-body th { padding: 6px 16px 6px 0; vertical-align: top; text-align: left; }
+.sh-body th { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ps-muted); font-weight: 600; }
+.note, .gk-credit { color: var(--ps-muted); }
+.meta { color: var(--ps-muted); margin: 6px 0 16px; font-size: 15px; }
+.sh-body h3.mname { margin: 0; font-size: 24px; line-height: 1.15; letter-spacing: 0; text-transform: none; color: var(--ps-text); }
+.sh-body h3.mname.big { font-size: 40px; line-height: 1.05; }
+.sh-body h3.mname.ok { color: var(--ps-green); }
+.sh-body h3.mname.danger { color: var(--ps-red-text); }
+.sh-body h3.mname.dim { color: var(--ps-muted); }
+.rank { font-size: 20px; margin-bottom: 4px; }
+.rank b { color: var(--ps-yellow); }
+.sh-body p.nextrank { margin: 0 0 16px; font-size: 15px; }
+.sh-body p.placed { margin: 0 0 14px; font-size: 26px; font-weight: 700; line-height: 1.15; color: var(--ps-yellow); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; }
+.row.end { justify-content: flex-end; margin-top: 22px; }
+.col { display: flex; flex-direction: column; gap: 6px; max-width: 420px; margin-bottom: 16px; }
+.col button { text-align: left; }
+.keys { line-height: 2; }
+.keys > span { white-space: nowrap; }
+.num { font-family: var(--ui); font-weight: 600; font-variant-numeric: tabular-nums; }
+td.num, th.num { text-align: right; }
+th.num { font-family: var(--ui); }
+img.glyph { display: block; }
+
+/* ---- signal paper: every screen with words on it (the title's menu, the pause, the sheets, the
+ * questions) is a naval message blank, faint sea-green print on pale paper, typed entries in Courier
+ * Prime. On paper the jobs keep their meaning, not their colours: ink for what is chosen and for the
+ * one action Enter takes, the red pencil for the focus, a deep red for danger. The HUD stays dark. ---- */
+.paper {
+  --p-paper: #d9dcc6; --p-print: #2f5a52; --p-rule: rgba(47,90,82,.36); --p-hair: rgba(47,90,82,.2);
+  --p-ink: #1d2a2a; --p-ink2: #4b5b58; --p-pencil: #c2452f; --p-red: #9b2c1c;
+  --p-type: "Courier Prime", "Courier New", ui-monospace, monospace;
+  /* the dark world's names given their paper values, so a sheet's own rules read right on it */
+  --ps-text: var(--p-ink); --ps-muted: #3a4845; --ps-faint: #52605c; --ps-line: rgba(29,42,42,.32); --ps-hair: var(--p-hair);
+  --ps-raise: rgba(255,255,255,.3); --ps-raise2: rgba(255,255,255,.55); --ps-bg: var(--p-paper); --ps-panel: var(--p-paper);
+  --ps-yellow: var(--p-ink); --ps-yellow-hi: var(--p-ink); --ps-ink: var(--p-paper);
+  --ps-green: #286340; --ps-amber: #7a4f0c; --ps-red: var(--p-red); --ps-red-text: var(--p-red);
+  position: relative; color: var(--p-ink); border: 0; border-radius: 1px;
+  background: var(--p-paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .24 0 0 0 0 .18 .16 0 0 0 -.03'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 22px 60px rgba(0,0,0,.5);
+}
+.paper { caret-color: var(--p-ink); }
+.paper, .paper * { scrollbar-color: rgba(29,42,42,.32) transparent; }
+.paper ::selection { background: rgba(194,69,47,.28); color: var(--p-ink); }
+.paper kbd { color: var(--p-ink); background: rgba(255,255,255,.22); border-color: rgba(29,42,42,.4); }
+.paper kbd.pad { color: var(--p-ink); border-color: rgba(29,42,42,.5); }
+.paper .kb-plus { color: var(--p-ink2); }
+.paper a, .paper .gk-credit a { color: var(--p-print); }
+.paper a:focus-visible, .paper .aid-list summary:focus-visible { outline: none; text-decoration: underline 2px var(--p-pencil); text-underline-offset: 4px; }
+/* a control on paper: square, an inked outline at rest, ink-filled when it is the one Enter takes. In focus it takes
+ * the pencil as a signal's lines do, a tick at its corner and its words underlined, never a ring */
+.paper button, .paper input { border-radius: 0; }
+.paper button { position: relative; }
+.paper button:focus { background: var(--ps-raise); border-color: var(--ps-line); box-shadow: none; text-decoration: underline 2px var(--p-pencil); text-underline-offset: 4px; text-decoration-skip-ink: none; }
+.paper button.primary:focus { background: var(--p-ink); border-color: var(--p-ink); text-decoration-color: var(--p-paper); }
+/* on an inked button the pencil's tick stands off the corner, on the paper, where it reads (3.6:1, not 2.95 on the ink) */
+.paper button.primary:focus::after { left: -15px; top: -15px; }
+.paper button.danger { border-color: rgba(155,44,28,.6); }
+.paper button.danger:focus { background: var(--p-red); border-color: var(--p-red); color: var(--p-paper); }
+.paper button:focus::after { content: ""; position: absolute; left: -10px; top: -11px; width: 22px; height: 18px; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M2.4 10.8 C4.6 12.2 6.6 14.4 8.4 17.4 C11.6 10.6 16.2 5.6 22.2 1.8' fill='none' stroke='%23c2452f' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; animation: p-tick .16s cubic-bezier(.3,.7,.2,1) both; }
+@keyframes p-tick { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+:is(.ps-msg, .ps-pop .col) button:focus::after, .paper .sh-tabs button:focus::after { content: none; }
+.paper button.pill.on, .paper button.pill.on:focus { border-color: var(--p-ink); background: rgba(29,42,42,.06); }
+.paper button.switch { font-family: var(--p-type); font-weight: 700; }
+.paper input { background: rgba(255,255,255,.42); border-color: rgba(29,42,42,.36); }
+.paper input:focus { border-color: rgba(29,42,42,.36); border-bottom: 2px solid var(--p-pencil); box-shadow: none; }
+/* the printed head: who it is from and to, and when */
+.msg-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 13px 20px 9px; border-bottom: 2px solid var(--p-print); font: 700 14px/1 var(--ui); letter-spacing: .24em; text-transform: uppercase; color: var(--p-print); }
+.msg-f { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.2fr); margin: 0; border-bottom: 2px solid var(--p-print); }
+.msg-f > div { min-width: 0; padding: 7px 14px 8px; border-right: 1px solid var(--p-rule); }
+.msg-f > div:nth-child(3) { border-right: 0; }
+.msg-f .w { grid-column: 1 / -1; border-right: 0; border-top: 1px solid var(--p-rule); }
+.msg-f .w:first-child { border-top: 0; border-bottom: 1px solid var(--p-rule); }
+.msg-f dt { font: 600 12px/1.3 var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--p-print); }
+.msg-f dd { margin: 3px 0 0; font: 400 16px/1.3 var(--p-type); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-l { margin: 0; padding: 7px 20px 3px; font: 600 12px/1.3 var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--p-print); }
+/* a signal's typed lines (the title's menu, the pause): no box, the red-pencil tick and underline for the focus */
+:is(.ps-msg, .ps-pop .col) button { position: relative; display: grid; align-items: center; width: 100%; border: 0; border-radius: 0; background: transparent; color: var(--p-ink); font: 700 21px/1 var(--p-type); text-align: left; box-shadow: none; }
+:is(.ps-msg, .ps-pop .col) button:focus { background: transparent; border: 0; box-shadow: none; color: var(--p-ink); text-decoration: none; }
+:is(.ps-msg, .ps-pop .col) .lbl { white-space: nowrap; text-decoration: underline 2px transparent; text-underline-offset: 5px; text-decoration-skip-ink: none; transition: text-decoration-color .12s; }
+:is(.ps-msg, .ps-pop .col) button:focus .lbl { text-decoration-color: var(--p-pencil); }
+.paper .tick { position: absolute; top: 50%; margin-top: -9px; color: var(--p-pencil); opacity: 0; }
+.paper .tick path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.paper button:focus .tick { opacity: 1; }
+.paper button:focus .tick path { stroke-dashoffset: 0; transition: stroke-dashoffset .16s cubic-bezier(.3,.7,.2,1); }
+
+/* the pause: a plain slip of it, no pin, no tilt, no typing */
+.ps-pop .ps-win { width: min(440px, 100%); overflow: visible; }
+.ps-pop .sh-head { padding: 16px 22px 11px; }
+.ps-pop .sh-head h2 { font-size: 30px; line-height: 1; }
+.ps-pop .sh-body { padding: 0; overflow: visible; }
+.ps-pop .msg-f { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ps-pop .col { max-width: none; gap: 0; margin: 0; padding: 4px 0; }
+.ps-pop .col button { height: 44px; padding: 0 22px 0 40px; font-size: 19px; }
+.ps-pop .col .tick { left: 10px; }
+.ps-pop .keys { margin: 0; padding: 11px 22px 13px; border-top: 2px solid var(--p-print); font: 600 14px/1.2 var(--ui); color: var(--p-print); max-width: none; }
+.ps-pop .keys.legend { display: grid; grid-template-columns: max-content 1fr max-content 1fr; gap: 7px 12px; align-items: center; }
+.ps-pop .keys.legend .k { display: flex; gap: 4px; justify-self: end; }
+
+/* the sheets and the questions: a page of the same paper over the dimmed sea, its title typed, its labels printed */
+.paper .sh-head { border-bottom: 2px solid var(--p-print); }
+.paper .sh-head h2 { font: 700 26px/1.1 var(--p-type); color: var(--p-ink); }
+.paper .sh-head button { color: var(--p-print); }
+.paper .sh-head button:focus { color: var(--p-ink); background: transparent; border-color: transparent; }
+.paper .sh-tabs { border-bottom: 1px solid var(--p-rule); }
+.paper .sh-tabs button { color: var(--p-print); font-size: 14px; letter-spacing: .2em; text-transform: uppercase; }
+.paper .sh-tabs button[aria-selected="true"] { color: var(--p-ink); border-bottom-color: var(--p-ink); }
+.paper .sh-tabs button:focus { color: var(--p-ink); background: transparent; box-shadow: none; border-bottom-color: var(--p-pencil); text-decoration: none; }
+.paper .sh-tabs button:focus-visible { outline: none; }
+.paper .sh-body:focus-visible { box-shadow: inset 0 2px 0 var(--p-pencil); }
+.paper .sh-body h3, .paper .sh-body th { color: var(--p-print); }
+.paper .sh-body h3.mname { font-family: var(--p-type); font-weight: 700; color: var(--p-ink); }
+.paper .sh-body h3.mname.ok { color: var(--ps-green); }
+.paper .sh-body h3.mname.danger { color: var(--p-red); }
+.paper .sh-body h3.mname.dim { color: var(--ps-muted); }
+/* a card that is a choice, on paper: square, its name and date typed; inked when chosen, the pencil's tick and underline on the one in focus */
+.paper .diffs button { border-radius: 0; }
+.paper .diffs button b { font-family: var(--p-type); font-size: 16px; font-weight: 700; }
+.paper .diffs .meta { font-family: var(--p-type); font-size: 14px; }
+.paper .diffs button.on { background: rgba(29,42,42,.05); }
+.paper .diffs button:focus { background: var(--ps-raise); border-color: var(--ps-line); box-shadow: none; text-decoration: none; }
+.paper .diffs button.on:focus { border-color: var(--p-ink); box-shadow: inset 0 0 0 1px var(--p-ink); }
+.paper .diffs button:focus b { color: var(--p-ink); text-decoration: underline 2px var(--p-pencil); text-underline-offset: 4px; text-decoration-skip-ink: none; }
+.paper .diffs button:focus span, .paper .diffs button:focus .last { color: var(--ps-muted); }
+.paper .diffs button:focus kbd { color: var(--p-ink); border-color: rgba(29,42,42,.4); background: rgba(255,255,255,.22); }
+.paper .diffs button.on:focus b::before { background: var(--p-ink); border-color: var(--p-ink); }
+/* what is entered on a sheet is typed: the record's names and figures, the rank, the honours */
+.paper table.scores td, .paper table.tally td, .paper table.scores .num, .paper table.tally .num { font-family: var(--p-type); font-size: 15px; }
+.paper .rank, .paper .sh-body p.placed, .paper .sh-body p.honour { font-family: var(--p-type); }
+
+/* ---- the title: the bay behind, the name, and the signal pinned over the sea ---- */
+.ps-title { position: fixed; inset: 0; overflow: hidden; background: #1a2238; }
+.ps-scene { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+.ps-shade { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(6,10,16,.8) 0%, rgba(6,10,16,.5) 32%, rgba(6,10,16,.06) 60%, rgba(6,10,16,0) 72%), radial-gradient(ellipse 80% 90% at 60% 45%, rgba(0,0,0,0) 55%, rgba(6,12,28,.45) 100%); }
+.ps-title main { position: relative; height: 100%; width: min(720px, 100%); display: flex; flex-direction: column; justify-content: center; padding: 28px 0 64px clamp(32px, 7vw, 120px); }
+.ps-mark { margin: 0; font: 700 clamp(56px, min(8.1vw, 13vh), 116px)/.86 var(--ui); text-transform: uppercase; letter-spacing: .01em; color: var(--ps-text); text-shadow: 0 4px 28px rgba(0,0,0,.5); }
+.ps-mark > span { display: block; }
+.ps-mark .puma { color: var(--ps-tawny); }
+.ps-mark .svc { letter-spacing: .06em; }
+.ps-msg { --row: clamp(34px, 5vh, 46px); width: min(560px, 100%); margin-top: clamp(22px, 3.6vh, 36px); transform: rotate(-.6deg); transform-origin: 50% 0; }
+/* the pin it hangs by */
+.ps-msg::before { content: ""; position: absolute; z-index: 2; left: 66%; top: -9px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #8a2c22; box-shadow: 1px 4px 5px rgba(0,0,0,.45); }
+/* the text: the five orders as typed lines, the key in the margin and the tick beside it */
+.msg-t { background: linear-gradient(90deg, transparent 63px, var(--p-rule) 63px 64px, transparent 64px); }
+.msg-t button { grid-template-columns: 64px max-content minmax(0, 1fr); height: var(--row); padding: 0 20px 0 0; border-bottom: 1px solid var(--p-hair); }
+.msg-t button:last-child { border-bottom: 0; }
+.msg-t kbd { justify-self: end; margin-right: 11px; }
+.msg-t .lbl { padding-left: 16px; }
+.msg-t .meta { justify-self: end; max-width: 100%; margin: 0; padding-left: 14px; font: 400 15px/1.2 var(--p-type); color: var(--p-ink2); overflow: hidden; text-overflow: ellipsis; }
+.ps-msg .tick { left: 5px; }
+.ps-msg .util { display: flex; border-top: 2px solid var(--p-print); }
+.ps-msg .util button { flex: 1; grid-template-columns: max-content minmax(0, 1fr); gap: 10px; height: 46px; padding: 0 12px 0 34px; font-size: 17px; border-right: 1px solid var(--p-rule); }
+.ps-msg .util button:last-child { border-right: 0; }
+.ps-msg .util .lbl { overflow: hidden; text-overflow: ellipsis; }
+.ps-msg .util .tick { left: 7px; }
+/* Help's prose in two columns across the wide sheet, the way a manual's page is set */
+.sh-body .cols { columns: 2 320px; column-gap: 44px; }
+.sh-body .cols > * { break-inside: avoid; }
+.sh-body .cols p { max-width: none; }
+.ps-foot { position: absolute; left: clamp(32px, 7vw, 120px); bottom: 24px; font-size: 14px; }
+/* the reveal: each typed run comes out a character at a time, in the order it is read */
+.ty { display: inline-block; white-space: nowrap; }
+.ps-print .ty { animation: ps-type calc(var(--n) * 9ms) steps(var(--n), end) calc(140ms + var(--i) * 32ms) both; }
+@keyframes ps-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@media (prefers-reduced-motion: reduce) { .ps-print .ty { animation: none; } .paper button:focus .tick path { transition: none; } .paper button:focus::after { animation: none; } }
+
+/* ---- new game, the round's report, the end ---- */
+.diffs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.diffs button { text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; border-radius: 6px; }
+.diffs button b { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.diffs button span { font-size: 15px; font-weight: 500; line-height: 1.38; color: var(--ps-muted); }
+/* a card that is a choice: ticked like a pill, and it stays ticked when the focus moves on */
+.diffs button[aria-pressed] b::before { content: ""; flex: none; width: 12px; height: 12px; border: 1.5px solid currentColor; border-radius: 2px; }
+.diffs button.on { border-color: var(--ps-yellow); background: rgba(230,189,106,.1); box-shadow: inset 0 0 0 1px var(--ps-yellow); }
+.diffs button.on b::before { background: var(--ps-yellow); border-color: var(--ps-yellow); }
+.diffs button.on:focus b::before { background: var(--ps-ink); border-color: var(--ps-ink); }
+/* one card lit, the one Enter takes: the yellow follows the focus; the last one flown is only tagged */
+.diffs button:focus { background: var(--ps-yellow); border-color: var(--ps-yellow); box-shadow: 0 0 0 2px var(--ps-bg), 0 0 0 4px var(--ps-text); }
+.diffs button:focus b, .diffs button:focus span { color: var(--ps-ink); }
+.diffs button:focus kbd { color: var(--ps-ink); border-color: rgba(18,24,33,.35); background: transparent; }
+.diffs .last { margin-left: auto; font: 600 12px/1 var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ps-muted); }
+.diffs button:focus .last { color: rgba(18,24,33,.72); }
+.sh-body p.lesson { margin: 0 0 12px; font-size: 17px; color: var(--ps-text); }
+.sh-body p.closeby { margin: -8px 0 14px; font-size: 15px; color: var(--ps-text); }
+.report { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; align-items: start; }
+table.tally, table.scores, table.aids, table.keys { width: 100%; }
+table.tally td { padding: 4px 0; border-top: 1px solid var(--ps-hair); }
+table.tally tr.sum td { border-top: 1px solid var(--ps-line); padding-top: 8px; font-weight: 600; }
+table.scores td { padding: 6px 12px 6px 0; border-top: 1px solid var(--ps-hair); }
+table.scores tr.mine td { color: var(--ps-yellow); font-weight: 600; }
+table.aids td, table.keys td { padding: 9px 16px 9px 0; border-top: 1px solid var(--ps-hair); }
+table.aids td.act { text-align: right; white-space: nowrap; padding-right: 0; }
+table.aids td .note { display: inline-block; margin-top: 2px; font-size: 14px; }
+table.keys td { padding: 5px 16px 5px 0; }
+table.keys td:first-child { color: var(--ps-muted); white-space: nowrap; }
+table.enemy td { padding: 6px 18px 6px 0; vertical-align: middle; border-top: 1px solid var(--ps-hair); }
+table.enemy tr:first-child td { border-top: 0; }
+table.enemy td p { margin: 0; }
+table.enemy td.figc { width: 128px; text-align: center; }
+img.fig { display: inline-block; vertical-align: middle; }
+.aid-list { margin: 8px 0 16px; }
+.aid-list summary { cursor: pointer; color: var(--ps-muted); padding: 6px 0; font-weight: 600; }
+.aid-list summary:focus-visible { outline: 2px solid var(--ps-yellow); outline-offset: 2px; border-radius: 2px; }
+
+/* ---- the game ---- */
+#game { position: fixed; inset: 0; background: #0b1018; }
+#stage { position: absolute; left: 0; top: 0; }
+#screen { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+#stage.scan::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(0,0,0,.2) 3px); }
+#stage.hurt::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(ellipse 75% 75% at 50% 50%, rgba(0,0,0,0) 60%, rgba(160,30,10,.38) 100%); animation: ps-hurt 1.1s ease-in-out infinite; }
+@keyframes ps-hurt { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { #stage.hurt::before { animation: none; } }
+
+/* ---- the HUD: a strip of stations across the top, the boat's readings at the bottom left, the TDC on the right ---- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; font: 500 15px/1.2 var(--ui); color: var(--ps-text); }
+#hud .hp { position: absolute; background: var(--ps-hudpanel); border: 1px solid rgba(233,228,216,.08); border-radius: 6px; box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 8px 22px rgba(0,0,0,.28); }
+#hud .lbl { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(236,231,220,.72); }
+#hud .hp { transition: opacity .25s ease-out; }
+#hud .hp.thin { opacity: .3; }
+@media (prefers-reduced-motion: reduce) { #hud .hp { transition: none; } }
+/* the stations */
+#h-tabs { left: 50%; top: 12px; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; pointer-events: auto; }
+#h-tabs button { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--ps-muted); font-size: 15px; font-weight: 600; }
+#h-tabs button kbd { min-width: 20px; text-align: center; color: var(--ps-faint); }
+#h-tabs button[aria-current="true"] { background: rgba(230,189,106,.14); color: var(--ps-text); box-shadow: inset 0 -2px 0 var(--ps-yellow); }
+#h-tabs button[aria-current="true"] kbd { color: var(--ps-text); border-color: var(--ps-yellow); }
+#h-tabs button.off { color: var(--ps-faint); }
+#h-tabs button.off kbd { color: var(--ps-faint); border-style: dashed; }
+#h-tabs button:focus { box-shadow: none; }
+#h-tabs button:focus-visible { outline: 2px solid var(--ps-yellow); outline-offset: 1px; }
+/* the clock, top right */
+#h-clock { right: 16px; top: 12px; padding: 8px 14px; text-align: right; min-width: 170px; }
+.hc-time { font: 400 24px/1 var(--px); }
+.hc-date { margin-top: 4px; font-size: 14px; color: var(--ps-muted); white-space: nowrap; }
+.hc-tc { margin-top: 6px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 8px; }
+.hc-tc b { font: 600 18px/1 var(--ui); font-variant-numeric: tabular-nums; color: var(--ps-yellow); }
+.hc-tc.held b { color: var(--ps-amber); }
+.hc-tc .why { order: 3; flex-basis: 100%; font-size: 13px; color: var(--ps-amber); }
+.hc-tc .why:empty { display: none; }
+/* the boat: depth, speed, course, battery, fuel, torpedoes */
+#h-boat { left: 16px; bottom: 16px; width: 300px; padding: 10px 14px 12px; }
+.hb-pack { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid var(--ps-hair); }
+.hb-pack[hidden] { display: none; }
+.hb-pack .pk { font: 600 13px/1 var(--ui); letter-spacing: .02em; padding: 3px 6px; border: 1px solid var(--ps-hair); color: var(--ps-muted); }
+.hb-pack .pk.on { color: var(--ps-yellow); border-color: currentColor; }
+.hb-pack .pk.lost { text-decoration: line-through; opacity: .55; }
+.hb-pack .pk i { font-style: normal; color: var(--ps-faint); }
+.hb-pack .pk-key { margin-left: auto; font: 600 12px/1 var(--ui); color: var(--ps-faint); }
+.hb-row { display: grid; grid-template-columns: 74px 1fr auto; align-items: baseline; gap: 8px; min-height: 26px; }
+.hb-row + .hb-row { border-top: 1px solid var(--ps-hair); }
+.hb-row b { font: 600 19px/1.2 var(--ui); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.hb-row .ord { font: 600 14px/1 var(--ui); font-variant-numeric: tabular-nums; color: var(--ps-yellow); white-space: nowrap; }
+.hb-row .ord::before { content: "\2192\00a0"; color: var(--ps-faint); }
+.hb-row .ord:empty::before { content: none; }
+.hb-row.warn b { color: var(--ps-amber); }
+.hb-row.crit b { color: var(--ps-red-text); }
+.hb-row .chg { grid-column: 2 / -1; margin: -3px 0 5px; font: 600 13px/1.1 var(--ui); letter-spacing: .02em; color: var(--ps-muted); }
+.hb-row .chg:empty { display: none; }
+.hb-row .chg.green { color: var(--ps-green); }
+.hb-row .chg.amber { color: var(--ps-amber); }
+.hb-bar { display: flex; gap: 2px; }
+.hb-bar i { display: block; width: 10px; height: 10px; border-radius: 1px; background: rgba(233,228,216,.13); }
+.hb-bar i.on { background: #e9e4d8; }
+.hb-bar.warn i.on { background: var(--ps-amber); }
+.hb-bar.crit i.on { background: var(--ps-red); }
+.hb-tubes { display: flex; gap: 3px; align-items: center; }
+.hb-tubes i { display: block; width: 9px; height: 14px; border-radius: 2px; border: 1.5px solid rgba(233,228,216,.45); }
+.hb-tubes i.on { background: var(--ps-green); border-color: var(--ps-green); }
+.hb-tubes i.load { border-color: var(--ps-amber); background: linear-gradient(to top, var(--ps-amber) var(--p, 0%), transparent var(--p, 0%)); }
+.hb-tubes i.out { border-style: dotted; opacity: .5; }
+.hb-tubes .gap { width: 8px; }
+.hb-tubes .sp { margin-left: 3px; font: 600 14px/1 var(--ui); font-variant-numeric: tabular-nums; color: var(--ps-muted); }
+.hb-tubes .bk { font: 600 11px/1 var(--ui); letter-spacing: .1em; color: var(--ps-faint); padding: 0 3px; }
+.hb-tubes .bk.sel { color: var(--ps-yellow); }
+.hb-flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hb-flags span { font: 600 11px/1 var(--ui); letter-spacing: .12em; text-transform: uppercase; padding: 3px 6px; border-radius: 3px; border: 1px solid var(--ps-line); color: var(--ps-muted); }
+.hb-flags span.on { color: var(--ps-text); border-color: var(--ps-yellow); }
+.hb-flags span.bad { color: var(--ps-red-text); border-color: rgba(232,87,58,.6); }
+.hb-flags span.hunt { color: #ffd7cc; background: rgba(140,36,18,.85); border-color: rgba(232,87,58,.8); }
+/* the TDC: the target, and the solution */
+#h-tdc { right: 16px; bottom: 16px; width: 270px; padding: 10px 14px 12px; }
+.ht-name { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ht-cls { font-size: 14px; color: var(--ps-muted); margin-bottom: 6px; }
+.ht-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline; }
+.ht-grid b { font: 600 17px/1.3 var(--ui); font-variant-numeric: tabular-nums; text-align: right; }
+.ht-grid b.set { color: var(--ps-yellow); text-decoration: underline dotted; text-underline-offset: 4px; }
+.ht-eye { margin-top: 6px; font-size: 13px; color: var(--ps-muted); }
+.ht-sol { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ps-hair); display: flex; align-items: center; gap: 10px; }
+.ht-lamp { width: 12px; height: 12px; border-radius: 50%; background: rgba(233,228,216,.15); border: 1px solid rgba(233,228,216,.3); flex: none; }
+.ht-sol.ok .ht-lamp { background: var(--ps-green); border-color: var(--ps-green); box-shadow: 0 0 8px rgba(127,224,168,.6); }
+.ht-sol.no .ht-lamp { background: var(--ps-red); border-color: var(--ps-red); }
+.ht-none { color: var(--ps-muted); font-size: 14px; }
+/* the station's live readings, over the canvas where it puts them (render.js R.lab): the HUD's type, a dark
+ * shadow to stand off the sea or the steel, tabular figures */
+.h-labels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.h-labels .hl { position: absolute; left: 0; top: 0; white-space: nowrap; font: 600 14px/1.15 var(--ui); font-variant-numeric: tabular-nums; color: var(--ps-text); text-shadow: 0 1px 0 rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.8); }
+.hl .c { margin-right: 6px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-muted); }
+.hl.rd { font-size: 17px; }
+.hl.rd.big { font-size: 19px; }
+.hl.rd.sm { font-size: 14px; }
+.hl.brass, .hl.brass b { color: var(--ps-yellow); }
+.hl.brass .c { color: var(--ps-yellow); opacity: .8; }
+.hl.cap { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-muted); }
+.hl.danger, .hl.danger b { color: var(--ps-red-text); }
+.hl.amber { color: var(--ps-amber); }
+.hl.green { color: var(--ps-green); }
+.hl .ord { margin-left: 8px; font-size: 14px; color: var(--ps-yellow); }
+.hl .ord::before { content: "\2192\00a0"; color: var(--ps-faint); }
+.hl .ord.green { color: var(--ps-green); }
+.hl .ord.green::before { content: none; }
+.hl.tape { font-size: 12px; color: var(--ps-text); letter-spacing: .02em; }
+.hl.rng { font-size: 12px; padding: 1px 4px; border-radius: 3px; color: var(--ps-text); background: rgba(5,8,12,.6); text-shadow: none; }
+.hl.well { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.hl.well b { font-size: 20px; color: var(--ps-muted); }
+.hl.well span { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; color: var(--ps-muted); }
+.hl.gun { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hl.gun b { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; }
+.hl.gun span { font-size: 14px; color: var(--ps-text); }
+/* the damage report: the boat on the left, the repairs on the right */
+#h-hull { left: 16px; bottom: 16px; width: 300px; padding: 10px 14px 12px; }
+#h-dmg { right: 16px; bottom: 16px; width: 320px; padding: 10px 14px 12px; }
+#h-hull .ht-name, #h-dmg .ht-name { margin-bottom: 4px; }
+.hb-row b.sm { font-size: 16px; }
+.hb-row .ord.dim { color: var(--ps-muted); }
+.hb-row .ord.dim::before { content: none; }
+.hd-list { list-style: none; margin: 0; padding: 0; }
+.hd-list li { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px; padding: 6px 0 7px; border-top: 1px solid var(--ps-hair); }
+.hd-list .nm { font-size: 16px; font-weight: 600; }
+.hd-list .st { font-size: 14px; color: var(--ps-amber); text-align: right; }
+.hd-list li.out .st { color: var(--ps-red-text); }
+.hd-list .rb { grid-column: 1 / -1; height: 4px; background: rgba(233,228,216,.1); }
+.hd-list .rb i { display: block; height: 100%; background: var(--ps-amber); }
+.hd-list li.out .rb i { background: var(--ps-red); }
+.hd-list li.fix .rb i { background: var(--ps-yellow); }
+
+/* the foot, centred: the words now and then, over the key strip */
+.h-low { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 640px); }
+.h-toasts { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#hud .h-toasts .hp { position: static; padding: 7px 14px; font-size: 17px; font-weight: 600; text-align: center; }
+#hud .h-toast.red { color: #ffd7cc; background: rgba(140,36,18,.9); border-color: rgba(232,87,58,.6); }
+#hud .h-toast kbd { margin: 0 2px; vertical-align: 1px; }
+#hud .h-toast.red kbd { color: #ffd7cc; border-color: rgba(255,215,204,.45); background: rgba(255,215,204,.08); }
+#hud .h-toast.green { color: #d6f5e2; }
+#hud .h-toast.amber { color: #ffd9a0; }
+#hud .h-hint { position: static; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 6px; padding: 8px 14px; font-size: 14px; color: rgba(236,231,220,.78); }
+#hud .h-hint .sep { display: inline-block; width: 1px; height: 16px; background: var(--ps-hair); margin: 0 6px; }
+#hud .h-hint .seg { text-align: center; }
+#hud .h-hint .seg kbd + kbd { margin-left: 3px; }
+#hud .h-hint .hl { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-yellow); }
+#hud .h-hint .more { color: var(--ps-faint); }
+/* where the strip is narrow, "all keys" gives way (it is on the pause slip and in Help) rather than wrap the strip */
+@media (max-width: 1399px) { #hud .h-hint .seg:has(.more), #hud .h-hint .seg:has(.more) + .sep, #hud .h-hint .sep:has(+ .seg .more) { display: none; } }
+#hud .h-hint .more kbd { color: var(--ps-muted); }
+/* the practice's lesson: brass-edged; hunted: the danger's own red */
+#hud .h-hint.coach { color: var(--ps-text); border-color: rgba(230,189,106,.5); }
+#hud .h-hint.danger { color: #ffd7cc; background: rgba(110,28,14,.9); border-color: rgba(232,87,58,.7); }
+#hud .h-hint.danger .hl { color: #ffd7cc; }
+#hud .h-hint.danger kbd { border-color: rgba(255,215,204,.45); background: rgba(255,215,204,.08); }
+#hud .h-hint.danger .sep { background: rgba(255,215,204,.2); }
+#hud .h-end { left: 50%; top: 36%; transform: translate(-50%, -50%); padding: 16px 32px 18px; text-align: center; display: flex; flex-direction: column; gap: 6px; }
+#hud .h-end b { font-size: 44px; font-weight: 700; line-height: 1.05; }
+#hud .h-end[data-tone="ok"] b { color: var(--ps-green); }
+#hud .h-end[data-tone="danger"] { border-color: rgba(232,87,58,.55); }
+#hud .h-end[data-tone="danger"] b { color: var(--ps-red-text); }
+#hud .h-end span { color: var(--ps-muted); }
+/* the port's call, when a base is in reach */
+#h-port { left: 50%; top: 62px; transform: translateX(-50%); padding: 8px 14px; font-size: 15px; white-space: nowrap; }
+.h-flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse 70% 70% at 50% 50%, rgba(0,0,0,0) 45%, rgba(255,70,30,.35) 100%); }
+.h-flash.on { animation: ps-flash .4s ease-out; }
+@keyframes ps-flash { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .h-flash.on { animation: none; } }
+@media (max-width: 1239px) { .h-low { max-width: calc(100vw - 600px); } #h-boat { width: 270px; } #h-tdc { width: 240px; } }
+
+/* the pause and sound buttons, up by the clock, clear of the TDC */
+#corner { position: fixed; right: 222px; top: 12px; display: flex; gap: 8px; z-index: 5; }
+#corner button { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; background: rgba(16,22,32,.86); color: #e9e4d8; border: 1px solid rgba(233,228,216,.12); border-radius: 6px; }
+@media (hover: hover) { #corner button:hover { background: rgba(38,49,66,.92); color: #fff; } }
+#corner button:focus { background: rgba(16,22,32,.86); color: #e9e4d8; box-shadow: none; border-color: rgba(233,228,216,.12); }
+#corner button:focus-visible { outline: 2px solid var(--ps-yellow); outline-offset: 2px; }
+/* a narrower window: the buttons go to the top left, out of the stations' way, and below 960 pixels the
+ * stations follow them there, tighter, clear of the clock */
+@media (max-width: 1180px) { #corner { right: auto; left: 16px; } }
+@media (max-width: 959px) {
+  #h-tabs { left: 112px; transform: none; }
+  #h-tabs button { gap: 6px; padding: 0 8px 0 6px; font-size: 14px; }
+  #h-clock { min-width: 150px; padding: 8px 12px; }
+}
+#snd .off, #snd.muted .on { display: none; }
+#snd.muted .off { display: inline; }
+#snd.muted { color: var(--ps-faint); }
+
+/* ---- a phone, or a window too small: a note instead of the game ---- */
+#small { display: none; position: fixed; inset: 0; z-index: 2147483600; background: var(--ps-bg); flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
+#small h1 { margin: 8px 0 0; font-size: 22px; line-height: 1.25; max-width: 22ch; }
+#small p { margin: 0; max-width: 34ch; color: var(--ps-muted); }
+@media (max-width: 759px), (max-height: 479px) {
+  #small { display: flex; }
+  #game, #title, #corner, .gk-boot, .ps-sheet, .ps-ask { display: none !important; }
+}
+@media (max-width: 1100px) { .diffs { grid-template-columns: 1fr; } .report { grid-template-columns: 1fr; } }
+
+/* ---- the puma's crest, on the port's papers ---- */
+img.crest { display: block; width: 48px; height: 48px; image-rendering: pixelated; flex: none; }
+.cap { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.cap h3.mname { margin: 0; }
+.sh-body p.honour { margin: 0 0 12px; font-size: 18px; font-weight: 600; color: var(--ps-green); }
+/* the reality, folded to one line until it is wanted */
+.real summary b { color: var(--ps-text); }
+/* the angle on the bow, drawn */
+figure.aob { margin: 4px 0 14px; display: flex; gap: 18px; align-items: center; }
+figure.aob svg { flex: none; color: var(--ps-muted); }
+figure.aob .hi { color: var(--ps-yellow); }
+.paper figure.aob .hi { color: var(--p-print); }
+figure.aob figcaption { color: var(--ps-muted); font-size: 15px; max-width: 40ch; }
