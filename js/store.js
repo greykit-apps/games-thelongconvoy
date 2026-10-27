@@ -1,22 +1,21 @@
-/* PumaPack -- the settings, a game left to come back to, the career,
- * the service record, and nothing else. Every key begins pumapack_
+/* PumaPack -- the settings, a game left to come back to, the service
+ * record of each mission's best, and nothing else. Every key begins pumapack_
  * (greykit.games STANDARD.md §5), so Settings can forget them by that
  * prefix and leave the rest of greykit.com alone (§2). */
 "use strict";
 (() => {
-  const KEY_PREFS = "pumapack_prefs_v1", KEY_GAME = "pumapack_game_v1", KEY_CAREER = "pumapack_career_v1", KEY_FAME = "pumapack_fame_v1", KEY_NAME = "pumapack_name_v1";
+  const KEY_PREFS = "pumapack_prefs_v1", KEY_GAME = "pumapack_game_v1", KEY_FAME = "pumapack_fame_v1", KEY_NAME = "pumapack_name_v1";
   PP.KEY_MUTED = "pumapack_muted_v1";
   PP.KEY_LAST = "pumapack_last_v1";
 
-  /* ---- the aids: Classic is 1985, Field is a modern helping hand. None of them changes the war: the reality does that ---- */
+  /* ---- the aids: Classic is the instruments and your eyes, Field a modern helping hand. None of them changes the war: the reality does that ---- */
   PP.AID_LIST = [
-    ["solution", "Solution line", "Where the TDC says the target will be when a torpedo meets it, on the chart and in the periscope."],
+    ["solution", "Solution line", "Where the boat's fire control says the target will be when a torpedo meets her, on the map and in the periscope."],
     ["tracks", "Torpedo tracks", "Your torpedoes' runs, drawn on the chart."],
     ["labels", "Range labels", "Each ship's range beside it, through the periscope and on the chart."],
-    ["autoRange", "Automatic range", "The periscope reads the range as it watches the target. Off, take a reading with R."],
     ["autoSlow", "Slow for news", "Time compression drops back to one when a ship is sighted, a plane is seen or a torpedo hits."],
-    ["rings", "Danger rings", "How far the escorts could hear you, on the chart."],
-    ["hints", "Key hints", "The keys for the station you are on, along the bottom."],
+    ["rings", "Danger rings", "How far the escorts could hear the boat you are on, on the map."],
+    ["hints", "Key hints", "The keys for the screen you are on, along the bottom."],
   ];
   PP.AIDS = { field: {}, classic: {} };
   for (const [k] of PP.AID_LIST) { PP.AIDS.field[k] = true; PP.AIDS.classic[k] = false; }
@@ -43,19 +42,8 @@
   PP.saveGame = S => PP.store.set(KEY_GAME, { S, at: Date.now() });
   PP.clearGame = () => PP.store.del(KEY_GAME);
 
-  /* ---- the career in progress ---- */
-  PP.loadCareer = () => { const c = PP.store.get(KEY_CAREER, null); return c && c.v === 1 ? c : null; };
-  PP.saveCareer = c => PP.store.set(KEY_CAREER, c);
-  PP.clearCareer = () => PP.store.del(KEY_CAREER);
-
-  /* ---- the service record: careers ended (the war won, retired, or lost at sea), the best ten, and the best actions ---- */
-  PP.fame = () => { const f = PP.store.get(KEY_FAME, null); return f && Array.isArray(f.careers) ? f : { careers: [], actions: {} }; };
-  PP.addCareer = car => {
-    const f = PP.fame(), e = { name: car.name, rank: car.rank, pts: car.pts, tons: car.tons, ships: car.ships, patrols: car.patrols.length, medals: car.medals.map(m => m.name), over: car.over, start: car.start, t: car.t, code: !!car.cheated, at: Date.now() };
-    f.careers = f.careers.concat([e]).sort((a, b) => b.pts - a.pts).slice(0, 10);
-    PP.store.set(KEY_FAME, f);
-    return f.careers.indexOf(e);
-  };
+  /* ---- the service record: each mission's best ---- */
+  PP.fame = () => { const f = PP.store.get(KEY_FAME, null); return f && f.actions ? f : { actions: {} }; };
   PP.addAction = (id, rec) => {
     const f = PP.fame(), best = f.actions[id];
     if (!best || rec.pts > best.pts) { f.actions[id] = rec; PP.store.set(KEY_FAME, f); return true; }

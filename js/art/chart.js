@@ -1,8 +1,8 @@
 /* PumaPack -- the chart: from a few thousand yards across (the attack)
- * to the whole archipelago (the patrol).
+ * to the whole archipelago.
  *
  * Depth in ten hard bands under red light, the shoals lightest, the land dun with a bright coast.
- * The Empire's sea lanes, our patrol zone, the bases, the names. Our boat,
+ * The sea lanes and the names. Our boat,
  * her ordered course and her track. The ships as we know them: what is in
  * sight where it is, what was seen where it was last (a hollow mark, aging),
  * what is only heard as a line of bearing; merchants a diamond, escorts a
@@ -88,17 +88,11 @@
   CH.panTo = (x, y) => ({ x: PP.clamp(x, 0, CH.seaW()), y: PP.clamp(y, 0, CH.seaH()) });
 
   /* what lies off the chart's edge, an arrow at the edge pointing to it and its name and distance:
-   * our boat when the chart is dragged off her; on patrol, the zone and the nearest base */
+   * our boat when the chart is dragged off her */
   function pointers(g, S, ui, X, Y, v, Wd) {
     const s = CH.me(S), sf = v.sf, out = [], put = [];
     const L = 8, R = Wd - 8, T = Math.max(v.top, sf.tr || v.top) + 8, B = Math.min(v.bot, sf.br || v.bot) - 8;
     if (ui.chartAt) out.push({ x: s.x, y: s.y, n: ESCS(S) ? "Our escort" : "Our boat", col: surf(s) ? COL.sub : "#e09a80" });
-    if (S.mode === "patrol") {
-      const zn = Sea.zones.find(q => q.id === S.patrol.zone);
-      if (zn) out.push({ x: zn.x, y: zn.y, n: zn.name, col: "#a8ecc4", d: Math.max(0, PP.dist(s.x, s.y, zn.x, zn.y) - zn.r) });
-      const base = Sea.portsOpen(C.monthOf(S.t)).map(p => ({ p, d: PP.dist(s.x, s.y, p.x, p.y) })).sort((a, b) => a.d - b.d)[0];
-      if (base) out.push({ x: base.p.x, y: base.p.y, n: base.p.name, col: "#7fe0a8", d: base.d });
-    }
     const ox = Wd / 2, oy = v.my;
     for (const q of out) {
       const px = X(q.x), py = Y(q.y);
@@ -136,11 +130,6 @@
     for (let gy = Math.floor((cy - Ht / 2 * z) / gs) * gs; gy < cy + Ht / 2 * z; gy += gs) g.fillRect(0, Math.round(Y(gy)), Wd, 1);
     /* the lanes, the zones, the bases, the names */
     for (const L of Sea.lanes) for (let i = 1; i < L.pts.length; i++) dash(g, X(L.pts[i - 1][0]), Y(L.pts[i - 1][1]), X(L.pts[i][0]), Y(L.pts[i][1]), COL.lane, 4, 4);
-    if (S.mode === "patrol") {
-      const zn = Sea.zones.find(q => q.id === S.patrol.zone);
-      if (zn) { ringPx(g, X(zn.x), Y(zn.y), zn.r / z, COL.zone, 3); if (z >= 150) K.text5(g, zn.name, Math.round(X(zn.x) - K.text5w(zn.name) / 2), Math.round(Y(zn.y) - zn.r / z - 10), "#a8ecc4", INK); }
-      for (const p of Sea.portsOpen(C.monthOf(S.t))) { const px = X(p.x), py = Y(p.y); K.rect(g, px - 3, py - 3, 7, 7, INK); K.rect(g, px - 2, py - 2, 5, 5, "#7fe0a8"); if (z >= 60) K.text5(g, p.name, Math.round(px + 6), Math.round(py - 3), "#d6f5e2", INK); }
-    }
     if (z >= 400) {
       for (const I of Sea.isles) K.text5(g, I.n, Math.round(X(I.x) - K.text5w(I.n) / 2), Math.round(Y(I.y) - 3), I.side === "wolf" ? "#ff9f86" : "#f2d6c0", INK);
       for (const l of Sea.labels) K.text5(g, l.n, Math.round(X(l.x) - K.text5w(l.n) / 2), Math.round(Y(l.y)), "rgba(240,170,150,.6)");
@@ -188,6 +177,8 @@
     /* our torpedoes, the charges, aircraft */
     if (aids.tracks) for (const tp of S.torps) { const x = X(tp.x), y = Y(tp.y); dash(g, x, y, x - PP.hx(tp.hdg) * 160 / z * 6, y - PP.hy(tp.hdg) * 160 / z * 6, COL.torp, 2, 2); K.rect(g, x - 1, y - 1, 2, 2, "#ffffff"); }
     for (const c of S.charges) { const x = X(c.x), y = Y(c.y); ringPx(g, x, y, Math.max(2, 30 / z), "#ffc0a8", 1); }
+    /* the pack's noisemakers, still sounding (the pack knows where it dropped them) */
+    if (!esc) for (const q of S.decoys || []) { const x = X(q.x), y = Y(q.y); ringPx(g, x, y, 3, "#8fe3a1", 1); if (z <= 60) K.text5(g, "DECOY", Math.round(x + 5), Math.round(y - 3), "rgba(143,227,161,.8)", INK); }
     for (const p of S.planes) if (p.seen) { const x = Math.round(X(p.x)), y = Math.round(Y(p.y)); K.rect(g, x - 4, y, 9, 1, COL.plane); K.rect(g, x, y - 4, 1, 9, COL.plane); }
     /* the TDC's target and solution (a Field aid) */
     const e = esc ? null : W.est(S);
@@ -217,13 +208,16 @@
         if ((q.seenT !== undefined && S.t - q.seenT < 30) || !S.real.vis && PP.dist(s.x, s.y, q.x, q.y) < 4000) tri(g, X(q.x), Y(q.y), 4, q.hdg, COL.escort, !Sub.surfaced(q));
       }
     }
+    /* a name beside a mark, unless it would sit on one already written (the nearer to the middle written first) */
+    const named = [];
+    const nameAt = (txt, x, y, col) => { const w = K.text5w(txt), b = { x: Math.round(x), y: Math.round(y), w }; if (named.some(o => Math.abs(o.y - b.y) < 8 && b.x < o.x + o.w + 4 && o.x < b.x + w + 4)) return; named.push(b); K.text5(g, txt, b.x, b.y, col, INK); };
     /* the rest of the pack: the same triangle, dimmer, her name beside her; a boat lost, a cross where she went down */
     if (!esc) for (const q of S.subs) {
       if (q === s) continue;
       const qx = X(q.x), qy = Y(q.y);
       if (q.lost) { cross(g, qx, qy, 4, COL.ghost); continue; }
       tri(g, qx, qy, 4, q.hdg, Sub.surfaced(q) ? COL.pack : COL.packDown);
-      K.text5(g, q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), Math.round(qx + 7), Math.round(qy - 3), COL.packDown, INK);
+      nameAt(q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), qx + 7, qy - 3, COL.packDown);
     }
     /* the boat selected for orders: a ring, and her waypoints joined up from her */
     const si = S.subs.findIndex(q => q.id === ui.sel && !q.lost);
@@ -238,7 +232,7 @@
     dash(g, sx, sy, sx + PP.hx(s.ordHdg) * 22, sy + PP.hy(s.ordHdg) * 22, "rgba(255,198,90,.9)", 2, 2);
     tri(g, sx, sy, 5, s.hdg, surf(s) ? COL.sub : "#e09a80");
     /* on the escorts' side, each escort's name and order beside her */
-    if (esc && !ui.title && z <= 150) for (const q of S.ships) if (q.role === "escort" && PP.Ships.alive(q)) K.text5(g, q.name.toUpperCase() + (q === s ? "" : " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase()), Math.round(X(q.x) + 8), Math.round(Y(q.y) - 3), q === s ? COL.sub : "rgba(255,170,150,.85)", INK);
+    if (esc && !ui.title && z <= 150) for (const q of [s].concat(S.ships.filter(o => o !== s && o.role === "escort" && PP.Ships.alive(o)))) nameAt(q.name.toUpperCase() + (q === s ? "" : " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase()), X(q.x) + 8, Y(q.y) - 3, q === s ? COL.sub : "rgba(255,170,150,.85)");
     pointers(g, S, ui, X, Y, v, Wd);
     /* the scale */
     const bar = z >= 400 ? 100 * PP.YD_NM : z >= 60 ? 10000 : 2000, bl = bar / z;

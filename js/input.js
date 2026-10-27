@@ -21,7 +21,7 @@
     Digit1: "st1", Digit2: "st2", Digit3: "st3", Digit4: "st6",
     F2: "st1", F3: "st2", F4: "st3", F7: "st6", Tab: "stNext",
     Escape: "pause", KeyL: "aids", KeyH: "onHer", KeyB: "ahead",
-    KeyN: "boatNext", KeyO: "orders", Enter: "takeCmd",
+    KeyN: "boatNext", KeyO: "orders", Enter: "takeCmd", KeyK: "decoy",
   };
   I.BIND = BIND;
   I.actionFor = code => BIND[code] || null;
@@ -108,9 +108,9 @@
   /* ---- gamepads (the standard mapping) ----
    * A fire, B the periscope, X lock, Y power (and tie up, at a base), the bumpers the stations, the triggers
    * time, the d-pad depth (the gun's range, when it is manned) and the tubes and the gun, the stick clicks a
-   * crash dive and up a level. Back held is a second layer: the spread, silent running, the stadimeter, the
-   * radar, the dials, the log, the aids, back to 1x, the swings (onto her, ahead and astern), Help; Back tapped
-   * alone is the chart. */
+   * crash dive and up a level. Back held is a second layer: the spread, silent running, the boat's next order, the
+   * radar, the next boat and taking command, the log, the aids, back to 1x, the swings (onto her, ahead and
+   * astern), Help; Back tapped alone is the map. */
   const PAD = ["fire", "scope", "lock", "zoom", "stPrev", "stNext", "tcD", "tcU", null, "pause", "crash", "level", "shallower", "deeper", "bank", "gun"];
   const PAD_MOD = { 0: "spread", 1: "silent", 2: "orders", 3: "radar", 4: "st6", 5: "aids", 6: "tc1", 7: "ahead", 9: "help", 11: "onHer", 12: "boatNext", 13: "takeCmd" };
   I.rawPrev = new Set(); I.padBtns = []; I.modUsed = false;

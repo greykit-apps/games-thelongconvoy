@@ -45,7 +45,10 @@
         /* the pack: take command of another boat; tell one to hunt on her own or hold the orders she has */
         case "command": E.command(S, a.i, ev); break;
         /* a boat's orders (PP.Orders), and her waypoints: a.i the boat (else the one in command) */
-        case "orders": { const q = S.subs[a.i === undefined ? S.cmd : a.i]; if (q && !q.lost && PP.Orders.LIST.some(o => o[0] === a.v)) { q.orders = a.v; ev.push({ t: "orders", id: q.id, name: q.name, v: a.v, why: a.why || "" }); } break; }
+        case "orders": { const q = S.subs[a.i === undefined ? S.cmd : a.i];
+          /* an order goes to a boat by radio: with hers out, only the boat you are aboard takes one */
+          if (q && !q.lost && q !== S.sub && q.sys.radio >= 0.5 && !a.why) { ev.push({ t: "noRadio", id: q.id, name: q.name }); break; }
+          if (q && !q.lost && PP.Orders.LIST.some(o => o[0] === a.v)) { q.orders = a.v; ev.push({ t: "orders", id: q.id, name: q.name, v: a.v, why: a.why || "" }); } break; }
         case "wp": { const q = S.subs[a.i === undefined ? S.cmd : a.i]; if (q && !q.lost) { if (a.clear || !q.wps) q.wps = []; if (a.x !== undefined && q.wps.length < 12) q.wps.push({ x: a.x, y: a.y }); ev.push({ t: "wp", id: q.id, n: q.wps.length }); } break; }
         default: Sub.order(S, a, ev);
       }
@@ -125,14 +128,9 @@
     if (S.side === "escorts") escOrders(S, cmd, ev); else orders(S, cmd, ev, aids);
     captains(S, ev);
     const idx = Math.min(S.tcReq, S.tcCap), dt = C.DT * C.TC[idx];
-    /* the weather turns, now and then */
-    if (S.t > S.wx.until && S.mode === "patrol") {
-      const ks = Object.keys(C.WX), tot = ks.reduce((a, k) => a + C.WX[k].w, 0);
-      let r = R(S) * tot, k = ks[0];
-      for (const q of ks) { r -= C.WX[q].w; if (r <= 0) { k = q; break; } }
-      if (k !== S.wx.k) { E.setWx(S, k); ev.push({ t: "weather", k }); } else S.wx.until = S.t + 3600 * 6;
-    }
     E.each(S, ev, () => Sub.step(S, dt, ev));
+    /* the noisemakers sink as they sound, and fall silent */
+    if (S.decoys && S.decoys.length) { for (const q of S.decoys) q.z += C.DECOY.sink * dt; S.decoys = S.decoys.filter(q => S.t - q.t0 < C.DECOY.life); }
     if (S.phase !== "sea") return finish(S, ev);
     Sh.step(S, dt, ev);
     Esc.step(S, dt, ev);
@@ -150,24 +148,13 @@
     }
     /* a mission's time limit */
     if (S.phase === "sea" && S.endT && S.t >= S.endT) { S.phase = "over"; S.end = { why: "time", t: S.t }; ev.push({ t: "actionOver", why: "time" }); }
-    E.traffic(S, dt);
     S.det = det;
     S.t += dt;
     /* the clock's cap for the next step */
     const cp = cap(S, det), was = Math.min(S.tcReq, S.tcCap);
     S.tcCap = cp.c; S.tcWhy = cp.why;
     if (cp.c < was && was > 0) ev.push({ t: "tcDropped", why: cp.why, to: C.TC[cp.c] });
-    /* the patrol's calendar, and its endings */
-    if (S.mode === "patrol") {
-      if (S.patrol.due && S.t > S.patrol.due && !S.patrol.dueSaid) { S.patrol.dueSaid = true; ev.push({ t: "patrolDue" }); }
-      if (S.t >= C.WAR_END && !S.patrol.warSaid) { S.patrol.warSaid = true; ev.push({ t: "warOver" }); }
-      const s = S.sub;
-      if (s.fuel <= 0 && s.bat <= 0.002 && !S.end) { S.phase = "over"; S.end = { why: "towed", t: S.t }; ev.push({ t: "towed" }); }
-      const p = E.nearPort(S);
-      /* leaving port is not arriving: the call waits until she has been out of reach once */
-      if (p && !S.patrol.atPort && !S.patrol.leaving) { S.patrol.atPort = p.id; ev.push({ t: "atPort", id: p.id, name: p.name }); }
-      if (!p) { S.patrol.atPort = null; S.patrol.leaving = false; }
-    } else if (S.mode === "action" || S.mode === "practice") {
+    if (S.mode === "action" || S.mode === "practice") {
       /* an action ends when every merchant is down (in a mission with none, every escort), or the rest are away */
       const merch = S.ships.filter(q => q.role === (S.goal || "merchant"));
       const alive = merch.filter(Sh.alive), sinking = merch.filter(q => q.sinking && !q.sunk);
@@ -205,14 +192,13 @@
     sysHit: (S, e) => `${(Sub.SYS.find(q => q[0] === e.sys) || [0, e.sys])[1]} damaged.`,
     repaired: (S, e) => e.sys === "hull" ? "The hull is patched." : `${(Sub.SYS.find(q => q[0] === e.sys) || [0, e.sys])[1]} repaired.`,
     weather: (S, e) => `The weather: ${C.WX[e.k].name.toLowerCase()}.`,
-    patrolDue: () => "The patrol's time is up: head for a base.",
     warOver: () => "Word from command: the war is over.",
     subLost: (S, e) => `${e.name}: ${e.why === "crushed" ? "the hull gave way" : e.why === "flooded" ? "she flooded" : "lost"}.`,
     command: (S, e) => `Command shifts to ${e.name}.`,
     orders: (S, e) => e.why === "lastWp" ? `${e.name} is at her last waypoint, holding.` : `${e.name}: ${PP.Orders.name(e.v).toLowerCase()}.`,
   };
 
-  /* ---- the Konami code: everything put right, the torpedoes true, for this patrol or action ---- */
+  /* ---- the Konami code: everything put right, the torpedoes true, for this mission ---- */
   E.konami = S => {
     if (!S || S.phase !== "sea") return false;
     const s = S.sub, k = C.SUBS[s.cls];

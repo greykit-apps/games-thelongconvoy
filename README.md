@@ -8,6 +8,8 @@
 
 No install required. Plain scripts, no build step, nothing fetched at play time: every picture is drawn and every sound synthesised in the page; the two typefaces ship with it.
 
+![The title: the pack board over the plot, the wolfpack closing on a convoy at night](screenshots/title.png)
+
 ## How it plays
 
 Pumacity's convoys carry its oil, its ore and its troops between the islands, and the PDF's escorts ring them round. The Wolf Empire has a pack.
@@ -18,11 +20,17 @@ Pumacity's convoys carry its oil, its ore and its troops between the islands, an
 - **Select and fire.** `T` or a click selects a ship; `Space` fires at her, or at the nearest in range. The boat's fire control aims the shot, and says so when the angle is wrong for those tubes or the range too long. Ships are traced from 3D models at their true angle on the bow; escorts hear, see and ping, and lay depth charges.
 - **The pack shares what it sees**, and its news comes in its boats' names: who is firing, who is hunted, who is lost. When the boat you are on goes down, command passes to the next.
 
-Five missions after the 1990 game's, set in the Wolf War, from two boats against five unescorted ships to six boats strung across a strait, and a custom mission of your own making.
+Eight missions after the 1990 game's, set in the Wolf War: from two boats against five unescorted ships, through the fuel tankers and a hunter-killer group, to eight boats in the decisive battle. And a custom mission of your own making. A boat under water can drop a noisemaker for the escorts to hunt instead of her, and a boat whose radio is damaged can neither take your orders nor send you news.
 
-**Or play the other side**, as the original let you: the **Pumacity Defense Fleet**, aboard one of the convoy's escorts, against a wolfpack whose boats sail under their own captains. Sprint and drift to hear them, ping with the sonar, run in over a contact and lay a pattern of depth charges set to its depth, throw the hedgehog late in the war, and give the other escorts their orders from the map (screen, hunt, patrol, hold). Five missions have the escorts' side, among them the night defence of an anchorage.
+**Or play the other side**, as the original let you: the **Pumacity Defense Fleet**, aboard one of the convoy's escorts, against a wolfpack whose boats sail under their own captains. Sprint and drift to hear them, ping with the sonar, run in over a contact and lay a pattern of depth charges set to its depth, throw the hedgehog late in the war, and give the other escorts their orders from the map (screen, hunt, patrol, hold). Eight missions have the PDF's side, among them the night defence of an anchorage.
 
 Every mission ends with the 1990 game's debrief: who won, a score and one of eleven ratings, each side's vessels at the start and lost, every weapon's fired, hits and kills, and every boat by name.
+
+![The map as the wolfpack: every boat's order beside her, the orders panel for the one selected, the convoy under the hydrophones' lines of bearing](screenshots/map.png)
+
+![Through the periscope: the convoy at 2,100 and 2,900 yards](screenshots/periscope.png)
+
+![The map as the PDF: the escorts round the convoy, each with her order, the escort you are aboard and her charges set for 150 feet](screenshots/escorts.png)
 
 ## Reality, and Classic and Field
 
@@ -41,7 +49,7 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 | Arrows | in the view: train and raise the periscope, look round; on the map: the helm and telegraph |
 | `T` | select the ship nearest the crosshair |
 | `Space` | fire at her, or the nearest in range; `F` forward or after tubes, `V` a spread |
-| `X` / `Y` / `G` | silent running / radar / man the deck gun |
+| `X` / `K` / `Y` / `G` | silent running / a noisemaker / radar / man the deck gun |
 | `+` `−` / `Backspace` | time compression / back to 1x |
 | `Esc` / `L` / `M` / `?` | pause / Classic or Field / sound / every key |
 

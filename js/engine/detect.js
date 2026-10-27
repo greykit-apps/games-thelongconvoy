@@ -84,7 +84,10 @@
         if (how === "eye" || how === "radar") s.seenT = S.t;
         if (esc) {
           const fresh = !ai.contact || S.t - ai.contact > 120;
-          const nd = { x: s.x + Math.sin(a) * err, y: s.y + Math.cos(a) * err, t: S.t, vx: PP.hx(s.hdg) * s.spd * PP.KN, vy: PP.hy(s.hdg) * s.spd * PP.KN };
+          let nd = { x: s.x + Math.sin(a) * err, y: s.y + Math.cos(a) * err, t: S.t, vx: PP.hx(s.hdg) * s.spd * PP.KN, vy: PP.hy(s.hdg) * s.spd * PP.KN };
+          /* a noisemaker near her, still sounding: the escort may take it for her */
+          const dec = (how === "ear" || how === "sonar") && (S.decoys || []).find(q => S.t - q.t0 < C.DECOY.life && PP.dist(q.x, q.y, s.x, s.y) < C.DECOY.reach);
+          if (dec && R(S) < C.DECOY.fool) { nd = { x: dec.x + (R(S) - 0.5) * 60, y: dec.y + (R(S) - 0.5) * 60, t: S.t, vx: 0, vy: 0, decoy: true }; }
           /* the escort you are aboard keeps a plot: a fresh contact by the same means on the same boat, within
            * half a minute, is averaged into the last (run on to now), so her estimate settles the longer she holds it */
           if (ai.st === "user" && ai.datum && ai.how === how && ai.tgt === s.id && S.t - ai.contact < 30) {

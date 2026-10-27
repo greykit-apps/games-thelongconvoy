@@ -282,7 +282,8 @@
   };
   Esc.air = (S, dt, ev) => {
     const s = S.sub, e = C.era(C.monthOf(S.t)), L = Det.light(S), day = L > 0.45;
-    if (S.mode === "patrol" && S.phase === "sea" && (day || e.planeRadar)) {
+    /* the patrol planes come only to a mission that asks for them (S.air); none does yet */
+    if (S.air && S.phase === "sea" && (day || e.planeRadar)) {
       const lam = C.AIR.perHour * Esc.airCover(S) * e.air * (day ? 1 : 0.4);
       if (lam > 0 && R(S) < lam * dt / 3600 && S.planes.length < 2) {
         const a = R(S) * PP.TAU, r = 30000;

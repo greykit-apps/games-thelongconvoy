@@ -1,10 +1,7 @@
 /* PumaPack -- what there is to play: target practice, the convoy
  * actions (single engagements, each its own night or day of the war), a
- * custom action, and the war itself: patrols out of port into the Empire's
- * waters, and a career across them.
- *
- * On patrol the Empire's convoys run their lanes whether we are near or
- * not, more of them early in the war, fewer and better guarded later. */
+ * custom action. (Puma Service's war patrols and career are gone: the 1990
+ * game had missions, and so does this one.) */
 "use strict";
 (() => {
   const C = PP.C, Sea = PP.Sea, Sh = PP.Ships, Sub = PP.Sub, E = PP.Engine = PP.Engine || {};
@@ -37,6 +34,15 @@
     { id: "strait", name: "The Kessrin Strait", sides: ["pack", "escorts"], limit: 6, note: "A supply convoy about to clear the strait for open water. Six boats strung across its way out; stop it in the narrows.", mi: 17, hour: 2, day: 6, wx: "clear",
       at: [520, 330], hdg: 300, conv: { kinds: ["freighter", "tanker", "liner", "troopship"], n: 18, escorts: 8 },
       boats: [["cougar", 9000, 0, PD], ["caracal", 8500, 4000, PD], ["caracal", 8500, -4000, PD], ["caracal", 13000, 2500, 0], ["caracal", 13000, -2500, 0], ["caracal", 6000, 7000, PD]] },
+    { id: "decisive", name: "The Decisive Battle", sides: ["pack", "escorts"], limit: 6, note: "Late in the war, a huge convoy south of the islands, its escorts with radar and the hedgehog. Eight boats: the battle that decides the sea lanes.", escNote: "Eight boats are gathering on a huge convoy. Your escorts have radar and the hedgehog now: this is where the sea lanes are won or lost.", mi: 40, hour: 0, day: 5, wx: "overcast",
+      at: [342, 380], hdg: 2, conv: { kinds: ["freighter", "liner", "tanker", "troopship", "coaster"], n: 18, escorts: 8 },
+      boats: [["catamount", 8000, 4500, PD], ["catamount", 8000, -4500, PD], ["cougar", 6000, 8000, PD], ["cougar", 6000, -8000, PD], ["cougar", 11000, 0, PD], ["caracal", 2000, 8500, 0], ["caracal", 2000, -8500, 0], ["caracal", 12000, 3500, 0]] },
+    { id: "tankers", name: "The Fuel Tankers", sides: ["pack", "escorts"], limit: 6, note: "Pumacity's biggest convoy of the year, its fuel in six tankers in the middle columns. Five boats: the tankers first.", escNote: "Six tankers of fuel for Pumacity in the middle of the convoy, and five boats who know it. Keep them off the tankers.", mi: 16, hour: 1, day: 11, wx: "clear",
+      at: [450, 560], hdg: 300, conv: { kinds: ["tanker", "tanker", "tanker", "tanker", "tanker", "tanker", "freighter", "freighter", "freighter", "freighter", "liner", "liner", "coaster", "coaster"], n: 14, escorts: 0, esc: ["destroyer", "destroyer", "destroyer", "frigate", "frigate", "chaser"], fixed: true },
+      boats: [["cougar", 12000, 4000, PD], ["caracal", 12000, -4000, PD], ["caracal", 7000, 9000, 0], ["caracal", 7000, -9000, 0], ["cougar", 17000, 0, PD]] },
+    { id: "hunters", name: "Hunter-Killers", sides: ["pack", "escorts"], limit: 5, escOrd: ["screen", "screen", "screen", "screen", "hunt", "hunt", "hunt", "hunt"], note: "A convoy of tanks bound east, four escorts round it and a hunter-killer group of four more ranging out ahead. Four boats.", escNote: "Your convoy has four escorts round it, and four more as a hunter-killer group: send them after every contact. Four boats are out there.", mi: 42, hour: 13, day: 18, wx: "haze",
+      at: [520, 330], hdg: 120, conv: { kinds: ["freighter", "freighter", "freighter", "troopship", "troopship", "freighter", "tanker", "tanker"], n: 8, escorts: 0, esc: ["destroyer", "destroyer", "frigate", "frigate", "destroyer", "destroyer", "destroyer", "frigate"], fixed: true },
+      boats: [["catamount", 13000, 5000, PD], ["catamount", 13000, -5000, PD], ["cougar", 19000, 2000, PD], ["cougar", 8000, 11000, PD]] },
   ];
   E.CUSTOM = {
     when: [[2, "Year I"], [14, "Year II"], [26, "Year III"], [38, "Year IV"]],
@@ -52,7 +58,7 @@
     const S = {
       v: 1, seed, rs: seed | 0, mode, phase: "sea", t: C.monthStart(mi) + (day - 1) * C.DAY + H(hour), tcReq: 0, tcCap: C.TC_MAX_IDX, nextId: 1,
       /* the 1990 game had no angle on the bow to judge: the boat's fire control solves every shot */
-      real: Object.assign({}, real, { aob: false }), wx: { k: "clear", vis: 1, sea: 2, until: 0 }, subs: [], cmd: 0, ships: [], convoys: [], torps: [], charges: [], shells: [], planes: [],
+      real: Object.assign({}, real, { aob: false }), wx: { k: "clear", vis: 1, sea: 2, until: 0 }, subs: [], cmd: 0, ships: [], convoys: [], torps: [], charges: [], shells: [], planes: [], decoys: [],
       log: [], stats: { tons: 0, sunk: [], fired: 0, hits: 0, duds: 0, charges: 0, dcNear: 0, dmg: 0, maxDepth: 0, shells: 0 },
       konami: false, cheated: false, end: null, nameI: 0, potential: 0, msg: null,
     };
@@ -134,6 +140,8 @@
       (A.escOrders || []).forEach((o, i) => { if (S.subs[i]) S.subs[i].orders = o; });
     }
     if (A.limit) S.endT = S.t + A.limit * 3600;
+    /* the escorts' own orders, in the order of the convoy's list: a hunter-killer group hunts from the start */
+    if (A.escOrd) S.ships.filter(q => q.role === "escort").forEach((q, i) => { if (A.escOrd[i] && q.id !== S.flag) { q.ord = A.escOrd[i]; q.wps = q.wps || []; } });
     /* an escort already hunting: it has a contact on the nearest boat */
     if (A.hunt) for (const sh of S.ships) if (sh.role === "escort") {
       const q = S.subs.reduce((a, b) => PP.dist(sh.x, sh.y, b.x, b.y) < PP.dist(sh.x, sh.y, a.x, a.y) ? b : a);
@@ -167,107 +175,4 @@
     return S;
   };
 
-  /* ---- the war: a career and its patrols ---- */
-  const Career = PP.Career = {};
-  Career.make = ({ name, mi, real, seed }) => {
-    const r = PP.mulberry(seed);
-    const cls = mi >= 20 ? "catamount" : mi >= 6 ? "cougar" : "caracal";
-    return { v: 1, name: name || "Puma", t: C.monthStart(mi) + C.DAY * 3 + H(8), start: mi, real: Object.assign({}, real), seed, cls, boat: PP.pick(r, C.BOAT_NAMES),
-      pts: 0, tons: 0, ships: 0, patrols: [], medals: [], rank: C.RANKS[0][1], alive: true, over: null, base: "talon", n: 0, cheated: false };
-  };
-  Career.basesOpen = car => Sea.portsOpen(C.monthOf(car.t));
-  /* the boats command will give you now: what has come into service, by rank */
-  Career.boatsOffered = car => {
-    const mi = C.monthOf(car.t), ri = C.RANKS.findIndex(([, n]) => n === car.rank);
-    return C.SUB_ORDER.filter(k => C.SUBS[k].from <= mi && (k !== "catamount" || ri >= 1 || mi >= 30) && k !== "ocelot");
-  };
-  /* where command sends you: zones with the traffic, by the month */
-  Career.orders = (car, seed) => {
-    const r = PP.mulberry(seed + car.n * 977), mi = C.monthOf(car.t);
-    const zs = Sea.zones.filter(z => !(mi < 6 && (z.id === "approaches" || z.id === "vargrin")));
-    return PP.pick(r, zs).id;
-  };
-
-  E.newPatrol = (car, seed) => {
-    const S = E.base({ seed, mode: "patrol", mi: 0, real: car.real, cls: car.cls, name: car.boat });
-    S.t = car.t;
-    S.subs = []; E.addBoat(S, car.cls, car.boat);
-    S.cap = { name: car.name, rank: car.rank };
-    S.phase = "port";
-    S.patrol = { n: car.n + 1, zone: Career.orders(car, seed), base: car.base, out: 0, due: 0, tons0: 0, sunk0: 0, intercepts: [], towed: false, cheated: false };
-    E.setWx(S, "clear");
-    const p = Sea.port(car.base) || Sea.ports[0];
-    Object.assign(S.sub, { x: p.x, y: p.y, hdg: 270 * PP.DEG, ordHdg: 270 * PP.DEG });
-    E.seedLanes(S);
-    E.log(S, `Patrol ${S.patrol.n}: orders for ${Sea.ZONES.find(z => z.id === S.patrol.zone).name}.`);
-    return S;
-  };
-  E.depart = (S, ev = []) => {
-    const p = Sea.port(S.patrol.base) || Sea.ports[0];
-    S.phase = "sea";
-    S.patrol.out = S.t; S.patrol.leaving = true; S.patrol.due = S.t + C.PATROL_DAYS * C.DAY; S.patrol.tons0 = S.stats.tons; S.patrol.sunk0 = S.stats.sunk.length;
-    const z = Sea.zones.find(q => q.id === S.patrol.zone), h = PP.angTo(p.x, p.y, z.x, z.y);
-    Object.assign(S.sub, { x: p.x + PP.hx(h) * 4000, y: p.y + PP.hy(h) * 4000, hdg: h, ordHdg: h, bell: 4, spd: 12, depth: 0, ordDepth: 0 });
-    E.log(S, `Underway from ${p.name}, ${C.dateStr(S.t)}.`);
-    ev.push({ t: "departed" });
-    return ev;
-  };
-  /* the lanes, already busy when the patrol begins */
-  E.seedLanes = S => {
-    const mi = C.monthOf(S.t), e = C.era(mi);
-    for (const L of Sea.lanes) for (const dir of [1, -1]) {
-      const n = Math.round(L.len / (16 * 3600 * 9 * PP.KN) * L.w * e.traffic);
-      for (let i = 0; i < n; i++) E.newConvoyOn(S, L, dir, L.len * R(S));
-    }
-  };
-  E.newConvoyOn = (S, L, dir, s) => {
-    const mi = C.monthOf(S.t), e = C.era(mi);
-    const lone = R(S) < (mi < 18 ? 0.35 : 0.2);
-    const n = lone ? 1 : 2 + Math.floor(R(S) * (3 + 4 * e.traffic));
-    const comp = Sh.makeComp(S, { kinds: L.kinds, n, mi });
-    const p = Sea.along(L, dir > 0 ? s : s), hdg = dir > 0 ? p.hdg : PP.normAng(p.hdg + Math.PI);
-    return Sh.makeConvoy(S, { x: p.x, y: p.y, hdg, comp, lane: L.id, dir });
-  };
-  /* new convoys putting out from the ends of the lanes */
-  E.traffic = (S, dt) => {
-    if (S.mode !== "patrol") return;
-    const e = C.era(C.monthOf(S.t));
-    for (const L of Sea.lanes) for (const dir of [1, -1]) {
-      if (R(S) < L.w * e.traffic * dt / H(16)) E.newConvoyOn(S, L, dir, dir > 0 ? 0 : L.len);
-    }
-  };
-  /* in reach of a base, on the surface, slow: she can tie up */
-  E.nearPort = S => {
-    if (S.mode !== "patrol" || S.phase !== "sea") return null;
-    const s = S.sub;
-    return Sea.portsOpen(C.monthOf(S.t)).find(p => PP.dist(s.x, s.y, p.x, p.y) < 9000) || null;
-  };
-  E.canDock = S => { const p = E.nearPort(S); return p && Sub.surfaced(S.sub) && S.sub.spd < 9 ? p : null; };
-  /* the patrol's report, written into the career */
-  E.enterPort = (S, car, port, towed = false) => {
-    const sunk = S.stats.sunk.slice(S.patrol.sunk0), tons = sunk.reduce((a, x) => a + x.tons, 0), pct = C.realPct(S.real);
-    const pts = Math.round(tons * pct / 100), days = Math.round((S.t - S.patrol.out) / C.DAY);
-    const medal = towed ? null : C.MEDALS.slice().reverse().find(([at]) => pts >= at);
-    const rankWas = car.rank;
-    car.pts += pts; car.tons += tons; car.ships += sunk.length; car.n = S.patrol.n;
-    car.rank = C.rankFor(car.pts);
-    if (medal) car.medals.push({ name: medal[1], n: S.patrol.n, t: S.t });
-    if (S.cheated) car.cheated = true;
-    const zone = Sea.ZONES.find(z => z.id === S.patrol.zone);
-    const rep = { n: S.patrol.n, zone: zone ? zone.name : "", out: S.patrol.out, back: S.t, days, tons, pts, ships: sunk, medal: medal ? medal[1] : null, rankUp: car.rank !== rankWas ? car.rank : null, towed, fired: S.stats.fired, charges: S.stats.charges, cls: S.sub.cls, boat: S.sub.name };
-    car.patrols.push(rep);
-    car.base = port.id;
-    /* the refit: two to three weeks in the yard */
-    const refit = C.REFIT_DAYS[0] + Math.floor(R(S) * (C.REFIT_DAYS[1] - C.REFIT_DAYS[0]));
-    car.t = S.t + refit * C.DAY;
-    if (car.t >= C.WAR_END) car.over = "war";
-    S.phase = "port"; S.report = rep;
-    return rep;
-  };
-  Career.lost = (car, S) => {
-    car.alive = false; car.over = "lost";
-    const sunk = S.stats.sunk.slice(S.patrol ? S.patrol.sunk0 : 0), tons = sunk.reduce((a, x) => a + x.tons, 0);
-    car.pts += Math.round(tons * C.realPct(S.real) / 100); car.tons += tons; car.ships += sunk.length;
-    car.patrols.push({ n: S.patrol ? S.patrol.n : car.n + 1, lost: true, why: S.end && S.end.why, back: S.t, tons, ships: sunk, days: Math.round((S.t - (S.patrol ? S.patrol.out : S.t)) / C.DAY), boat: S.sub.name, cls: S.sub.cls });
-  };
 })();

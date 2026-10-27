@@ -1,11 +1,10 @@
-/* PumaPack -- a captain who sails the boat by himself, for
- * tools/sim-check.js and the title's backdrop.
+/* PumaPack -- a captain who sails the boat by himself: every boat of the
+ * pack you are not aboard under the order Attack (PP.Orders), the title's
+ * plot, and tools/sim-check.js.
  *
- * He is a test pilot, not the enemy's brain, and he cheats a little: he
- * picks the biggest ship by the truth, reads the angle on the bow off the
- * truth (with a bit of error) when the reality asks for it by eye, and on
- * patrol he knows roughly where the convoys are, as radio intelligence
- * would tell him. Everything else he does through the same orders a
+ * He cheats a little: he picks the biggest ship by the truth, and reads
+ * the angle on the bow off the truth (with a bit of error) when the reality
+ * asks for it by eye. Everything else he does through the same orders a
  * player gives: helm, telegraph, depth, periscope, lock, fire.
  *
  * His way: get ahead of the convoy (on the surface, out of sight, if he is
@@ -63,10 +62,11 @@
       const s = S.sub, dt = E.dt(S);
       A({ a: "tc", v: C.TC_MAX_IDX });
       const th = threat(S), left = Sub.torpsLeft(s), test = Sub.testDepth(s), bot = Sea.depthAt(s.x, s.y);
-      const out = left === 0 || (S.mode === "patrol" && (s.fuel < 0.35 || S.patrol.dueSaid));
+      const out = left === 0;
       /* ---- the hunt is on: deep, quiet, across their line ---- */
       if (th.hunted || (m.st === "evade" && m.evadeT < 420)) {
-        if (m.st !== "evade") { m.st = "evade"; m.evadeT = 0; }
+        /* hunted afresh: a noisemaker over the side as she goes deep */
+        if (m.st !== "evade") { m.st = "evade"; m.evadeT = 0; if (th.hunted && s.decoys > 0 && !Sub.surfaced(s)) A({ a: "decoy" }); }
         if (th.hunted) m.evadeT = Math.min(m.evadeT, 120);
         m.evadeT += dt;
         if (Sub.surfaced(s) && s.ordDepth === 0) A({ a: "crash" });
@@ -80,31 +80,19 @@
       }
       if (m.st === "evade") m.st = "approach";
       quiet(S, false);
-      /* ---- out of torpedoes or fuel: home, or (in an action) away ---- */
+      /* ---- out of torpedoes: away from the convoy ---- */
       if (out) {
         m.st = "home";
-        if (S.mode === "patrol") {
-          const p = Sea.portsOpen(C.monthOf(S.t)).reduce((a, b) => PP.dist(s.x, s.y, a.x, a.y) < PP.dist(s.x, s.y, b.x, b.y) ? a : b);
-          setDepth(S, th.near < 9000 ? C.PD : 0); setBell(S, PP.dist(s.x, s.y, p.x, p.y) < 12000 ? 2 : 4); helm(S, steerAround(s, p.x, p.y));
-        } else {
-          const t = pickTarget(S);
-          setDepth(S, C.PD); setBell(S, 3);
-          if (t) helm(S, PP.angTo(t.x, t.y, s.x, s.y));
-        }
+        const t = pickTarget(S);
+        setDepth(S, C.PD); setBell(S, 3);
+        if (t) helm(S, PP.angTo(t.x, t.y, s.x, s.y));
         return { acts: act.slice() };
       }
       let t = m.tgt !== null ? Sh.byId(S, m.tgt) : null;
       if (!t || !Sh.alive(t) || S.t - m.pickT > 900) { t = pickTarget(S); m.tgt = t ? t.id : null; m.pickT = S.t; }
       if (!t) {
-        /* nothing in reach: on patrol, find a convoy (radio intelligence), else wait */
-        if (S.mode === "patrol") {
-          let best = null, bd = 1e12;
-          for (const cv of S.convoys) { if (cv.arrived) continue; const d = PP.dist(s.x, s.y, cv.x, cv.y); if (d < bd && d < 250 * PP.YD_NM) { bd = d; best = cv; } }
-          const z = Sea.zones.find(q => q.id === S.patrol.zone);
-          const [gx, gy] = best ? [best.x + PP.hx(best.base) * 30000, best.y + PP.hy(best.base) * 30000] : [z.x, z.y];
-          const dive = Det.light(S) > 0.5 && PP.Escort.airCover(S) > 0.8 && s.bat > 0.6;
-          setDepth(S, dive ? C.PD : 0); setBell(S, dive ? 3 : 4); helm(S, steerAround(s, gx, gy));
-        } else { setDepth(S, C.PD); setBell(S, 2); }
+        /* nothing in reach: wait at periscope depth */
+        setDepth(S, C.PD); setBell(S, 2);
         return { acts: act.slice() };
       }
       const cv = Sh.convoy(S, t.conv), base = cv ? PP.normAng(cv.base) : t.hdg;

@@ -137,6 +137,9 @@
   C.FUEL = { c: 2.78e-7, charging: 0.5e-7 };
   C.NOISE = { base: 0.18, cav: 0.6, cavKn: 6, cavDepth: 100, diesel: 1.4, silent: 0.6 };
   C.WATER = { pump: 1 / 1800, heavy: 0.45, sinkRate: 1.2, lost: 1 };
+  /* the noisemaker (the 1990 game's decoy): a boat carries a few; one in the water sounds like a boat for so
+   * long, and an escort that hears or pings a boat near it may take it for her (UNCERTAIN) */
+  C.DECOY = { n: 4, life: 300, reach: 1200, fool: 0.6, sink: 0.6 };
 
   /* ---- the Wolf Empire's ships (lengths and beams in yards, draft and mast in feet) ---- */
   C.SHIPS = {
@@ -226,8 +229,6 @@
     escorts: at(mi, [[0, 0.6], [12, 1], [24, 1.4], [36, 1.7]]),
     air: at(mi, [[0, 0.5], [18, 1], [30, 1.6]]),
   });
-  C.TECH = [[20, "Our boats carry surface radar"], [21, "The torpedo's contact pistol is fixed"], [29, "Their patrol planes carry radar"],
-    [30, "Cairn Atoll opens as a forward base"], [36, "Electric torpedoes: slower, but no wake"], [38, "Their escorts carry radar"], [44, "Southwind opens as a forward base"]];
 
   /* ---- reality: what makes it harder, and what it is worth ---- */
   C.REAL = [
@@ -242,12 +243,6 @@
   C.REAL_ALL = { vis: true, zig: true, expert: true, aob: true, duds: true, portOnly: true };
   C.REAL_NONE = { vis: false, zig: false, expert: false, aob: false, duds: false, portOnly: false };
 
-  /* ---- the career ---- */
-  C.RANKS = [[0, "Lieutenant"], [15000, "Lieutenant Commander"], [50000, "Commander"], [110000, "Captain"], [200000, "Rear Admiral"]];
-  C.rankFor = pts => { let r = C.RANKS[0][1]; for (const [at, n] of C.RANKS) if (pts >= at) r = n; return r; };
-  C.MEDALS = [[12000, "Letter of Commendation"], [22000, "Bronze Paw"], [35000, "Silver Paw"], [52000, "Puma Cross"], [75000, "Medal of the Pride"]];
-  C.PATROL_DAYS = 50;
-  C.REFIT_DAYS = [14, 24];
   /* the Wolf Empire names its boats for winter, iron and old wolves (ours) */
   C.BOAT_NAMES = ["Hoarfrost", "Grimtooth", "Ironmaw", "Coldharbour", "Ashvane", "Snowfang", "Vargr", "Duskmane", "Frostgrave", "Blackpelt",
     "Wintermark", "Rimewood", "Greymaw", "Stonejaw", "Nightrun", "Ulfhild", "Hrimstead", "Fenmark", "Skoll", "Hati", "Gloomwater", "Iceholm",
@@ -256,8 +251,4 @@
   /* the pack's captains (ours), one to a boat */
   C.CAPTAINS = ["Ulfric", "Varga", "Skaldi", "Hrolf", "Ysolde", "Grimmar", "Brann", "Kaelin", "Mordra", "Tyrr", "Askel", "Rurik", "Sigrun", "Halvard",
     "Ylva", "Fenna", "Isolf", "Rhagar", "Thorna", "Wulfa", "Lupa", "Ragna", "Ketil", "Orm"];
-  C.START_MONTHS = [[0, "January, Year I", "The war's first month. Old boats, bad torpedoes, plenty of targets."],
-    [12, "January, Year II", "Better boats arrive. The torpedoes are still suspect."],
-    [24, "January, Year III", "The torpedoes are fixed by autumn. Their escorts are learning."],
-    [36, "January, Year IV", "The hunting is thinner and the hunters better."]];
 })();

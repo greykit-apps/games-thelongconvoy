@@ -238,6 +238,7 @@
     });
     const hunted = S.ships.some(q => q.role === "escort" && !q.sinking && q.ai.contact && S.t - q.ai.contact < 60);
     const flags = (hunted ? ['<span class="hunt">Hunted</span>'] : []).concat([[s.silent, "Silent"], [Sub.radarWorks(s), "Radar"], [s.gun.on, "Gun"], [s.scope.up, "Scope up"], [S.konami, "Code"]].filter(f => f[0]).map(f => `<span class="on">${f[1]}</span>`))
+      .concat([`<span title="Noisemakers: K drops one under the water">Decoys ${s.decoys || 0}</span>`]).concat(s.sys.radio >= 0.5 ? ['<span class="bad">Radio out</span>'] : [])
       .concat(s.water > 0.2 ? ['<span class="bad">Flooding</span>'] : []).concat(s.bottomed ? ['<span class="on">On the bottom</span>'] : []).concat(s.spread > 1 ? [`<span title="Each press of fire sends the next torpedo of the fan">Spread of ${s.spread}</span>`] : []);
     set(el.querySelector(".hb-flags"), "flags", flags.join(""), (e, v) => { e.innerHTML = v; });
     /* the TDC */
@@ -265,8 +266,5 @@
         <div class="ho-list">${PP.Orders.LIST.map(([o, n, note]) => `<button data-order="${o}" title="${esc(note)}" aria-pressed="${q.orders === o}"${q.orders === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
         <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== s ? " · <kbd>Enter</kbd> or click her again: take command" : ""}</p>`);
     });
-    /* a base in reach */
-    const p = S.mode === "patrol" && !S.patrol.leaving ? PP.Engine.nearPort(S) : null;
-    set(el.querySelector("#h-port"), "port", p ? p.id + PP.Engine.canDock(S) + PP.Input.device : "", (x) => { x.hidden = !p; if (p) x.innerHTML = PP.Engine.canDock(S) ? `${esc(p.name)} ${PP.Input.cap(PP.Input.device === "pad" ? "pad:Y" : "O")} tie up` : `${esc(p.name)}: on the surface, under 9 knots, to tie up`; });
   };
 })();

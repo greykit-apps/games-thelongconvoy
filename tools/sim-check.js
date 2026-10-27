@@ -2,7 +2,7 @@
 /*
  * PumaPack, played headless by the bot (js/engine/bot.js).
  *
- *   node tools/sim-check.js [--seeds N] [--verbose] [--patrol]
+ *   node tools/sim-check.js [--seeds N] [--verbose]
  *
  * Fails if the sea is broken (a base on land or cut off, a lane through
  * land), if the firing solution misses a target on a steady course, if a
@@ -10,14 +10,14 @@
  * ship in every convoy action with the reality off, if the hunters never
  * drop a charge, if a game played twice from the same seed and orders comes
  * out different, or if a game saved and loaded half way differs from one
- * that was not. --patrol also sails a whole war patrol, out and home.
+ * that was not.
  */
 "use strict";
 const { load } = require("./lib.js");
 const PP = load(), C = PP.C, E = PP.Engine, Sea = PP.Sea, W = PP.Weapons;
 const args = process.argv.slice(2);
 const seeds = +(args[args.indexOf("--seeds") + 1] || 2) || 2;
-const verbose = args.includes("--verbose"), patrolToo = args.includes("--patrol") || args.includes("--all");
+const verbose = args.includes("--verbose");
 let fail = 0;
 const bad = msg => { console.log("FAIL " + msg); fail++; };
 const ok = msg => console.log("ok   " + msg);
@@ -100,7 +100,7 @@ for (const A of E.ACTIONS.filter(a => (a.sides || ["pack"]).includes("pack"))) f
   for (let seed = 1; seed <= seeds; seed++) {
     let r;
     /* a big pack is dear to step: four boats or more play the first hour or so, which is where the attack is */
-    try { r = play(() => E.newAction(A.id, { seed, real }), A.boats.length >= 4 ? 70000 : 150000); } catch (e) { bad(`${A.id} ${rn} seed ${seed}: ${e.stack}`); continue; }
+    try { r = play(() => E.newAction(A.id, { seed, real }), A.boats.length >= 7 ? 40000 : A.boats.length >= 4 ? 70000 : 150000); } catch (e) { bad(`${A.id} ${rn} seed ${seed}: ${e.stack}`); continue; }
     const S = r.S, ships = S.stats.sunk.length, mins = ((S.t - E.newAction(A.id, { seed, real }).t) / 60).toFixed(0);
     dropped += r.charges;
     if (ships) sankAny++;
@@ -134,7 +134,7 @@ else ok(`${dropped} depth-charge patterns dropped across the actions; replays an
   for (const A of E.ACTIONS.filter(a => (a.sides || []).includes("escorts"))) for (let seed = 1; seed <= seeds; seed++) {
     let r;
     const make = () => E.newAction(A.id, { seed, real: C.REAL_NONE, side: "escorts" });
-    try { r = play(make, 70000, null, 0, () => PP.Bot.escort()); } catch (e) { bad(`escorts ${A.id} seed ${seed}: ${e.stack}`); continue; }
+    try { r = play(make, A.boats.length >= 7 ? 40000 : 70000, null, 0, () => PP.Bot.escort()); } catch (e) { bad(`escorts ${A.id} seed ${seed}: ${e.stack}`); continue; }
     const S = r.S, lost = S.subs.filter(q => q.lost).length, D = E.debrief(S);
     played++; pats += S.stats.charges; kills += lost;
     console.log(`${lost ? "ok   " : "     "}escorts ${A.id} seed ${seed}: ${S.phase === "over" ? S.end.why : "still at it"}, ${S.stats.charges} charges, ${S.stats.hedgehogs || 0} hedgehogs, ${lost} of ${S.subs.length} boats sunk, ${S.stats.sunk.length} ships lost, score ${D.score} (${D.rating})`);
@@ -149,30 +149,6 @@ else ok(`${dropped} depth-charge patterns dropped across the actions; replays an
   else if (!pats) bad("the escorts' side never laid a charge");
   else if (!kills) bad(`the escorts' side never sank a boat in ${played} games`);
   else ok(`the escorts' side sank ${kills} boats in ${played} games, ${pats} charges laid; the replay and the save match`);
-}
-
-/* ---- a war patrol: out, a hunt, home ---- */
-if (patrolToo) {
-  for (let seed = 1; seed <= Math.max(1, Math.floor(seeds / 2)); seed++) {
-    const car = PP.Career.make({ name: "Bot", mi: 6, real: C.REAL_NONE, seed });
-    const S = E.newPatrol(car, seed);
-    E.depart(S);
-    const bot = PP.Bot.make();
-    let steps = 0, docked = null;
-    try {
-      for (; steps < 900000; steps++) {
-        E.tick(S, bot.cmd(S), AIDS);
-        if (S.phase !== "sea") break;
-        const p = E.canDock(S);
-        if (p && (S.sub.fuel < 0.36 || PP.Sub.torpsLeft(S.sub) === 0 || S.patrol.dueSaid)) { docked = p; break; }
-        if (steps % 2000 === 0) { const nf = finite(S); if (nf) throw new Error(`not a number: ${nf} at step ${steps}`); }
-      }
-    } catch (e) { bad(`patrol seed ${seed}: ${e.stack}`); continue; }
-    const days = ((S.t - S.patrol.out) / C.DAY).toFixed(1);
-    if (docked) { const rep = E.enterPort(S, car, docked); ok(`patrol seed ${seed}: home to ${docked.name} after ${days} days, ${rep.ships.length} sunk, ${PP.num(rep.tons)} t, fuel ${Math.round(S.sub.fuel * 100)}%`); }
-    else if (S.phase === "over") console.log(`     patrol seed ${seed}: ${S.end.why} after ${days} days, ${S.stats.sunk.length} sunk`);
-    else bad(`patrol seed ${seed}: still at sea after ${days} days`);
-  }
 }
 
 if (fail) { console.log(`sim-check: FAILED (${fail})`); process.exit(1); }

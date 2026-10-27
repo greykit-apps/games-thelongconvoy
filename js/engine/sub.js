@@ -13,7 +13,7 @@
   Sub.SYS = [
     ["planes", "Diving planes", 900], ["pumps", "Pumps", 700], ["motors", "Motors", 1500], ["engines", "Diesels", 2400],
     ["battery", "Battery", 3600], ["tubesF", "Forward tubes", 1200], ["tubesA", "After tubes", 1200], ["scope", "Periscope", 1800],
-    ["radar", "Radar", 1500], ["sonar", "Hydrophones", 900], ["gun", "Deck gun", 1100],
+    ["radar", "Radar", 1500], ["sonar", "Hydrophones", 900], ["gun", "Deck gun", 1100], ["radio", "Radio", 1200],
   ];
   /* what only a yard can mend, when the reality says so */
   Sub.PORT_ONLY = ["battery", "scope"];
@@ -28,7 +28,7 @@
       tubes: { F: tube(k.tubesF), A: tube(k.tubesA) }, mark: e.torp,
       store: { F: Math.round((k.torps - k.tubesF - k.tubesA) * (k.tubesA ? 0.62 : 1)), A: 0 },
       shells: k.shells, gun: { man: 0, on: false, brg: 0, rng: 2500, reload: 0 },
-      bank: "F", spread: 3, creakT: 0, bottomed: false, aground: false,
+      bank: "F", spread: 3, creakT: 0, bottomed: false, aground: false, decoys: C.DECOY.n,
     };
   };
   Sub.init = s => { const k = C.SUBS[s.cls]; s.store.A = Math.max(0, k.torps - k.tubesF - k.tubesA - s.store.F); return s; };
@@ -115,6 +115,13 @@
       case "silent": s.silent = !s.silent; if (s.silent) s.bell = Math.min(s.bell, 2); ev.push({ t: "silent", on: s.silent }); break;
       case "bank": s.bank = a.v || (s.bank === "F" ? "A" : "F"); ev.push({ t: "bank", bank: s.bank }); break;
       case "spread": s.spread = a.v || (s.spread % 4) + 1; ev.push({ t: "spread", n: s.spread }); break;
+      case "decoy": {
+        if (Sub.surfaced(s)) { ev.push({ t: "decoyNo", why: "surfaced" }); break; }
+        if (!(s.decoys > 0)) { ev.push({ t: "decoyNo", why: "none" }); break; }
+        s.decoys--; (S.decoys = S.decoys || []).push({ id: S.nextId++, x: s.x, y: s.y, z: s.depth, t0: S.t, by: s.id });
+        ev.push({ t: "decoyAway", left: s.decoys });
+        break;
+      }
     }
   };
 
@@ -209,8 +216,8 @@
     if (S.konami) sev *= 0.15;
     s.hull = Math.max(0, s.hull - sev * (where === "deck" ? 0.5 : 0.7));
     const pool = { fore: ["tubesF", "planes", "sonar", "battery", "pumps"], aft: ["tubesA", "motors", "engines", "planes", "pumps"],
-      mid: ["scope", "radar", "battery", "pumps", "engines", "gun", "sonar"], bottom: ["planes", "pumps", "sonar", "battery"],
-      deck: ["gun", "scope", "radar", "engines"] }[where] || Sub.SYS.map(([k]) => k);
+      mid: ["scope", "radar", "battery", "pumps", "engines", "gun", "sonar", "radio"], bottom: ["planes", "pumps", "sonar", "battery"],
+      deck: ["gun", "scope", "radar", "engines", "radio"] }[where] || Sub.SYS.map(([k]) => k);
     const n = sev > 0.5 ? 3 : sev > 0.2 ? 2 : 1;
     for (let i = 0; i < n; i++) {
       const k = PP.pick(() => PP.rand(S), pool), was = s.sys[k];

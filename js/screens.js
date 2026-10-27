@@ -1,8 +1,7 @@
-/* PumaPack -- the screens with words on them: flat dark panels over the
- * sea (css/pumapack.css). A war patrol's beginning and the port between
- * patrols; the convoy actions and a custom one; target practice; the
- * service record; the pause; the report after an action or a patrol; the
- * captain's log; and Settings, Help and About from the title. */
+/* PumaPack -- the screens with words on them, boards in the boat's red
+ * light (css/pumapack.css): the missions and a custom one, target practice,
+ * the service record, the pause, the debrief, the captain's log, and
+ * Settings, Help and About from the title. */
 "use strict";
 (() => {
   const esc = PP.esc, C = PP.C, E = PP.Engine, Sea = PP.Sea, num = PP.num;
@@ -114,69 +113,6 @@
   /* the reality as one line, the switches behind it */
   const realLine = (real, pre) => `<details class="aid-list real"${UI.realOpen ? " open" : ""}><summary>Reality <b class="num">${C.realPct(real)}%</b>: ${esc(realOnly(real))}. Change</summary>${realTable(real, pre)}</details>`;
 
-  /* ---- a war patrol: the career's start, or the port between patrols ---- */
-  UI.patrol = () => {
-    const car = PP.loadCareer();
-    if (car && !car.over) return UI.port(car);
-    UI.careerSetup();
-  };
-  UI.careerSetup = () => {
-    const real = Object.assign({}, PP.prefs.real);
-    let start = 0;
-    UI.open("A new command", { wide: true, back: () => PP.game.toTitle(),
-      html: () => `<p class="lede">The Wolf Empire's convoys carry its oil, its ore and its troops across the archipelago. You have a fleet boat out of Port Talon, and the war is just beginning.</p>
-        <div class="row"><label for="ps-name">Your name</label><input id="ps-name" maxlength="18" value="${esc(PP.lastName())}" placeholder="Puma" autocomplete="off"></div>
-        <h3>Take command in</h3>
-        <div class="diffs">${C.START_MONTHS.map(([mi, n, note], i) => `<button data-start="${i}" aria-pressed="${i === start}"${i === start ? ' class="on"' : ""}><b>${esc(n)}</b><span>${esc(note)}</span></button>`).join("")}</div>
-        ${realLine(real, "real")}
-        <div class="row end"><button data-act="go" class="primary">Take command</button></div>`,
-      onClick: (b, api) => {
-        if (b.dataset.start !== undefined) { start = +b.dataset.start; const n = document.getElementById("ps-name").value; api.refresh(); document.getElementById("ps-name").value = n; return; }
-        const v = b.dataset.set;
-        if (v && v.startsWith("real:")) { const k = v.slice(5); real[k] = !real[k]; const n = document.getElementById("ps-name").value; api.refresh(); document.getElementById("ps-name").value = n; return; }
-        if (b.dataset.act === "go") {
-          const name = (document.getElementById("ps-name").value || "").trim().slice(0, 18) || "Puma";
-          PP.setLastName(name);
-          const car = PP.Career.make({ name, mi: C.START_MONTHS[start][0], real, seed: 1 + Math.floor(Math.random() * 2 ** 30) });
-          PP.saveCareer(car);
-          UI.close(true); UI.port(car);
-        }
-      },
-    });
-  };
-  /* in port: the date, the boat, the orders */
-  UI.port = car => {
-    const S = E.newPatrol(car, 1 + Math.floor(Math.random() * 2 ** 30)), zone = Sea.ZONES.find(z => z.id === S.patrol.zone), base = Sea.port(car.base);
-    const offered = PP.Career.boatsOffered(car).filter(k => k !== car.cls), last = car.patrols[car.patrols.length - 1];
-    const news = C.TECH.filter(([mi]) => mi <= C.monthOf(car.t) && mi > (last ? C.monthOf(last.back) : car.start - 1)).map(([, n]) => n);
-    UI.open(`${base.name}, ${C.dateStr(car.t)}`, { wide: true, closable: false,
-      html: () => `<div class="report"><div>
-        <div class="cap"><img class="crest" src="${PP.Puma.crestURL(48)}" alt="" width="48" height="48"><h3 class="mname">${esc(car.rank)} ${esc(car.name)}</h3></div>
-        <p class="meta">The ${esc(C.SUBS[car.cls].name)}-class boat <b>${esc(car.boat)}</b> · ${car.patrols.length} patrol${car.patrols.length === 1 ? "" : "s"} · ${num(car.tons)} tons sunk</p>
-        <h3>Orders</h3>
-        <p class="lede">Patrol ${S.patrol.n}: <b>${esc(zone.name)}</b>. ${C.PATROL_DAYS} days. Sink what you find; come home when the torpedoes or the fuel run low.</p>
-        ${news.length ? `<h3>News</h3><ul>${news.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
-        ${offered.length ? `<h3>A new boat</h3><div class="row">${offered.map(k => `<button data-boat="${k}">The ${esc(C.SUBS[k].name)} class</button>`).join("")}</div><p class="note">${offered.map(k => `${esc(C.SUBS[k].name)}: ${esc(C.SUBS[k].note)}`).join(" ")}</p>` : ""}
-      </div><div>
-        <h3>The war so far</h3>${car.patrols.length ? `<table class="tally">${car.patrols.slice(-6).map(p => `<tr><td>Patrol ${p.n}${p.zone ? ", " + esc(p.zone) : ""}</td><td class="num">${num(p.tons)} t</td></tr>`).join("")}</table>` : `<p class="note">No patrols yet.</p>`}
-        ${car.medals.length ? `<p>${car.medals.map(m => esc(m.name)).join(" · ")}</p>` : ""}
-        <p class="note">Reality ${C.realPct(car.real)}%: ${esc(realOnly(car.real))}.</p>
-      </div></div>
-      <div class="row end"><button data-act="sea" class="primary">Put to sea</button><button data-act="record">Service record</button><button data-act="retire" class="danger">Retire</button><button data-act="title">Main menu</button></div>`,
-      onClick: async (b, api) => {
-        if (b.dataset.boat) { car.cls = b.dataset.boat; car.boat = PP.pick(Math.random, C.BOAT_NAMES); PP.saveCareer(car); UI.close(true); UI.port(car); return; }
-        const a = b.dataset.act;
-        if (a === "sea") { UI.close(true); PP.game.startPatrol(S, car); }
-        if (a === "record") { UI.close(true); UI.record(() => UI.port(car)); }
-        if (a === "title") { UI.close(true); PP.game.toTitle(); }
-        if (a === "retire" && await UI.ask(`Retire ${car.rank} ${car.name}? The career goes into the service record, and a new command starts from the beginning.`, "Retire")) {
-          car.over = "retired"; PP.addCareer(car); PP.clearCareer(); UI.close(true); UI.record(() => PP.game.toTitle());
-        }
-        void api;
-      },
-    });
-  };
-
   /* ---- the convoy actions, in the order of the war ---- */
   const escorts = A => { const n = A.conv.esc ? A.conv.esc.length : A.conv.escorts; return n ? `${n} escort${n > 1 ? "s" : ""}` : "unescorted"; };
   UI.actions = () => {
@@ -222,7 +158,7 @@
   /* ---- target practice ---- */
   UI.practice = () => UI.open("Target practice", { back: () => PP.game.toTitle(),
     html: () => `<p class="lede">Unescorted targets on a steady course, calm water, good torpedoes. Nothing counts.</p>
-      <div class="diffs two"><button data-k="torpedo" autofocus><b><kbd>1</kbd>Torpedoes</b><span>Three ships crossing ahead of you at periscope depth. Lock one, let the TDC solve it, fire.</span></button>
+      <div class="diffs two"><button data-k="torpedo" autofocus><b><kbd>1</kbd>Torpedoes</b><span>Three ships crossing ahead of you at periscope depth. Select one with <kbd>T</kbd> and fire: the boat aims the shot.</span></button>
       <button data-k="gun"><b><kbd>2</kbd>The deck gun</b><span>An old coaster, a few thousand yards off, and you on the surface. <kbd>G</kbd> mans the gun.</span></button></div>`,
     onKey: ev => { if (ev.key === "1" || ev.key === "2") { ev.preventDefault(); UI.close(true); PP.game.startPractice(ev.key === "1" ? "torpedo" : "gun"); return true; } return false; },
     onClick: b => { if (b.dataset.k) { UI.close(true); PP.game.startPractice(b.dataset.k); } },
@@ -230,11 +166,9 @@
 
   /* ---- the service record ---- */
   UI.record = after => {
-    const f = PP.fame(), car = PP.loadCareer();
+    const f = PP.fame();
     UI.open("Service record", { wide: true, onClose: after,
-      html: () => `${car && !car.over ? `<h3>In command</h3><p>${esc(car.rank)} ${esc(car.name)}, ${esc(car.boat)}: ${car.patrols.length} patrols, ${num(car.tons)} tons, ${C.dateStr(car.t)}.</p>` : ""}
-        <h3>Careers</h3>${f.careers.length ? `<table class="scores"><tr><th></th><th>Captain</th><th>Rank</th><th class="num">Points</th><th class="num">Tons</th><th>Patrols</th><th>Ended</th></tr>${f.careers.map((e, i) => `<tr><td class="num">${i + 1}</td><td>${esc(e.name)}${e.code ? " · code" : ""}</td><td>${esc(e.rank)}</td><td class="num">${num(e.pts)}</td><td class="num">${num(e.tons)}</td><td>${e.patrols}</td><td>${{ war: "the war won", retired: "retired", lost: "lost at sea" }[e.over] || ""}</td></tr>`).join("")}</table>` : `<p class="note">No careers ended yet. They come here when the war is won, when you retire, or when the boat is lost.</p>`}
-        <h3>Missions</h3><table class="scores">${E.ACTIONS.map(A => { const r = f.actions[A.id]; return `<tr><td>${esc(A.name)}</td><td class="num">${r ? num(r.tons) + " t" : "—"}</td><td>${r ? (r.score !== undefined ? `${r.score}% · ` : "") + esc(r.rating) + ` · reality ${r.pct}%` : ""}</td></tr>`; }).join("")}</table>`,
+      html: () => `<h3>Missions</h3><table class="scores">${E.ACTIONS.map(A => { const r = f.actions[A.id]; return `<tr><td>${esc(A.name)}</td><td class="num">${r ? num(r.tons) + " t" : "—"}</td><td>${r ? (r.score !== undefined ? `${r.score}% · ` : "") + esc(r.rating) + ` · reality ${r.pct}%` : ""}</td></tr>`; }).join("")}</table>`,
     });
   };
 
@@ -242,14 +176,14 @@
   const KEY_LEGEND = [["W S", "telegraph"], ["A D", "helm"], ["Q E", "depth"], ["C", "crash dive"], ["← →", "train, look"], ["T", "lock"], ["Space", "fire"], ["?", "all keys"]];
   const PAD_LEGEND = [["pad:L-stick", "helm, telegraph"], ["pad:dU pad:dD", "depth"], ["pad:L-click", "crash dive"], ["pad:R-stick", "train, look"], ["pad:X", "lock"], ["pad:A", "fire"], ["pad:LB pad:RB", "stations"], ["pad:Back+Start", "all keys"]];
   UI.pause = () => {
-    const S = PP.game.S, patrol = S.mode === "patrol", n = S.stats.sunk.length;
+    const S = PP.game.S, n = S.stats.sunk.length;
     const btn = (act, words, cls = "") => `<button data-act="${act}"${cls ? ` class="${cls}"` : ""}>${UI.TICK}<span class="lbl">${words}</span></button>`;
     UI.open("Paused", { popup: true,
-      html: () => `<dl class="msg-f"><div class="w"><dt>Position</dt><dd>${esc(patrol ? `Patrol ${S.patrol.n}, ${Sea.ZONES.find(z => z.id === S.patrol.zone).name}` : S.scnName || "Action")}</dd></div>
+      html: () => `<dl class="msg-f"><div class="w"><dt>Position</dt><dd>${esc(S.scnName || "Mission")}</dd></div>
         <div><dt>Date-time group</dt><dd>${C.dtgStr(S.t)}</dd></div><div><dt>Sunk</dt><dd>${n} ship${n === 1 ? "" : "s"}, ${num(S.stats.tons)} tons</dd></div></dl>
         <div class="col">${btn("resume", "Resume", "primary")}${btn("log", "Captain's log")}${btn("settings", "Settings")}${btn("help", "Help")}
-        ${btn("leave", patrol || PP.prefs.resume ? "Main menu: resume it later" : "End the action")}
-        ${!patrol && PP.prefs.resume ? btn("end", "End the action") : ""}</div>
+        ${btn("leave", PP.prefs.resume ? "Main menu: resume it later" : "End the mission")}
+        ${PP.prefs.resume ? btn("end", "End the mission") : ""}</div>
         <div class="note keys legend">${(PP.Input.device === "pad" ? PAD_LEGEND : KEY_LEGEND).map(([k, w]) => `<span class="k">${k.split(" ").map(x => `<kbd>${x}</kbd>`).join(" ")}</span><span>${w}</span>`).join("")}</div>`,
       onClick: async b => {
         const a = b.dataset.act;
@@ -257,7 +191,7 @@
         if (a === "log") { UI.close(true); UI.log(S, () => UI.pause()); }
         if (a === "settings") { UI.close(true); UI.settings(() => UI.pause()); }
         if (a === "help") { UI.close(true); UI.help(0, () => UI.pause()); }
-        if (a === "leave") { if (patrol || PP.prefs.resume) { UI.close(true); PP.game.leave(); } else if (await UI.ask("End this action here? What you have sunk still counts.", "End the action")) { UI.close(true); PP.game.endAction(); } }
+        if (a === "leave") { if (PP.prefs.resume) { UI.close(true); PP.game.leave(); } else if (await UI.ask("End this action here? What you have sunk still counts.", "End the action")) { UI.close(true); PP.game.endAction(); } }
         if (a === "end" && await UI.ask("End this action here? What you have sunk still counts.", "End the action")) { UI.close(true); PP.game.endAction(); }
       },
       onClose: () => PP.game.unpause(),
@@ -317,7 +251,7 @@
         <p class="meta">${esc(why)} ${esc(S.scnName || "")}</p>
         ${!lost && S.stats.charges ? `<p class="honour">Survived ${S.stats.charges} depth charge${S.stats.charges > 1 ? "s" : ""}</p>` : ""}
         ${S.mode === "action" && !lost && !S.stats.tons ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of her, 1,000 to 2,000 yards off her track, near 90° on the bow.") : "No torpedoes away. Get ahead of the convoy on the surface, then dive across its track."} The convoy is still out there.</p>` : ""}
-        ${S.mode === "practice" ? `<p class="lesson">${S.scn === "gun" ? (S.stats.tons ? "That's the gun. Torpedoes next: the other practice." : "Lay the gun with the arrows and its range with up and down; <kbd>Space</kbd> fires when the sight reads READY.") : S.stats.hits ? "That's the attack. Escorts next: a convoy action, where they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of her, 1,000 to 2,000 yards off her track, near 90° on the bow." : "Lock a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the TDC lamp is green."}</p>` : ""}
+        ${S.mode === "practice" ? `<p class="lesson">${S.scn === "gun" ? (S.stats.tons ? "That's the gun. Torpedoes next: the other practice." : "Lay the gun with the arrows and its range with up and down; <kbd>Space</kbd> fires when the sight reads READY.") : S.stats.hits ? "That's the attack. Escorts next: a convoy action, where they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of her and off her track, under 3,000 yards." : "Select a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the lamp says On target."}</p>` : ""}
         ${S.mode === "practice" ? "" : `<p class="note">Reality ${pct}%.</p>`}</div>
         <div>${S.stats.sunk.length ? `<h3>Sunk</h3>${sunkTable(S.stats.sunk)}` : ""}<h3>The engagement</h3>${tally(S)}</div></div>
         <div class="row end"><button data-act="again" class="primary">${S.mode === "practice" ? "Again" : "Fight it again"}</button><button data-act="actions">${S.mode === "practice" ? "Practice" : "Convoy actions"}</button><button data-act="title">Main menu</button></div>`,
@@ -329,32 +263,6 @@
       },
     });
   };
-  /* ---- home from a patrol ---- */
-  UI.patrolReport = (rep, car) => UI.open(rep.towed ? `Towed into ${Sea.port(car.base).name}` : `Patrol ${rep.n}: home to ${Sea.port(car.base).name}`, { wide: true, closable: false,
-    html: () => `<div class="report"><div><div class="cap"><img class="crest" src="${PP.Puma.crestURL(48)}" alt="" width="48" height="48"><h3 class="mname big${rep.tons ? " ok" : ""}">${num(rep.tons)} tons</h3></div>
-      ${rep.charges ? `<p class="honour">Survived ${rep.charges} depth charge${rep.charges > 1 ? "s" : ""}</p>` : ""}
-      <p class="meta">${rep.days} days at sea${rep.zone ? `, ${esc(rep.zone)}` : ""}. ${rep.fired} torpedoes fired.</p>
-      ${rep.medal ? `<p class="placed">${esc(rep.medal)}</p>` : ""}${rep.rankUp ? `<p class="rank">Promoted: <b>${esc(rep.rankUp)}</b></p>` : `<p class="rank">${esc(car.rank)}</p>`}
-      <p class="note">${num(rep.pts)} points this patrol, at ${C.realPct(car.real)}% reality. ${car.over === "war" ? "The war is over." : `Refit until ${C.dateStr(car.t)}.`}</p></div>
-      <div><h3>Sunk</h3>${sunkTable(rep.ships)}</div></div>
-      <div class="row end"><button data-act="on" class="primary">${car.over === "war" ? "The end of the war" : "Into port"}</button></div>`,
-    onClick: b => {
-      if (b.dataset.act !== "on") return;
-      UI.close(true);
-      if (car.over === "war") { PP.addCareer(car); PP.clearCareer(); UI.record(() => PP.game.toTitle()); }
-      else UI.port(car);
-    },
-  });
-  UI.lost = (S, car) => UI.open("Lost with all hands", { wide: true, closable: false,
-    html: () => `<div class="report"><div><h3 class="mname big danger">${esc(S.sub.name)}</h3>
-      <p class="meta">${S.end.why === "crushed" ? "The hull gave way below her crush depth." : "She flooded and went down."} ${esc(C.dateStr(S.t))}.</p>
-      <p>${S.end.why === "crushed" ? "Next time: watch the depth gauge's red arc, and remember that damage brings the crush depth up." : "Next time: water comes in through a damaged hull and the pumps fight it; running silent stops the pumps."}</p>
-      <p class="rank">${esc(car.rank)} ${esc(car.name)}: ${car.patrols.length} patrols, ${num(car.tons)} tons.</p></div>
-      <div><h3>This patrol</h3>${sunkTable(S.stats.sunk.slice(S.patrol.sunk0))}</div></div>
-      <div class="row end"><button data-act="new" class="primary">A new command</button><button data-act="rec">Service record</button><button data-act="title">Main menu</button></div>`,
-    onClick: b => { if (b.dataset.act === "new") { UI.close(true); UI.careerSetup(); } if (b.dataset.act === "rec") { UI.close(true); UI.record(() => PP.game.toTitle()); } if (b.dataset.act === "title") { UI.close(true); PP.game.toTitle(); } },
-  });
-
   /* ---- Settings (greykit.games STANDARD.md §7: the game's own, Sound, speed, This browser) ---- */
   function showSettings() {
     const sw = (k, n) => toggle("aidt:" + k, PP.aid(k), n);
@@ -362,7 +270,7 @@
       html: () => { const changed = Object.keys(PP.prefs.over).length, adj = changed ? ", adjusted" : ""; return `
         <h3>Aids</h3>
         <div class="row">${pill(PP.prefs.aids === "classic", "Classic" + (PP.prefs.aids === "classic" ? adj : ""), "aids:classic")}${pill(PP.prefs.aids === "field", "Field" + (PP.prefs.aids === "field" ? adj : ""), "aids:field")}</div>
-        <p class="note">Classic plays as 1985 did: the instruments and your eyes. Field adds the helps below. <kbd>L</kbd> switches between them at sea and keeps the aids you set on your own. Aids never change the war: the reality does that.</p>
+        <p class="note">Classic is the instruments and your eyes. Field adds the helps below. <kbd>L</kbd> switches between them at sea and keeps the aids you set on your own. Aids never change the war: the reality does that.</p>
         <details class="aid-list"${UI.aidOpen ? " open" : ""}><summary>Set each aid on its own${changed ? ` (${changed} changed)` : ""}</summary>
         <table class="aids">${PP.AID_LIST.map(([k, n, note]) => line(n, esc(note), sw(k, n))).join("")}</table></details>
         <h3>Reality for new games</h3>${realLine(PP.prefs.real, "dreal")}
@@ -378,7 +286,7 @@
         <div class="row">${Object.entries(PP.SPEEDS).map(([k, [n]]) => pill(PP.prefs.speed === k, n, "speed:" + k)).join("")}</div>
         <p class="note">Relaxed slows the whole game down, Brisk speeds it up. Time compression works on top of it.</p>
         <h3>This browser</h3>
-        <table class="aids">${line("Resume a game", "Leave an action in the middle and come back to it. A patrol is always kept.", toggle("resume", PP.prefs.resume, "Resume a game"))}</table>
+        <table class="aids">${line("Resume a game", "Leave a mission in the middle and come back to it.", toggle("resume", PP.prefs.resume, "Resume a game"))}</table>
         <div class="row"><button data-set="forget" class="danger">Forget everything</button></div>
         <p class="note">Clears everything PumaPack keeps in this browser: the career, the service record, a game in progress, and these settings.</p>`; },
       onClick: async (b, api) => {
@@ -426,7 +334,9 @@
       <p><kbd>Space</kbd> fires at the ship selected, or, with none, at the nearest the pack has in sight within a torpedo's run. The boat's fire control aims it: the panel says <b>On target</b> when the shot will run, <b>Wrong angle</b> when the other tubes must take it (<kbd>F</kbd> forward or after), and <b>Out of range</b> when she must close. It will not waste a torpedo on a shot it cannot make.</p>
       <p>The best shot is from ahead of the target and off its track, under 3,000 yards. A spread (<kbd>V</kbd>) fans the next shots across her, a press of <kbd>Space</kbd> for each.</p>
       <p>Bearings are true, as the crew report them: the ring above the periscope glass reads true. A brass mark on the ring is the ship selected, a hollow amber one the crew's last report; an arrow at the ring's end means it is off to that side.</p></div>`],
-    ["Escorts and the war", `<div class="cols"><p><b>Escorts</b> hear you when you are fast and see you when you show. When one has you, go deep (<kbd>E</kbd>), slow (<kbd>S</kbd>) and quiet (<kbd>X</kbd> runs silent), and turn across its line. They give up, in time. While they hunt you the key strip turns red, with the keys to get away.</p>
+    ["Escorts and the war", `<div class="cols"><p><b>Escorts</b> hear you when you are fast and see you when you show. When one has you, go deep (<kbd>E</kbd>), slow (<kbd>S</kbd>) and quiet (<kbd>X</kbd> runs silent), and turn across its line. They give up, in time.</p>
+      <p>A <b>noisemaker</b> (<kbd>K</kbd>, under the water) sounds like a boat for five minutes: an escort that hears or pings you near it may take it for you. Each boat carries four.</p>
+      <p>Orders go to the other boats by <b>radio</b>. A boat with her radio damaged cannot take a new one, and you will hear nothing from her, until her crew mend it. While they hunt you the key strip turns red, with the keys to get away.</p>
       <p><b>Aircraft</b> come by day near the Empire's islands. When the lookouts call one, dive (<kbd>C</kbd>).</p>
       <p>On the <b>damage report</b> (<kbd>3</kbd>) the boat is cut away: a hatched compartment has a system hurt, amber damaged, red out. Under her, the depth she is at against her test and crush depths; damage to the hull brings the crush depth up. The crew mend one thing at a time, the worst first.</p></div>`],
     ["Keys", keys([["Telegraph", "<kbd>W</kbd> <kbd>S</kbd>, a bell at a time"], ["Helm", "<kbd>A</kbd> <kbd>D</kbd>, a tap five degrees, a hold to swing"], ["Depth", "<kbd>Q</kbd> <kbd>E</kbd> or <kbd>PgUp</kbd> <kbd>PgDn</kbd>; <kbd>P</kbd> periscope depth, <kbd>U</kbd> surface, <kbd>C</kbd> crash dive"],
@@ -441,7 +351,7 @@
       ["Shift", "held: a faster helm and periscope, the gun's range by 500; <kbd>Shift</kbd> <kbd>Z</kbd> zooms the map in"],
       ["Mouse", "a click on a ship selects her, in the view or on the map; on the map a click on a boat selects her, again takes command, and a right click adds her a waypoint; drag the map to look round it"],
       ["The pack", "<kbd>N</kbd> command of the next boat, <kbd>Shift</kbd> <kbd>N</kbd> the one before"],
-      ["Other", "<kbd>4</kbd> captain's log, <kbd>X</kbd> silent running, <kbd>Y</kbd> radar, <kbd>L</kbd> Classic or Field aids, <kbd>M</kbd> sound, <kbd>?</kbd> these keys, <kbd>Esc</kbd> pause"]]) +
+      ["Other", "<kbd>4</kbd> captain's log, <kbd>X</kbd> silent running, <kbd>K</kbd> a noisemaker, <kbd>Y</kbd> radar, <kbd>L</kbd> Classic or Field aids, <kbd>M</kbd> sound, <kbd>?</kbd> these keys, <kbd>Esc</kbd> pause"]]) +
       `<p class="note">The keys are where they sit on a US keyboard; where the browser can tell, each shows the letter on your own.</p>`],
     ["Gamepad", keys([["Sticks", "<kbd>pad:L-stick</kbd> the helm, flicked up or down the telegraph; <kbd>pad:R-stick</kbd> trains the periscope, looks round, lays the gun"],
       ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> select a ship, <kbd>pad:Y</kbd> power, the glasses, the chart's zoom, and at a base tie up"],

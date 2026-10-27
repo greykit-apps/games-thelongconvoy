@@ -4,7 +4,7 @@
  * the sea is charted and the first ships are traced, then the game's own
  * title: a convoy at dusk behind it, the name, the menu (§6's items and
  * keys, read by the block's own key lookup), the credit. Then an action, a
- * practice or a patrol. The engine runs at fifty steps a second (or forty,
+ * practice or a mission. The engine runs at fifty steps a second (or forty,
  * or sixty: Settings), whatever the screen's rate; time compression makes
  * each step longer, never more of them. */
 "use strict";
@@ -31,18 +31,17 @@
 
   /* ---- the title ---- */
   function titleCfg() {
-    const saved = PP.loadGame(), car = PP.loadCareer(), f = PP.fame(), fresh = !saved && !car && !f.careers.length && !Object.keys(f.actions).length;
-    const cmd = car && !car.over ? car : null;
+    const saved = PP.loadGame(), f = PP.fame(), fresh = !saved && !Object.keys(f.actions).length;
     return {
       name: "PumaPack",
       primary: saved ? "resume" : fresh ? "practice" : "action",
-      /* the signal's head: to the boat of the game in hand or the career, dated from it (else from the dusk behind) */
-      msg: { to: (saved && saved.S.subs.length > 1 ? saved.S.subs.map(q => q.name).join(", ") : saved && saved.S.sub.name) || "Every boat of the pack", dtg: C.dtgStr(saved ? saved.S.t : cmd ? cmd.t : game.demo.t), prec: saved ? "Priority" : "Routine" },
+      /* the board's head: the boats of the game in hand, dated from it (else from the plot behind) */
+      msg: { to: (saved && saved.S.subs.length > 1 ? saved.S.subs.map(q => q.name).join(", ") : saved && saved.S.sub.name) || "The whole pack", dtg: C.dtgStr(saved ? saved.S.t : game.demo.t), prec: saved ? "Priority" : "Routine" },
       items: [
-        saved && { act: "resume", label: "Resume game", key: "R", meta: saved.S.mode === "patrol" ? `Patrol ${saved.S.patrol.n}, ${C.dateStr(saved.S.t)}` : saved.S.scnName || "" },
+        saved && { act: "resume", label: "Resume game", key: "R", meta: saved.S.scnName || "" },
         { act: "action", label: "Missions", key: "C", meta: "" },
         { act: "practice", label: "Target practice", key: "T", meta: fresh ? "start here" : "" },
-        { act: "record", label: "Service record", key: "O", meta: f.careers.length ? `${f.careers.length} career${f.careers.length > 1 ? "s" : ""}` : "" },
+        { act: "record", label: "Service record", key: "O", meta: "" },
         "gap",
         { act: "settings", label: "Settings", key: "S" },
         { act: "help", label: "Help", key: "?" },
@@ -66,7 +65,7 @@
         <h1 class="ps-mark" aria-label="${esc(cfg.name)}"><span class="puma">Puma</span><span class="svc">Pack</span></h1>
         <nav class="ps-menu ps-msg paper" aria-label="Main menu">
           <header class="msg-hd"><span>The pack board</span><span>${esc(m.prec)}</span></header>
-          <dl class="msg-f">${field("Boats", m.to)}${field("Date-time group", m.dtg)}${field("Contact", "PDF convoy out of Pumacity, steering west. Attack at will", "w")}</dl>
+          <dl class="msg-f">${field("Boats", m.to)}${field("Date-time group", m.dtg)}${field("Contact", "PDF convoy steering west. Attack at will", "w")}</dl>
           <p class="msg-l" aria-hidden="true">Orders</p>
           <div class="msg-t">${main.map(it => btn(it, true)).join("")}</div>
           <div class="util">${util.map(it => btn(it, false)).join("")}</div>
@@ -125,7 +124,6 @@
   async function titleAct(a) {
     SFX.unlock();
     if (a === "resume") return resume();
-    if (a === "new") return UI.patrol();
     if (a === "action") return UI.actions();
     if (a === "practice") return UI.practice();
     if (a === "record") return UI.record();
@@ -151,11 +149,9 @@
   const seed = () => 1 + Math.floor(Math.random() * 2 ** 30);
   game.startAction = (id, real, custom, side = "pack") => { PP.clearGame(); game.lastCustom = custom || null; startPlay(E.newAction(id, { seed: seed(), real, custom, side }), true); };
   game.startPractice = kind => { PP.clearGame(); startPlay(E.newPractice({ seed: seed(), real: PP.prefs.real, kind }), true); };
-  game.startPatrol = (S, car) => { game.car = car; E.depart(S); startPlay(S, true); checkpoint(true); };
   function startPlay(S, fresh) {
     UI.close(true);
     game.S = S; game.mode = "play"; game.warned = {};
-    if (S.mode === "patrol" && !game.car) game.car = PP.loadCareer();
     if (S.mode === "practice" && fresh) game.coach = PP.prefs.learned ? "done" : null;
     SFX.stopTune();
     $("title").hidden = true; $("title").innerHTML = "";
@@ -164,8 +160,8 @@
     I.clear(); HUD.clear(); PP.FX.clear(); PP.Chart.reset(); R.report = null;
     const u = game.ui;
     u.track = []; u.trackT = 0; u.chartAt = null; u.bino = false;
-    u.station = Sub.surfaced(S.sub) ? (S.mode === "patrol" ? "chart" : "bridge") : "scope";
-    u.look = PP.Chart.me(S).hdg; u.chartZoom = S.mode === "patrol" ? 5 : 3;
+    u.station = "view";
+    u.look = PP.Chart.me(S).hdg; u.chartZoom = 3;
     u.sel = null;
     /* a mission opens on the map, where the pack is run */
     if (fresh) u.station = "chart";
@@ -173,8 +169,7 @@
     R.init($("screen"));
     game.acc = 0;
     if (fresh) {
-      if (S.mode === "patrol") HUD.toast(`Underway: ${PP.Sea.ZONES.find(z => z.id === S.patrol.zone).name}`, "", 3600);
-      else HUD.toast(S.scnName, "", 3200);
+      HUD.toast(S.scnName, "", 3200);
     } else HUD.toast("Back on station", "", 2000);
     hints();
   }
@@ -191,7 +186,7 @@
   function checkpoint(force) {
     const S = game.S;
     if (!S || game.mode !== "play" || S.phase === "over") return;
-    if (S.mode === "patrol" || PP.prefs.resume || force) PP.saveGame(S);
+    if (PP.prefs.resume || force) PP.saveGame(S);
   }
   function finish() {
     const S = game.S;
@@ -199,22 +194,9 @@
     PP.clearGame();
     game.mode = "over";
     HUD.end(null);
-    if (S.mode === "patrol") {
-      const car = game.car || PP.loadCareer();
-      if (S.end.why === "towed") { const p = PP.Sea.portsOpen(C.monthOf(S.t)).reduce((a, b) => PP.dist(S.sub.x, S.sub.y, a.x, a.y) < PP.dist(S.sub.x, S.sub.y, b.x, b.y) ? a : b); const rep = E.enterPort(S, car, p, true); PP.saveCareer(car); UI.patrolReport(rep, car); return; }
-      PP.Career.lost(car, S); PP.addCareer(car); PP.clearCareer();
-      UI.lost(S, car);
-    } else UI.actionOver(S);
+    UI.actionOver(S);
   }
-  function dock() {
-    const S = game.S, p = S && E.canDock(S);
-    if (!p) { const n = S && E.nearPort(S); HUD.toast(n ? "Surface, and slow below 9 knots, to tie up" : "No base in reach", "amber"); return; }
-    const car = game.car || PP.loadCareer();
-    const rep = E.enterPort(S, car, p);
-    PP.saveCareer(car); PP.clearGame();
-    SFX.stopLoops(); game.mode = "over";
-    UI.patrolReport(rep, car);
-  }
+
 
   /* ---- what happened this step: sounds, and the crew's word ---- */
   const toast = (t, tone, ms) => HUD.toast(t, tone, ms);
@@ -277,11 +259,15 @@
     const s = S.sub;
     for (const e of evs) {
       /* the boat you are on is news; another boat's only when it matters */
-      if (e.by !== undefined && e.by !== s.id && e.t !== "command" && e.t !== "orders" && e.t !== "wp") { packNews(S, e); continue; }
+      /* a boat with her radio out sends no news */
+      if (e.by !== undefined && e.by !== s.id && e.t !== "command" && e.t !== "orders" && e.t !== "wp") { const q = boatOf(S, e.by); if (!q || q.sys.radio < 0.5 || e.t === "subLost") packNews(S, e); continue; }
       switch (e.t) {
         case "command": SFX.play("menu"); toast(`In command of ${e.name}`, "", 2200); game.ui.track = []; break;
         case "orders": toast(e.why === "lastWp" ? `${e.name} is at her last waypoint, holding` : `${e.name}: ${PP.Orders.name(e.v).toLowerCase()}${e.id === s.id ? ", when you leave her" : ""}`, "", 2200); break;
         case "wp": break;
+        case "decoyAway": SFX.play("launch", 0.4); toast(`Noisemaker away: ${e.left} left`, "", 1800); break;
+        case "decoyNo": toast(e.why === "surfaced" ? "Dive first: a noisemaker works under the water" : "No noisemakers left", "amber", 1800); break;
+        case "noRadio": toast(`${e.name}'s radio is out: she cannot take a new order`, "amber", 2600); break;
         case "ordered": if (e.what === "bell") SFX.play("bell"); break;
         case "diveAlarm": SFX.play(e.crash ? "crash" : "klaxon"); toast(e.crash ? "Crash dive! All ahead full" : "Dive, dive", e.crash ? "amber" : "", 1800); break;
         case "surfaced": SFX.play("blow"); toast("Surfaced", "", 1400); break;
@@ -356,7 +342,6 @@
         case "tcDropped": break;
         case "weather": toast(`The weather: ${C.WX[e.k].name.toLowerCase()}`, "", 2400); break;
         case "atPort": toast(`${e.name} in reach: surface, slow, and ${kc("O", "pad:Y")} to tie up`, "green", 3600); break;
-        case "patrolDue": toast("The patrol's time is up: head for a base", "amber", 4000); break;
         case "warOver": toast("Word from command: the war is over. Come home.", "green", 5000); break;
         case "subLost": SFX.play("over"); HUD.end(e.why === "crushed" ? "The hull gave way" : "She is flooding", S.subs.length > 1 ? "The last of the pack, lost" : "Lost with all hands", "danger"); break;
         case "towed": toast("Out of fuel and battery: a tug is sent", "amber", 3000); break;
@@ -433,10 +418,10 @@
       return near ? `${chip("onHer")}, or ${chip(st === "scope" ? "train" : "look", st === "scope" ? "train the periscope onto her" : "look round to her")}: she bears ${PP.deg3(PP.angTo(s.x, s.y, near.x, near.y))}, the hollow mark on the ring` : "Watch for the targets";
     }
     const e = W.est(S), sol = e && W.solve(S, e, s.bank), eye = S.real.aob ? `${SEP}set her angle and speed: <kbd>[</kbd><kbd>]</kbd> <kbd>,</kbd><kbd>.</kbd>` : "";
-    if (sol && sol.ok) return `The TDC lamp is green: ${chip("fire", "fires")}${e.rng > 3000 ? `${SEP}closer is surer: under 3,000 yards` : ""}${eye}`;
-    if (sol && sol.why === "gyro") return `No solution yet: ${chip("helm", "turn the boat toward her")}${eye}`;
+    if (sol && sol.ok) return `On target: ${chip("fire", "fires")}${e.rng > 3000 ? `${SEP}closer is surer: under 3,000 yards` : ""}${eye}`;
+    if (sol && sol.why === "gyro") return `Wrong angle: ${chip("helm", "turn the boat toward her")}, or the other tubes${eye}`;
     if (sol && sol.why === "range") return `Out of range: let her close${SEP}${chip("helm", "steer for her track")}${eye}`;
-    return `When the TDC lamp is green, ${chip("fire", "fires")}${eye}`;
+    return `When the lamp says On target, ${chip("fire", "fires")}${eye}`;
   }
   function escStrip(S) {
     const st = R.stationOf(S, game.ui), m = PP.Escort.mine(S), fresh = m.some(q => q.ai.contact && S.t - q.ai.contact < 60);
@@ -633,7 +618,6 @@
       case "zoom": if (st === "chart") { u.chartZoom = (u.chartZoom + (shift ? PP.Chart.ZOOMS.length - 1 : 1)) % PP.Chart.ZOOMS.length; u.chartAt = null; SFX.play("menu"); } else if (st === "bridge") u.bino = !u.bino; else I.push({ a: "zoom" }); break;
       case "lock": lockNearest(); break;
       case "onHer": case "ahead": swing(a); break;
-      case "range": I.push({ a: "stadimeter" }); break;
       case "aobL": case "aobR": I.push({ a: "dial", what: "aob", d: (a === "aobR" ? 1 : -1) * (shift ? 1 : 5) * PP.DEG }); break;
       case "spdD": case "spdU": I.push({ a: "dial", what: "spd", d: (a === "spdU" ? 1 : -1) * (shift ? 0.5 : 1) }); break;
       case "fire": if (st === "bridge" && s.gun.on) I.push({ a: "gunFire" }); else I.push({ a: "fire" }); break;
@@ -642,6 +626,7 @@
       case "gun": if (st !== "bridge" && Sub.surfaced(s)) game.setStation("bridge"); I.push({ a: "gun" }); break;
       case "silent": I.push({ a: "silent" }); break;
       case "radar": I.push({ a: "radar" }); break;
+      case "decoy": I.push({ a: "decoy" }); break;
       case "tcU": I.push({ a: "tc", d: 1 }); break;
       case "tcD": I.push({ a: "tc", d: -1 }); break;
       case "tc1": I.push({ a: "tc", v: 0 }); break;
@@ -653,7 +638,6 @@
       case "stNext": case "stPrev": { const L = HUD.STATIONS.map(q => q[0]), i = L.indexOf(st === "bridge" || st === "scope" ? "view" : st); game.setStation(L[(i + (a === "stPrev" || shift ? L.length - 1 : 1)) % L.length]); break; }
       case "pause": game.pause(); break;
       case "aids": PP.flipAids(); game.syncAids(); HUD.toast(PP.prefs.aids === "field" ? `Field aids, and the key hints. ${kc("L", "pad:Back+RB")} for Classic` : `Classic: no aids, no key hints. ${kc("L", "pad:Back+RB")} for Field`, "", 2600); hints(); break;
-      case "dock": if (S.mode === "patrol") dock(); break;
       case "scope": I.push({ a: "scope" }); break;
       case "level": I.push({ a: Sub.surfaced(s) || s.depth > C.PD + 6 ? "pd" : "surface" }); break;
       case "help": UI.help(6, () => game.unpause()); break;
@@ -677,7 +661,6 @@
   function padAct(a) {
     const S = game.S, st = R.stationOf(S, game.ui);
     if (a === "scope" && st !== "scope") return;
-    if (a === "zoom" && S.mode === "patrol" && E.canDock(S)) a = "dock";
     if ((a === "shallower" || a === "deeper") && st === "bridge" && S.sub.gun.on) a = a === "shallower" ? "aU" : "aD";
     act(a, null);
   }
@@ -832,9 +815,11 @@
       HUD.build();
       for (const cls of ["freighter", "destroyer", "liner"]) for (const b of [4, 8, 12]) PP.ShipArt.sprite(cls, b, 46, "dusk");
       if (q.has("play")) {
-        /* debug: ?play=<action id>|practice|gun&seed=<n>&station=<scope|bridge|panel|chart|damage>&hour=<h>&wx=<k>&pause=1 */
+        /* debug: ?play=<action id>|practice|gun&seed=<n>&side=<pack|escorts>&run=<steps>&station=<view|chart|damage>&hour=<h>&wx=<k>&pause=1 */
         const p = q.get("play"), sd = +(q.get("seed") || 1);
-        const S = p === "practice" || p === "gun" ? E.newPractice({ seed: sd, real: PP.prefs.real, kind: p === "gun" ? "gun" : "torpedo" }) : E.newAction(E.ACTIONS.some(a => a.id === p) ? p : "easy", { seed: sd, real: PP.prefs.real });
+        const S = p === "practice" || p === "gun" ? E.newPractice({ seed: sd, real: PP.prefs.real, kind: p === "gun" ? "gun" : "torpedo" }) : E.newAction(E.ACTIONS.some(a => a.id === p) ? p : "easy", { seed: sd, real: PP.prefs.real, side: q.get("side") || "pack" });
+        /* &run=<steps>: the test pilot plays that many steps first, so the picture is mid-battle */
+        if (q.has("run")) { const bot = S.side === "escorts" ? PP.Bot.escort() : PP.Bot.make(); for (let i = 0, n = +q.get("run"); i < n && S.phase === "sea"; i++) E.tick(S, bot.cmd(S)); S.tcReq = 0; }
         if (q.has("hour")) S.t = Math.floor(S.t / C.DAY) * C.DAY + (+q.get("hour")) * 3600;
         if (q.has("wx")) E.setWx(S, q.get("wx"));
         /* &near=<yd>: the boat abeam the biggest merchant at that range; &depth=<ft>: at that depth, the periscope up; &aim=1 the scope or glasses on it; &hi=1 high power; &bino=1 the glasses */
@@ -850,8 +835,8 @@
         if (q.has("pause")) game.pause();
       } else {
         openTitle();
-        const saved = PP.loadGame(), car = PP.loadCareer();
-        run.finish(["the convoy is sighted", saved ? "a game in progress" : car && !car.over ? `${car.rank} ${car.name} in command` : "tubes loaded"]).then(() => {
+        const saved = PP.loadGame();
+        run.finish(["the convoy is sighted", saved ? "a game in progress" : "tubes loaded"]).then(() => {
           revealTitle(!q.has("shot"));
           const sheet = q.get("sheet");
           if (sheet && UI[sheet]) UI[sheet]();
