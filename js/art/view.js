@@ -127,7 +127,7 @@
     const drawn = [];
     /* the boats of the pack on the surface, as ships to the eye (the one looking is under 30 yards, and left out) */
     const boats = (S.subs || []).filter(q => !q.lost && q.depth <= 2).map(q => ({ id: "b" + q.id, boat: true, cls: "sub", x: q.x, y: q.y, hdg: q.hdg, spd: q.spd, sinking: 0, fire: 0, lit: false }));
-    const list = S.ships.concat(boats).filter(sh => !(sh.sunk && S.t - sh.sunkT > 60)).map(sh => ({ sh, d: PP.dist(o.x, o.y, sh.x, sh.y), b: PP.angTo(o.x, o.y, sh.x, sh.y) })).filter(q => q.d > 30 && inView(q.b)).sort((a, b) => b.d - a.d);
+    const list = S.ships.concat(boats).filter(sh => sh.id !== o.self && !(sh.sunk && S.t - sh.sunkT > 60)).map(sh => ({ sh, d: PP.dist(o.x, o.y, sh.x, sh.y), b: PP.angTo(o.x, o.y, sh.x, sh.y) })).filter(q => q.d > 30 && inView(q.b)).sort((a, b) => b.d - a.d);
     const lk = lightKey(L);
     for (const q of list) {
       const sh = q.sh, k = C.SHIPS[sh.cls];
@@ -180,24 +180,67 @@
         g.fillStyle = `rgba(236,244,248,${(0.7 - j * 0.05).toFixed(2)})`; g.fillRect(Math.round(toX(b)), Math.round(y), Math.max(1, Math.round(3 * f / d * 8)), 1);
       }
     }
-    /* ---- what flies and splashes ---- */
-    for (const p of FX.items) {
+    /* ---- what flies and splashes (o.late: what is in the air waits for the caller, over its own deck) ---- */
+    const shade = PP.clamp(L + 0.25, 0.3, 1), white = a => `rgba(${Math.round(224 * shade)},${Math.round(236 * shade)},${Math.round(244 * shade)},${a.toFixed(2)})`;
+    const fxDraw = air => { for (const p of FX.items) {
+      if (p.t < 0 || (p.k === "arc") !== air) continue;
+      /* a charge or a bomb in the air: along its arc, a dark speck against the sky */
+      if (p.k === "arc") {
+        const u = PP.clamp(p.t / p.life, 0, 1), ax = PP.lerp(p.x, p.tx, u), ay = PP.lerp(p.y, p.ty, u), az = p.z * (1 - u) + 4 * p.hp * u * (1 - u);
+        const d = PP.dist(o.x, o.y, ax, ay), b = PP.angTo(o.x, o.y, ax, ay);
+        if (d < 3 || !inView(b)) continue;
+        const s = f / d / 3, base = d < dh ? hz + f * (eyeYd / d + d / (2 * RE) - dip) : hz, w = Math.max(1, Math.round(p.sz * s));
+        g.fillStyle = K.dim("#1c1f24", Math.max(L, 0.35));
+        if (w < 3) g.fillRect(Math.round(toX(b) - w / 2), Math.round(base - az * s - w / 2), w, w); else K.disc(g, toX(b), base - az * s, w / 2, w * 0.4);
+        continue;
+      }
       const d = PP.dist(o.x, o.y, p.x, p.y), b = PP.angTo(o.x, o.y, p.x, p.y);
-      if (d < 30 || !inView(b)) continue;
+      if (d < 3 || (d < 30 && p.k === "flash") || !inView(b)) continue;
       const x = toX(b), base = d < dh ? hz + f * (eyeYd / d + d / (2 * RE) - dip) : hz, s = f / d / 3, a = 1 - p.t / p.life;
       if (p.k === "column") {
         const grow = Math.sin(Math.min(1, p.t / p.life * 2.2) * Math.PI / 2), hh = p.h * s * grow * (1 - Math.max(0, p.t / p.life - 0.5) * 1.6), ww = Math.max(1, p.w * s);
-        g.fillStyle = `rgba(224,236,244,${(0.9 * a).toFixed(2)})`; g.fillRect(Math.round(x - ww / 2), Math.round(base - hh), Math.round(ww), Math.round(hh));
+        g.fillStyle = white(0.9 * a); g.fillRect(Math.round(x - ww / 2), Math.round(base - hh), Math.round(ww), Math.round(hh));
         K.disc(g, x, base - hh, ww * 0.7, ww * 0.45);
+      } else if (p.k === "fountain") {
+        /* the dome heaves, bursts up into a column with a crown, hangs, and falls back as spray, wider as it falls */
+        const u = p.t / p.life, rise = 1 - Math.pow(1 - Math.min(1, u / 0.22), 3), fall = Math.max(0, (u - 0.45) / 0.55);
+        const hh = p.h * s * rise * (1 - fall * 0.8), ww = Math.max(1, p.w * s * (1 + fall * 0.9)), al = 0.92 * (1 - fall * fall);
+        g.fillStyle = white(al * 0.8); K.disc(g, x, base, ww * (1.1 + 0.6 * rise), Math.max(1, ww * 0.22));
+        const n = Math.max(1, Math.round(hh / 2));
+        g.fillStyle = white(al);
+        /* the body: rows of water, ragged at the edges, thinner toward the top */
+        for (let i = 0; i < n; i++) {
+          const v = i / n, w = Math.max(1, ww * (0.45 + 0.85 * v * v) * (0.85 + 0.3 * K.hash(p.seed, i, 63))), jx = (K.hash(p.seed, i, 64) - 0.5) * ww * 0.15;
+          g.fillStyle = white(al * (1 - 0.35 * v) * (0.8 + 0.2 * K.hash(p.seed, i, 65)));
+          g.fillRect(Math.round(x + jx - w / 2), Math.round(base - v * hh - 2), Math.round(w), 2);
+        }
+        g.fillStyle = white(al * 0.7);
+        if (hh >= 1) K.disc(g, x, base - hh, ww * 0.7, Math.max(1, ww * 0.3));
+        /* the spray: drops thrown out of the crown, coming down as it falls */
+        const dw = Math.max(1, Math.round(s * 2.5));
+        for (let i = 0; i < 26; i++) {
+          const hx = K.hash(p.seed, i, 61), hy = K.hash(p.seed, i, 62);
+          const sx = x + (hx - 0.5) * ww * (1.5 + 2.5 * fall) * (0.6 + hy), sy = base - hh * (0.7 + 0.45 * hy) + fall * hh * (0.3 + hy);
+          if (sy < base) { g.fillStyle = white(al * (0.5 + 0.5 * hy)); g.fillRect(Math.round(sx), Math.round(sy), dw, dw); }
+        }
       } else if (p.k === "flash") {
         g.fillStyle = `rgba(255,214,140,${(0.9 * a).toFixed(2)})`; K.disc(g, x, base - p.h * s, p.r * s * (0.6 + p.t / p.life), p.r * s * 0.6 * (0.6 + p.t / p.life));
       } else if (p.k === "smoke") {
         const c = Math.round(PP.lerp(40, 120, 1 - p.dark) * PP.clamp(L + 0.25, 0.3, 1));
         g.fillStyle = `rgba(${c},${c},${c + 4},${(0.6 * a).toFixed(2)})`; K.disc(g, x, base - p.z * s, p.r * s, p.r * s * 0.8);
       } else if (p.k === "boil") {
-        g.fillStyle = `rgba(230,240,246,${(0.5 * a).toFixed(2)})`; K.disc(g, x, base, p.r * s * 3, Math.max(1, p.r * s * 0.5));
+        /* white water welling up in patches, spreading and going grey as it settles */
+        const grow = 0.6 + 0.4 * Math.min(1, p.t / 2), sd = p.seed || 0;
+        for (let i = 0; i < 7; i++) {
+          const ox = (K.hash(sd, i, 66) - 0.5) * p.r * 1.6 * grow, oy = (K.hash(sd, i, 67) - 0.5) * p.r * 1.2 * grow, rr = p.r * (0.35 + 0.35 * K.hash(sd, i, 68)) * grow;
+          const dd = Math.max(3, d + oy), bs = dd < dh ? hz + f * (eyeYd / dd + dd / (2 * RE) - dip) : hz;
+          g.fillStyle = white((0.3 + 0.25 * K.hash(sd, i, 69)) * a);
+          K.disc(g, x + ox * f / d, bs, rr * f / d, Math.max(1, rr * f / dd * eyeYd / dd));
+        }
       }
-    }
+    } };
+    fxDraw(false);
+    if (!o.late) fxDraw(true);
     /* ---- aircraft, when seen ---- */
     for (const p of S.planes) {
       if (!p.seen) continue;
@@ -210,6 +253,7 @@
     /* fog over everything, the thicker the further; and the dark */
     if (S.wx.vis < 0.5) { g.fillStyle = K.mix(horizonCol, "#8a929a", 0.3); g.globalAlpha = (0.5 - S.wx.vis) * 0.7; g.fillRect(x0, y0, x1 - x0, hz - y0 + 8); g.globalAlpha = 1; }
     g.restore();
-    return { f, hz, drawn, toX, x0, x1, y0, y1 };
+    const late = () => { g.save(); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); g.clip(); fxDraw(true); g.restore(); };
+    return { f, hz, drawn, toX, x0, x1, y0, y1, late };
   };
 })();

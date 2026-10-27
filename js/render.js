@@ -42,6 +42,7 @@
     const g = R.g, Wd = R.cv.width, Ht = R.cv.height;
     R.labels = [];
     FX.step(dt);
+    tossNew(S);
     const st = R.stationOf(S, ui);
     g.save();
     if (R.shake > 0.3 && PP.prefs.shake) { g.translate(Math.round((Math.random() - 0.5) * R.shake), Math.round((Math.random() - 0.5) * R.shake)); }
@@ -63,12 +64,40 @@
     if (!ui.trackT || S.t - ui.trackT > 60) { ui.trackT = S.t; ui.track.push([me.x, me.y]); if (ui.track.length > 4000) ui.track.shift(); }
   };
 
+  /* ---- each depth charge as it leaves an escort, in the air and its splash (fx.js) ----
+   * Off the rails it rolls from her stern; from a thrower it is flung out abeam from her quarter; a hedgehog's
+   * bombs go up from her forecastle and come down in a ring ahead. A charge off the rails sinks from where it
+   * splashed at her stern, so its boil and its fountain come up there too (the engine drops it nearer amidships). */
+  const tossed = { S: null, seen: new Set(), at: new Map() };
+  function tossNew(S) {
+    if (tossed.S !== S || tossed.seen.size > 3000) { tossed.S = S; tossed.seen = new Set(S.charges.map(c => c.id)); tossed.at = new Map(); return; }
+    for (const c of S.charges) {
+      if (tossed.seen.has(c.id)) continue;
+      tossed.seen.add(c.id);
+      const sh = S.ships.find(q => q.id === c.by), k = sh && C.SHIPS[sh.cls];
+      if (!sh || c.z > 40) { FX.splash(c.x, c.y, c.hh ? 0.6 : 1); continue; }
+      const hx = PP.hx(sh.hdg), hy = PP.hy(sh.hdg), ax = Math.cos(sh.hdg), ay = Math.sin(sh.hdg), stern = k.len * 0.5;
+      if (c.hh) { FX.toss(sh.x + hx * k.len * 0.3, sh.y + hy * k.len * 0.3, 18, c.x, c.y, 110, 2.6 + Math.random() * 0.4, 1.5, 0.6); continue; }
+      const side = (c.x - sh.x) * ax + (c.y - sh.y) * ay;
+      if (Math.abs(side) > 25) {
+        const q = Math.sign(side) * k.beam * 0.4, ox = sh.x - hx * (stern - 23) + ax * q, oy = sh.y - hy * (stern - 23) + ay * q;
+        FX.toss(ox, oy, 12, c.x, c.y, 40, 1.7, 2.5);
+      } else {
+        const tx = sh.x - hx * (stern + 4), ty = sh.y - hy * (stern + 4);
+        tossed.at.set(c.id, [tx, ty]);
+        FX.toss(sh.x - hx * stern, sh.y - hy * stern, 9, tx, ty, 1, 0.5, 2.5);
+      }
+    }
+  }
+
   /* ---- the escort's bridge: high above the water, the glasses, no deck of a boat in front of you ---- */
   function ebridge(g, S, ui, now, Wd, Ht) {
     const s = PP.Escort.flag(S); if (!s) return;
     const bino = ui.bino, fov = (bino ? 9 : 70) * PP.DEG, brg = ui.look;
     const r = Math.round(Wd / 2), cx = Math.round(Wd / 2), cy = Math.round(Ht * (bino ? 0.5 : 0.44));
-    const v = V.draw(g, S, { x: s.x, y: s.y, eyeH: 45, brg, fov, cx, cy, r, now, aids: ui.aids, calm: PP.calm(), mask: bino ? "bino" : "none" });
+    /* her bridge is a third of her length back from the stem, forward of her middle (the engine's point for her) */
+    const fwd = C.SHIPS[s.cls].len * 0.17;
+    const v = V.draw(g, S, { x: s.x + PP.hx(s.hdg) * fwd, y: s.y + PP.hy(s.hdg) * fwd, self: s.id, late: !bino, eyeH: 45, brg, fov, cx, cy, r, now, aids: ui.aids, calm: PP.calm(), mask: bino ? "bino" : "none" });
     R.last = { view: v, brg, fov, cx, cy, r };
     if (bino) {
       const rr = Math.round(Ht * 0.42), dx = Math.round(rr * 0.62);
@@ -83,6 +112,7 @@
     } else {
       /* her own deck from the bridge: forward to the bow and its gun, or aft to the stern, its rails and its wake */
       ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht, s, shipHullOf(s.cls), 45, "escort");
+      v.late();
       rail(g, Wd, Ht, now);
     }
     if (ui.aids.labels) ranges(S, v, "bridge");
@@ -255,9 +285,9 @@
     if (gunOn) ui.look = s.gun.brg;
     const fov = (gunOn ? 14 : bino ? 9 : 70) * PP.DEG, brg = ui.look;
     const r = Math.round(Wd / 2), cx = Math.round(Wd / 2), cy = Math.round(Ht * (bino ? 0.5 : 0.44));
-    const v = V.draw(g, S, { x: s.x, y: s.y, eyeH: C.EYE.bridge, brg, fov, cx, cy, r, now, aids: ui.aids, calm: PP.calm(), mask: bino ? "bino" : "none" });
+    const v = V.draw(g, S, { x: s.x, y: s.y, late: !bino && !gunOn, eyeH: C.EYE.bridge, brg, fov, cx, cy, r, now, aids: ui.aids, calm: PP.calm(), mask: bino ? "bino" : "none" });
     R.last = { view: v, brg, fov, cx, cy, r };
-    if (!bino && !gunOn) ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht);
+    if (!bino && !gunOn) { ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht); v.late(); }
     if (S.tdc.tgt !== null) { const d = v.drawn.find(q => q.id === S.tdc.tgt); if (d) bracket(g, d.x, (d.top + d.wl) / 2, Math.max(6, d.px * 0.55), Math.max(5, (d.wl - d.top) * 0.6 + 3), "#e6bd6a"); }
     if (bino) {
       /* two circles of the glasses */
@@ -431,7 +461,7 @@
         case "gunHit": FX.shell(e.x, e.y, true); break;
         case "gunSplash": case "shellNear": FX.shell(e.x, e.y, false); break;
         case "torpPremature": FX.add({ k: "column", x: e.x, y: e.y, h: 110, w: 30, life: 2.6 }); break;
-        case "dcBoom": FX.charge(e.x, e.y, e.z); R.shake = Math.max(R.shake, PP.clamp(14 - e.d / 25, 0, 14)); break;
+        case "dcBoom": { const at = tossed.at.get(e.id); tossed.at.delete(e.id); FX.charge(at ? at[0] : e.x, at ? at[1] : e.y, e.z); } R.shake = Math.max(R.shake, PP.clamp(14 - e.d / 25, 0, 14)); break;
         case "bombs": FX.add({ k: "column", x: e.x + 30, y: e.y, h: 80, w: 25, life: 2.2 }); R.shake = Math.max(R.shake, 8); break;
         case "hullHit": R.shake = Math.max(R.shake, 4 + e.sev * 20); break;
       }

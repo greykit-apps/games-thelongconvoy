@@ -180,7 +180,7 @@
           S.stats.dcNear++;
         }
       }
-      ev.push({ t: "dcBoom", x: c.x, y: c.y, z: c.z, d: dmin, near: nearBy });
+      ev.push({ t: "dcBoom", id: c.id, x: c.x, y: c.y, z: c.z, d: dmin, near: nearBy });
     }
     S.charges = S.charges.filter(c => !c.done);
 
