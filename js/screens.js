@@ -352,7 +352,7 @@
       ["Fire", "<kbd>Space</kbd>, a torpedo a press; <kbd>F</kbd> forward or after tubes, <kbd>V</kbd> a spread of one to four"],
       ["Time", "<kbd>+</kbd> <kbd>−</kbd> faster and slower, <kbd>Backspace</kbd> back to 1x"],
       ["Shift", "held: a faster helm and periscope, the gun's range by 500; <kbd>Shift</kbd> <kbd>Z</kbd> zooms the map in"],
-      ["Mouse", "a click on a ship selects her, in the view or on the map; on the map a click on a boat selects her, again takes command, and a right click adds her a waypoint; drag the map to look round it"],
+      ["Mouse", "a click on a ship selects her, in the view or on the map. On the map: a click on a boat (or her name, or her name in the panel at the bottom left) selects her, again takes command; a click on her order opens her orders; a right click adds her a waypoint; the wheel zooms about the mouse; drag to look round. On the dashboard every control is a button, and the wheel zooms the small map"],
       ["The pack", "<kbd>N</kbd> command of the next boat, <kbd>Shift</kbd> <kbd>N</kbd> the one before"],
       ["Other", "<kbd>X</kbd> silent running, <kbd>K</kbd> a noisemaker, <kbd>Y</kbd> radar, <kbd>L</kbd> Classic or Field aids, <kbd>M</kbd> sound, <kbd>?</kbd> these keys, <kbd>Esc</kbd> pause"]]) +
       `<p class="note">The keys are where they sit on a US keyboard; where the browser can tell, each shows the letter on your own.</p>`],

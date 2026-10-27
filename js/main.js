@@ -696,6 +696,7 @@
     if (ev.key === "Shift") I.held.add("shift");
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (UI.sheet) { UI.key(ev); return; }
+    if (game.omenu && ev.key === "Escape") { ev.preventDefault(); closeOrderMenu(); return; }
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
     if (k === "m" && !(ev.target.closest && ev.target.closest("input"))) { ev.preventDefault(); game.toggleMute(); return; }
     if (game.mode === "title") { titleKey(ev); return; }
@@ -747,13 +748,74 @@
   });
   /* the orders panel on the map: a click on an order gives it to the boat selected there */
   $("hud").addEventListener("click", ev => {
-    const b = ev.target.closest("[data-order], [data-eorder], [data-take]"), S = game.S; if (!b || !S || game.mode !== "play") return;
+    const b = ev.target.closest("[data-order], [data-eorder], [data-take], [data-pick]"), S = game.S; if (!b || !S || game.mode !== "play") return;
+    /* a name in the boat's panel: the same as her name on the map */
+    if (b.dataset.pick) { mapPick(S, { kind: "name", side: S.side === "escorts" ? "escorts" : "pack", id: +b.dataset.pick }, 0, 0); return; }
     if (b.dataset.eorder) { const q = escSel(S); if (q) I.push({ a: "eorders", id: q.id, v: b.dataset.eorder }); return; }
     if (b.dataset.order) I.push({ a: "orders", i: game.selIdx(), v: b.dataset.order });
     else if (game.selIdx() !== S.cmd) I.push({ a: "command", i: game.selIdx() });
   });
   /* the chart: a click on a ship locks it; in Modern, a click on the sea steers for it */
   let panned = false;
+  /* a vessel picked on the map by her name tag: the first click selects her, the second takes command; her order
+   * tag opens her orders menu where the mouse is */
+  function mapPick(S, tag, cx, cy) {
+    if (tag.side === "escorts") {
+      const q = PP.Escort.mine(S).find(o => o.id === tag.id); if (!q) return;
+      if (tag.kind === "order") { game.ui.sel = q.id; orderMenu(S, q, cx, cy); return; }
+      if (game.ui.sel === q.id && q.id !== S.flag) I.push({ a: "commandEsc", id: q.id }); else { game.ui.sel = q.id; SFX.play("menu"); }
+      return;
+    }
+    const i = S.subs.findIndex(o => o.id === tag.id); if (i < 0 || S.subs[i].lost) return;
+    if (tag.kind === "order") { game.ui.sel = tag.id; orderMenu(S, S.subs[i], cx, cy); return; }
+    if (game.selIdx() === i && i !== S.cmd) I.push({ a: "command", i }); else { game.ui.sel = tag.id; SFX.play("menu"); }
+  }
+  /* the orders menu: a small panel at the mouse, her orders and taking command of her */
+  function orderMenu(S, q, cx, cy) {
+    closeOrderMenu();
+    const esc = S.side === "escorts", list = esc ? C.ESC_ORDERS.map(([k, n, note]) => [k, n, note]) : PP.Orders.LIST.map(([k, n, note]) => [k, n, note]);
+    const cur = esc ? q.ord || "screen" : q.orders || "attack", aboard = esc ? q.id === S.flag : q === S.sub;
+    const m = document.createElement("div");
+    m.className = "hp omenu"; m.setAttribute("role", "menu");
+    m.innerHTML = `<div class="ht-name">${PP.esc(q.name)}</div>${aboard ? `<p class="om-note">Her order when you leave her</p>` : ""}` + list.map(([k, n, note]) => `<button role="menuitemradio" aria-checked="${k === cur}" data-ord="${k}" title="${PP.esc(note)}"${k === cur ? ' class="on"' : ""}>${PP.esc(n)}</button>`).join("")
+      + (aboard ? "" : `<button class="take" data-take="1">Take command</button>`);
+    $("hud").appendChild(m);
+    const hb = $("hud").getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+    m.style.left = Math.round(PP.clamp(cx - hb.left + 6, 4, hb.width - mw - 4)) + "px"; m.style.top = Math.round(PP.clamp(cy - hb.top + 6, 4, hb.height - mh - 4)) + "px";
+    m.addEventListener("click", ev => {
+      const b = ev.target.closest("button"); if (!b) return;
+      const S2 = game.S; if (!S2) return closeOrderMenu();
+      if (b.dataset.ord) { if (esc) I.push({ a: "eorders", id: q.id, v: b.dataset.ord }); else I.push({ a: "orders", i: S2.subs.indexOf(q), v: b.dataset.ord }); }
+      if (b.dataset.take) { if (esc) I.push({ a: "commandEsc", id: q.id }); else I.push({ a: "command", i: S2.subs.indexOf(q) }); }
+      SFX.play("menu"); closeOrderMenu();
+    });
+    m.querySelector("button.on, button").focus({ preventScroll: true });
+    game.omenu = m;
+  }
+  function closeOrderMenu() { if (game.omenu) { game.omenu.remove(); game.omenu = null; } }
+  addEventListener("pointerdown", ev => { if (game.omenu && !game.omenu.contains(ev.target)) closeOrderMenu(); }, true);
+  /* the wheel zooms the map about the point under the mouse; on the dashboard, the small map when it is over it */
+  let wheelAcc = 0;
+  $("screen").addEventListener("wheel", ev => {
+    const S = game.S; if (!S || game.mode !== "play" || UI.sheet) return;
+    const cv = $("screen"), r = cv.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * cv.width, py = (ev.clientY - r.top) / r.height * cv.height;
+    const st = R.stationOf(S, game.ui), u = game.ui, Z = PP.Chart.ZOOMS;
+    let onMini = false;
+    if (st === "dash" && R.dash && R.dash.L) { const m = R.dash.L.map; onMini = px >= m.x && px < m.x + m.w && py >= m.y && py < m.y + m.h; if (!onMini) return; }
+    else if (st !== "chart") return;
+    ev.preventDefault();
+    wheelAcc += ev.deltaMode === 1 ? ev.deltaY * 40 : ev.deltaY;
+    if (Math.abs(wheelAcc) < 60) return;
+    const d = wheelAcc > 0 ? 1 : -1; wheelAcc = 0;
+    if (onMini) { u.mini = u.mini || { chartZoom: 3 }; u.mini.chartZoom = PP.clamp(u.mini.chartZoom + d, 0, Z.length - 2); return; }
+    const nz = PP.clamp(u.chartZoom + d, 0, Z.length - 1);
+    if (nz === u.chartZoom) return;
+    const p = PP.Chart.toSea(S, u, px, py, cv.width, cv.height);
+    u.chartZoom = nz;
+    if (!Z[nz]) { u.chartAt = null; return; }
+    const v = PP.Chart.view(S, u, cv.width, cv.height);
+    u.chartAt = PP.Chart.panTo(p.x - (px - cv.width / 2) * Z[nz], p.y - (py - v.my) * Z[nz]);
+  }, { passive: false });
   /* the dashboard's buttons, by name (hud.js), as their keys */
   game.dashAct = a => { if (game.mode === "play" && !UI.sheet) act(a, null); };
   $("screen").addEventListener("click", ev => {
@@ -770,6 +832,9 @@
       else return;
     }
     if (st === "chart") {
+      /* a name tag first: the name is the vessel, the order her orders menu */
+      const tag = PP.Chart.hits.find(h => px >= h.x && px < h.x + h.w && py >= h.y && py < h.y + h.h);
+      if (tag) { mapPick(S, tag, ev.clientX, ev.clientY); return; }
       const was = R.safe; if (cui !== game.ui) R.safe = { t: 4, b: 4, tr: 0, br: chh };
       const p = PP.Chart.toSea(S, cui, px, py, cw, chh), z = PP.Chart.view(S, cui, cw, chh).z;
       R.safe = was;

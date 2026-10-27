@@ -81,14 +81,8 @@
         g.fillRect(-8, y, Math.round(a) + 8, 1); g.fillRect(Math.round(b), y, Wd - Math.round(b) + 8, 1);
       }
     } else {
-      /* her forecastle running away to the bow when you look ahead; the bridge's rail */
-      const rel = PP.angDiff(brg, s.hdg);
-      if (Math.abs(rel) < fov / 2 + 0.3) {
-        const bx = cx + rel / fov * Wd, base = Ht + 4, tip = Math.round(Ht * 0.62);
-        K.poly(g, [[bx, tip], [cx - Wd * 0.34, base], [cx + Wd * 0.34, base]], "#2a2f36");
-        K.poly(g, [[bx, tip + 3], [cx - Wd * 0.3, base], [cx + Wd * 0.3, base]], "#3a4048");
-        K.rect(g, Math.round(bx) - 1, tip - 14, 2, 14, "#2a2f36");
-      }
+      /* her own deck from the bridge: forward to the bow and its gun, or aft to the stern, its rails and its wake */
+      ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht, s, shipHullOf(s.cls), 45, "escort");
       rail(g, Wd, Ht, now);
     }
     if (ui.aids.labels) ranges(S, v, "bridge");
@@ -325,8 +319,24 @@
     }
     return { st, Lf, B };
   })());
-  function ownBoat(g, S, f, cx, cy, brg, now, Wd, Ht) {
-    const s = S.sub, H = hullOf(s.cls), st = H.st, eye = C.EYE.bridge, NEAR = 2, L = Det.light(S);
+  /* an escort's hull, as her bridge sees it: a fine bow, a long low quarterdeck to a square stern; the bridge
+   * a third of her length back from the stem (feet; x forward of the bridge, z above the water) */
+  const SHULL = {};
+  const shipHullOf = cls => SHULL[cls] || (SHULL[cls] = (() => {
+    const k = C.SHIPS[cls], Lf = k.len * 3, xb = 0.33 * Lf, xs = -0.67 * Lf, B = k.beam * 3, N = 32, st = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N, fore = PP.clamp((u - 0.72) / 0.28, 0, 1), aft = PP.clamp((0.1 - u) / 0.1, 0, 1);
+      const bow = 1 - Math.pow(fore, 1.4), tail = 1 - 0.25 * aft;
+      /* the forecastle a deck higher than the waist; the stem rakes forward */
+      const fc = u > 0.58 ? 8 : 0;
+      st.push({ x: xs + (xb - xs) * u, xw: xs + (xb - xs) * u - 0.04 * Lf * fore, d: B * 0.5 * bow * tail, w: B * 0.46 * bow * tail, z: 9 + fc + 5 * fore * fore });
+    }
+    return { st, Lf, B };
+  })());
+  /* her own deck from the bridge, the bow or the stern: the boat's, or (kind "escort") an escort's, with her gun
+   * forward and her depth-charge rails and throwers aft */
+  function ownBoat(g, S, f, cx, cy, brg, now, Wd, Ht, s = S.sub, H = hullOf(s.cls), eye = C.EYE.bridge, kind = "sub") {
+    const st = H.st, NEAR = 2, L = Det.light(S);
     const r = PP.angDiff(s.hdg, brg), cr = Math.cos(r), sr = Math.sin(r);
     const cam = ([x, y, z]) => [x * cr + y * sr, -x * sr + y * cr, z];
     const scr = ([fw, la, z]) => [cx + f * la / fw, cy + f * (eye - z) / fw];
@@ -383,9 +393,22 @@
     /* the jackstaff at her bow and the ensign staff at her stern */
     const bw = st[st.length - 1], sn = st[0];
     seg([bw.x - 2, 0, bw.z], [bw.x - 2, 0, bw.z + 9], edge); seg([sn.x + 3, 0, sn.z], [sn.x + 3, 0, sn.z + 10], edge);
+    /* an escort's fittings: the gun forward, the rails and the throwers aft, the depth charges on them */
+    if (kind === "escort") {
+      const at = x => { for (let i = 1; i < st.length; i++) if (st[i].x >= x) return st[i]; return st[st.length - 1]; };
+      const gx = st[st.length - 1].x * 0.55, gz = at(gx).z, steel = K.dim("#5a6068", L), dark = K.dim("#2a2f36", L);
+      fill([[gx + 6, -5, gz], [gx + 6, 5, gz], [gx - 6, 5, gz], [gx - 6, -5, gz]].map(([x, y, z]) => [x, y, z + 5]), steel);
+      seg([gx + 6, 0, gz + 4], [gx + 22, 0, gz + 5], steel);
+      const sx = st[0].x, qz = st[0].z, rail = K.dim("#7a7e80", L), drum = K.dim("#8a8478", L);
+      for (const y of [-H.B * 0.18, H.B * 0.18]) {
+        seg([sx + 2, y, qz + 1], [sx + 40, y, qz + 1], rail);
+        for (let i = 0; i < 6; i++) { const x = sx + 5 + i * 6; fill([[x, y - 1.5, qz + 1], [x, y + 1.5, qz + 1], [x + 4, y + 1.5, qz + 1], [x + 4, y - 1.5, qz + 1]].map(([a, b, c]) => [a, b, c + 3]), drum); }
+      }
+      for (const y of [-1, 1]) { const tx = sx + 70, ty = y * (at(tx).d - 3); fill([[tx, ty - 2, qz + 1], [tx, ty + 2, qz + 1], [tx + 4, ty + 2, qz + 1], [tx + 4, ty - 2, qz + 1]].map(([a, b, c]) => [a, b, c + 4]), dark); }
+    }
     /* the limber holes along her casing, and the foam working at her waterline */
     const hole = K.dim("#0d1015", L), slap = PP.clamp(0.12 + sp / 24 + S.wx.sea * 0.04, 0, 0.7);
-    for (let i = 5; i < st.length - 6; i++) for (let h = 0; h < 4; h++) {
+    if (kind === "sub") for (let i = 5; i < st.length - 6; i++) for (let h = 0; h < 4; h++) {
       const u = h / 4, p = st[i], q = st[i + 1], x = p.x + (q.x - p.x) * u, d = p.d + (q.d - p.d) * u, w = p.w + (q.w - p.w) * u, z = p.z + (q.z - p.z) * u;
       for (const k of [-1, 1]) {
         const c = cam([x, k * (d + (w - d) * 0.3), z * 0.7]); if (c[0] < NEAR) continue;

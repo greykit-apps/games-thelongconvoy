@@ -157,10 +157,10 @@
     set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
     /* her panel */
     const mine = PP.Escort.mine(S), hh = C.monthOf(S.t) >= X.hedgehogFrom;
-    const key = [f.id, f.spd.toFixed(1), f.bell, PP.deg3(f.hdg), PP.deg3(f.ordHdg), f.dcSet, f.dcLeft, f.hhLeft, f.ping, !!f.pat, Math.round(f.dmg * 20), mine.map(q => q.id).join("."), PP.Input.device].join(":");
+    const key = [ui.sel, f.id, f.spd.toFixed(1), f.bell, PP.deg3(f.hdg), PP.deg3(f.ordHdg), f.dcSet, f.dcLeft, f.hhLeft, f.ping, !!f.pat, Math.round(f.dmg * 20), mine.map(q => q.id).join("."), PP.Input.device].join(":");
     set(el.querySelector("#h-boat"), "escBoat", key, x => {
       const hull = Math.max(0, 1 - f.dmg / k.hp);
-      x.innerHTML = PP.Input.caps(`<div class="hb-pack">${mine.map(q => `<span class="pk${q === f ? " on" : ""}">${esc(q.name)}</span>`).join("")}${mine.length > 1 ? `<span class="pk-key"><kbd>N</kbd> next</span>` : ""}</div>
+      x.innerHTML = PP.Input.caps(`<div class="hb-pack">${mine.map(q => `<button type="button" data-pick="${q.id}" class="pk${q === f ? " on" : ""}${q.id === ui.sel && q !== f ? " sel" : ""}" title="${esc(q.name)}${q === f ? ": you are aboard her" : ": click to select her; again to go aboard"}">${esc(q.name)}</button>`).join("")}${mine.length > 1 ? `<span class="pk-key"><kbd>N</kbd> next</span>` : ""}</div>
         <div class="hb-row"><span class="lbl">Ship</span><b class="v sm">${esc(k.name)}</b><span></span></div>
         <div class="hb-row"><span class="lbl">Speed</span><b class="v">${f.spd.toFixed(1)} kn</b><span class="ord">${C.ESC_BELLS[f.bell]}</span></div>
         <div class="hb-row"><span class="lbl">Course</span><b class="v">${PP.deg3(f.hdg)}</b><span class="ord">${Math.abs(PP.angDiff(f.hdg, f.ordHdg)) > 0.02 ? PP.deg3(f.ordHdg) : ""}</span></div>
@@ -243,10 +243,11 @@
     const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
     set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
     /* the pack: the boat you are on first, then the rest, each with what she is doing */
-    const packKey = S.subs.map(q => `${q.id}${q === s ? "*" : ""}${q.lost ? "x" : Sub.surfaced(q) ? "s" : "d"}${q.orders || ""}`).join(",") + PP.Input.device;
+    const packKey = S.subs.map(q => `${q.id}${q === s ? "*" : ""}${q.lost ? "x" : Sub.surfaced(q) ? "s" : "d"}${q.orders || ""}`).join(",") + PP.Input.device + ":" + ui.sel;
     set(el.querySelector(".hb-pack"), "pack", packKey, e => {
       e.hidden = S.subs.length < 2;
-      e.innerHTML = S.subs.map(q => `<span class="pk${q === s ? " on" : ""}${q.lost ? " lost" : ""}" title="${esc(q.name)}: ${q.lost ? "lost" : (Sub.surfaced(q) ? "surfaced" : "submerged") + (q === s ? ", in command" : ", " + PP.Orders.name(q.orders).toLowerCase())}">${esc(q.name)}${q !== s && !q.lost ? ` <i>${esc(PP.Orders.name(q.orders).toLowerCase())}</i>` : ""}</span>`).join("")
+      /* each boat a button: a click selects her (for her orders on the map), a second takes command */
+      e.innerHTML = S.subs.map(q => `<button type="button" data-pick="${q.id}" class="pk${q === s ? " on" : ""}${q.lost ? " lost" : ""}${q.id === ui.sel && q !== s ? " sel" : ""}"${q.lost ? " disabled" : ""} title="${esc(q.name)}: ${q.lost ? "lost" : (Sub.surfaced(q) ? "surfaced" : "submerged") + (q === s ? ", in command" : ", " + PP.Orders.name(q.orders).toLowerCase() + ". Click to select her; again to take command")}">${esc(q.name)}${q !== s && !q.lost ? ` <i>${esc(PP.Orders.name(q.orders).toLowerCase())}</i>` : ""}</button>`).join("")
         + (S.subs.length > 1 ? `<span class="pk-key">${PP.Input.cap("N")} next</span>` : "");
     });
     /* the boat */

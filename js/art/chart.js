@@ -110,7 +110,11 @@
   }
 
   /* ui: { chartZoom, chartAt: {x,y}|null }, aids */
+  /* what the mouse can hit on the chart last drawn, in its own pixels: each vessel's name tag and its order
+   * (a click on the name is a click on her, on the order her orders menu); main.js tests these first */
+  CH.hits = [];
   CH.draw = (g, S, ui, aids, now) => {
+    CH.hits = [];
     const Wd = g.canvas.width, Ht = g.canvas.height, s = CH.me(S), esc = ESCS(S), v = CH.view(S, ui, Wd, Ht);
     const z = v.z, cx = v.cx, cy = v.cy, sf = v.sf, my = v.my;
     const X = x => Wd / 2 + (x - cx) / z, Y = y => my + (y - cy) / z;
@@ -210,14 +214,24 @@
     }
     /* a name beside a mark, unless it would sit on one already written (the nearer to the middle written first) */
     const named = [];
-    const nameAt = (txt, x, y, col) => { const w = K.text5w(txt), b = { x: Math.round(x), y: Math.round(y), w }; if (named.some(o => Math.abs(o.y - b.y) < 8 && b.x < o.x + o.w + 4 && o.x < b.x + w + 4)) return; named.push(b); K.text5(g, txt, b.x, b.y, col, INK); };
+    const nameAt = (txt, x, y, col, ref) => {
+      const w = K.text5w(txt), b = { x: Math.round(x), y: Math.round(y), w };
+      if (named.some(o => Math.abs(o.y - b.y) < 8 && b.x < o.x + o.w + 4 && o.x < b.x + w + 4)) return;
+      named.push(b); K.text5(g, txt, b.x, b.y, col, INK);
+      if (ref) {
+        const nw = K.text5w(ref.name);
+        CH.hits.push({ kind: "name", side: ref.side, id: ref.id, x: b.x - 2, y: b.y - 2, w: nw + 4, h: 11 });
+        if (w > nw + 4) CH.hits.push({ kind: "order", side: ref.side, id: ref.id, x: b.x + nw + 2, y: b.y - 2, w: w - nw, h: 11 });
+      }
+    };
     /* the rest of the pack: the same triangle, dimmer, her name beside her; a boat lost, a cross where she went down */
-    if (!esc) for (const q of S.subs) {
-      if (q === s) continue;
+    if (!esc) for (const q of [s].concat(S.subs.filter(o => o !== s))) {
       const qx = X(q.x), qy = Y(q.y);
       if (q.lost) { cross(g, qx, qy, 4, COL.ghost); continue; }
-      tri(g, qx, qy, 4, q.hdg, Sub.surfaced(q) ? COL.pack : COL.packDown);
-      nameAt(q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), qx + 7, qy - 3, COL.packDown);
+      if (q !== s) tri(g, qx, qy, 4, q.hdg, Sub.surfaced(q) ? COL.pack : COL.packDown);
+      /* the boat you are aboard is named too: her order is the one she sails under when you leave her */
+      if (q === s && ui.title) continue;
+      nameAt(q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), qx + (q === s ? 8 : 7), qy - 3, q === s ? COL.sub : COL.packDown, ui.title ? null : { side: "pack", id: q.id, name: q.name.toUpperCase() });
     }
     /* the boat selected for orders: a ring, and her waypoints joined up from her */
     const si = S.subs.findIndex(q => q.id === ui.sel && !q.lost);
@@ -232,7 +246,7 @@
     dash(g, sx, sy, sx + PP.hx(s.ordHdg) * 22, sy + PP.hy(s.ordHdg) * 22, "rgba(255,198,90,.9)", 2, 2);
     tri(g, sx, sy, 5, s.hdg, surf(s) ? COL.sub : "#e09a80");
     /* on the escorts' side, each escort's name and order beside her */
-    if (esc && !ui.title && z <= 150) for (const q of [s].concat(S.ships.filter(o => o !== s && o.role === "escort" && PP.Ships.alive(o)))) nameAt(q.name.toUpperCase() + (q === s ? "" : " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase()), X(q.x) + 8, Y(q.y) - 3, q === s ? COL.sub : "rgba(255,170,150,.85)");
+    if (esc && !ui.title && z <= 150) for (const q of [s].concat(S.ships.filter(o => o !== s && o.role === "escort" && PP.Ships.alive(o)))) nameAt(q.name.toUpperCase() + " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase(), X(q.x) + 8, Y(q.y) - 3, q === s ? COL.sub : "rgba(255,170,150,.85)", { side: "escorts", id: q.id, name: q.name.toUpperCase() });
     pointers(g, S, ui, X, Y, v, Wd);
     /* the scale */
     const bar = z >= 400 ? 100 * PP.YD_NM : z >= 60 ? 10000 : 2000, bl = bar / z;

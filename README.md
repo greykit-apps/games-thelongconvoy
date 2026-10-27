@@ -45,7 +45,8 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 |---|---|
 | `1` / `2` / `3` / `4` / `5` | the dashboard / the map / damage / status / the log |
 | `J` / `I` | AUTO or USER CONTROL / the snorkel |
-| Click, `O`, right click | on the map: select a boat, give her the next order, add her a waypoint |
+| Click, `O`, right click | on the map: select a boat (her mark, her name tag, or her name in the panel), give her the next order, add her a waypoint |
+| Click her order / wheel | on the map: her orders menu at the mouse / zoom about the mouse |
 | `Enter` / `N` | take command of the boat selected / of the next boat |
 | `W` `S` | telegraph |
 | `A` `D` | helm |

@@ -529,6 +529,20 @@ img.fig { display: inline-block; vertical-align: middle; }
 #h-status { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 80vw); padding: 14px 18px 16px; }
 #h-status table { width: 100%; }
 #h-status td { padding: 3px 8px 3px 0; font: 500 15px/1.3 var(--ui); }
+/* the orders menu at the mouse, on the map */
+.omenu { position: absolute; z-index: 5; min-width: 150px; padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 3px; }
+.omenu .ht-name { margin: 0 4px 4px; }
+.omenu .om-note { margin: 0 4px 4px; font: 600 12px/1.2 var(--ui); color: var(--ps-muted); }
+.omenu button { font: 600 14px/1 var(--ui); padding: 6px 8px; text-align: left; background: transparent; color: inherit; border: 1px solid var(--ps-hair); cursor: pointer; }
+.omenu button.on { color: var(--ps-yellow); border-color: currentColor; }
+.omenu button:hover, .omenu button:focus-visible { border-color: var(--ps-muted); outline: none; }
+.omenu button.take { margin-top: 3px; color: var(--ps-green); }
+/* the HUD lets the mouse through to the map, except where there is something to press */
+#h-orders, #h-boat .hb-pack, .omenu { pointer-events: auto; }
+.hb-pack button.pk { font: 600 13px/1 var(--ui); letter-spacing: .02em; padding: 3px 6px; background: transparent; cursor: pointer; }
+.hb-pack button.pk:hover:not(:disabled), .hb-pack button.pk:focus-visible { border-color: var(--ps-muted); outline: none; }
+.hb-pack button.pk.sel { color: var(--ps-text); border-color: var(--ps-text); }
+.hb-pack button.pk:disabled { cursor: default; }
 #h-orders { left: 16px; top: 62px; width: 300px; padding: 10px 14px 12px; }
 #h-orders .ho-now { margin: 6px 0 6px; font: 600 14px/1.3 var(--ui); color: var(--ps-muted); }
 #h-orders .ho-now b { color: var(--ps-yellow); }
