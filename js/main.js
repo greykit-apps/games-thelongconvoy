@@ -230,9 +230,10 @@
         case "ordered": if (e.what === "bell") SFX.play("bell"); break;
         case "auto": toast(e.on ? `${e.name} on AUTO: she sails under her order. J, or the helm, takes her back` : `${e.name}: USER CONTROL`, "", 2400); break;
         case "eorders": toast(`${e.name}: ${(C.ESC_ORDERS.find(o => o[0] === e.v) || C.ESC_ORDERS[0])[1].toLowerCase()}${f && e.id === f.id ? ", when you leave her" : ""}`, "", 2000); break;
-        case "dcSet": toast(`Charges set for ${e.v} feet`, "", 1200); break;
+        case "dcSet": if (!e.slide) toast(`Charges set for ${e.v} feet`, "", 1200); break;
         case "ping": toast(e.on ? "Sonar pinging: it finds them ahead, and they hear it" : "Sonar off: listening", "", 2000); break;
         case "patternAway": SFX.play("splashes", 0.8); toast("Pattern away!", "amber", 1600); break;
+        case "patSel": { const P = C.ESC_PATTERNS[e.v]; SFX.play("menu"); toast(`${P.name} pattern: ${C.patCount(P)} charges`, "", 1400); break; }
         case "noCharges": toast("No depth charges left", "red", 2000); break;
         case "hedgehogAway": SFX.play("splashes", 0.5); toast("Hedgehog away", "amber", 1600); break;
         case "noHedgehog": toast(e.empty ? "The hedgehog is empty" : "No hedgehog fitted yet", "amber", 1800); break;
@@ -602,6 +603,12 @@
       case "pause": game.pause(); break;
       case "aids": PP.flipAids(); game.syncAids(); hints(); break;
       case "help": UI.help(1, () => game.unpause()); break;
+      /* the dashboard's telegraph and pattern picker: a position, a pattern, by its number */
+      default: {
+        const m = /^(bell|pat)(\d)$/.exec(a), dz = /^depth:(\d+)$/.exec(a);
+        if (m) I.push(m[1] === "bell" ? { a: "setBell", v: +m[2] } : { a: "patSel", v: +m[2] });
+        else if (dz) I.push({ a: "dcSet", v: +dz[1] });
+      }
     }
   }
   function act(a, ev) {

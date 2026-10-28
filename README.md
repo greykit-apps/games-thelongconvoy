@@ -58,7 +58,7 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 | `+` `−` / `Backspace` | time compression / back to 1x |
 | `Esc` / `L` / `M` / `?` | pause / Classic or Field / sound / every key |
 
-On the PDF's side: `W` `S` and `A` `D` her speed and helm, `X` sonar, `Q` `E` the charges' depth, `Space` a pattern, `F` the hedgehog, `G` the guns, `N` the next escort, and on the map `O` and a right click for the others' orders.
+On the PDF's side: `W` `S` and `A` `D` her speed and helm, `X` sonar, `Q` `E` the charges' depth, `Space` the pattern picked on the dashboard (diamond, double or wide), `F` the hedgehog, `G` the guns, `N` the next escort, and on the map `O` and a right click for the others' orders.
 
 A gamepad works too; Help has its map.
 

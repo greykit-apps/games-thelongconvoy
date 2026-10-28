@@ -208,15 +208,17 @@
     const k = C.SHIPS[sh.cls], X = C.ESC_SIDE;
     switch (a.a) {
       case "bell": sh.bell = PP.clamp((sh.bell === undefined ? 3 : sh.bell) + a.d, 0, 6); sh.ordSpd = C.ESC_BELL_F[sh.bell] * k.kn; ev.push({ t: "ordered", what: "bell" }); break;
-      case "setBell": sh.bell = PP.clamp(a.v, 0, 6); sh.ordSpd = C.ESC_BELL_F[sh.bell] * k.kn; break;
+      case "setBell": sh.bell = PP.clamp(a.v, 0, 6); sh.ordSpd = C.ESC_BELL_F[sh.bell] * k.kn; ev.push({ t: "ordered", what: "bell" }); break;
       case "hdg": sh.ordHdg = PP.normAng(a.v); break;
-      case "dcSet": sh.dcSet = PP.clamp((sh.dcSet || 150) + a.d, X.dcSet[0], X.dcSet[1]); ev.push({ t: "dcSet", v: sh.dcSet }); break;
+      case "dcSet": sh.dcSet = PP.clamp(a.v !== undefined ? a.v : (sh.dcSet || 150) + a.d, X.dcSet[0], X.dcSet[1]); ev.push({ t: "dcSet", v: sh.dcSet, slide: a.v !== undefined }); break;
       case "ping": sh.ping = a.v === undefined ? !sh.ping : !!a.v; ev.push({ t: "ping", on: sh.ping }); break;
+      case "patSel": sh.patK = PP.clamp(a.v | 0, 0, C.ESC_PATTERNS.length - 1); ev.push({ t: "patSel", v: sh.patK }); break;
       case "pattern": {
         if (sh.pat) break;
-        if ((sh.dcLeft || 0) < 2) { ev.push({ t: "noCharges" }); break; }
-        for (const side of [-1, 1]) Esc.charge(S, sh.x + Math.cos(sh.hdg) * C.DC.throw * side, sh.y + Math.sin(sh.hdg) * C.DC.throw * side, sh.dcSet + PP.gauss(() => PP.rand(S)) * 10, sh.id);
-        sh.dcLeft -= 2; sh.pat = { n: Math.min(X.pattern - 2, sh.dcLeft), at: { x: sh.x, y: sh.y }, k: 0 };
+        if ((sh.dcLeft || 0) < 1) { ev.push({ t: "noCharges" }); break; }
+        /* the first rail goes now, the rest as she runs on (Esc.user) */
+        sh.pat = { p: sh.patK || 0, at: null, k: 0 };
+        lay(S, sh);
         ev.push({ t: "patternAway", id: sh.id });
         break;
       }
@@ -265,16 +267,45 @@
     if (q.hhLeft === undefined) q.hhLeft = C.monthOf(S.t) >= C.ESC_SIDE.hedgehogFrom ? C.ESC_SIDE.hedgehogs : 0;
     ev.push({ t: "command", id: q.id, name: q.name });
   };
+  /* her launchers: P and S, the charges ready in the port and starboard throwers, R those in the racks down to the
+   * rails; dcLeft counts every charge aboard, so what is not in a launcher is below, in reserve. Made when first
+   * wanted, from what she has (an older save has none) */
+  Esc.racks = sh => {
+    if (!sh.dcr) {
+      const X = C.ESC_SIDE, n = sh.dcLeft || 0, P = Math.min(X.throwers, n), St = Math.min(X.throwers, n - P);
+      sh.dcr = { P, S: St, R: Math.min(X.rails, n - P - St), tP: 0, tS: 0, tR: 0 };
+    }
+    return sh.dcr;
+  };
+  Esc.reserve = sh => { const d = Esc.racks(sh); return Math.max(0, (sh.dcLeft || 0) - d.P - d.S - d.R); };
+  /* the crews load the launchers from below, one charge at a time each */
+  function reload(sh, dt) {
+    const X = C.ESC_SIDE, d = Esc.racks(sh);
+    for (const [k, cap, t] of [["P", X.throwers, X.loadThrow], ["S", X.throwers, X.loadThrow], ["R", X.rails, X.loadRail]]) {
+      if (d[k] >= cap || Esc.reserve(sh) <= 0) { d["t" + k] = 0; continue; }
+      d["t" + k] += dt;
+      if (d["t" + k] >= t) { d["t" + k] = 0; d[k]++; }
+    }
+  }
+  /* the next rail of the pattern she is laying, and the throwers when it is their turn: each charge from its
+   * launcher, so an empty one leaves its place in the pattern empty */
+  function lay(S, sh) {
+    const P = C.ESC_PATTERNS[sh.pat.p || 0], k = sh.pat.k, hx = PP.hx(sh.hdg), hy = PP.hy(sh.hdg), ax = Math.cos(sh.hdg), ay = Math.sin(sh.hdg), d = Esc.racks(sh);
+    const one = (x, y, z, from) => { if (d[from] <= 0 || sh.dcLeft <= 0) return; d[from]--; sh.dcLeft--; Esc.charge(S, x, y, z, sh.id); };
+    const two = (x, y, z, from) => { one(x, y, z, from); if (P.deep) one(x, y, z + P.deep, from); };
+    const rx = sh.x - hx * 20, ry = sh.y - hy * 20;
+    two(rx, ry, sh.dcSet + (k % 2 ? 25 : -10), "R");
+    for (const [after, out] of P.throws) if (after === k) for (const side of [-1, 1]) two(rx + ax * out * side, ry + ay * out * side, sh.dcSet + PP.gauss(() => PP.rand(S)) * 10, side < 0 ? "P" : "S");
+    sh.pat.at = { x: sh.x, y: sh.y }; sh.pat.k++;
+  }
   Esc.user = (S, sh, dt, ev) => {
     sh.lit = false;
     if (sh.gunT > 0) sh.gunT = Math.max(0, sh.gunT - dt);
+    reload(sh, dt);
     /* the rest of an ordered pattern, off the rails along her track */
     if (sh.pat) {
-      if (PP.dist(sh.x, sh.y, sh.pat.at.x, sh.pat.at.y) >= C.DC.spacing) {
-        Esc.charge(S, sh.x - PP.hx(sh.hdg) * 20, sh.y - PP.hy(sh.hdg) * 20, sh.dcSet + (sh.pat.k % 2 ? 25 : -10), sh.id);
-        sh.pat.at = { x: sh.x, y: sh.y }; sh.pat.k++; sh.dcLeft--;
-      }
-      if (sh.pat.k >= sh.pat.n || sh.dcLeft <= 0 || sh.spd < 2) sh.pat = null;
+      if (!sh.pat.at || PP.dist(sh.x, sh.y, sh.pat.at.x, sh.pat.at.y) >= C.DC.spacing) lay(S, sh);
+      if (sh.pat.k >= C.ESC_PATTERNS[sh.pat.p || 0].rails || sh.dcLeft <= 0 || sh.spd < 2) sh.pat = null;
     }
     /* running down a boat that is up, or nearly */
     for (const q of E_().afloat(S)) if (PP.dist(sh.x, sh.y, q.x, q.y) < 45 && q.depth < 20 && sh.spd > 6) {

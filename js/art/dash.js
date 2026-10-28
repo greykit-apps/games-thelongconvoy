@@ -148,7 +148,7 @@
     const roomBeside = bt.x + bt.w - P.x - 98;
     if (roomBeside >= (esc ? 90 : 56)) P.w = Math.min(150, roomBeside);
     else P = { x: bt.x + 10, y: gy + r + 30, w: Math.min(170, bt.w - 116), h: Math.max(40, Math.min(ph, bt.y + bt.h - (gy + r + 30) - 14)) };
-    if (!esc) subGauges(g, S, ui, now, bt, r, gx, gy, btn, P); else escGauges(g, S, ui, now, bt, r, gx, gy, btn, P);
+    if (!esc) subGauges(g, S, ui, now, bt, r, gx, gy, btn, P); else escGauges(g, S, ui, now, bt, btn);
     R.dash = { L, buttons: B, msg: D.msgRect, inner };
   };
 
@@ -199,32 +199,168 @@
     lab("name", `<b>${PP.esc(s.name)}</b> <span class="c">${PP.esc(k.name)} · ${PP.esc(s.capt || "")}</span>`, bt.x + 8, bt.y + bt.h - 7, "dl", "lm");
   }
 
-  function escGauges(g, S, ui, now, bt, r, gx, gy, btn, P) {
+  /* an odometer under a dial: figures on drums, each rolling up to the next as the one to its right turns over
+   * from 9 (HTML over the canvas, so the figures are sharp). n drums, dec of them after the point; wrap, the
+   * reading that turns back to nought (a heading's 360), so nothing rolls toward it */
+  function odo(id, v, n, dec, x, y, unit = "", wrap = 0) {
+    const t = Math.max(0, v) * Math.pow(10, dec), stop = wrap && t + 1 >= wrap * Math.pow(10, dec);
+    let h = "";
+    for (let i = n - 1; i >= 0; i--) {
+      const p10 = Math.pow(10, i), roll = stop && i ? 0 : Math.max(0, t % p10 - (p10 - 1));
+      const p = Math.round((Math.floor(t / p10) % 10 + roll) * 20) / 20;
+      h += `<i${i < dec ? ' class="d"' : ""}><b style="transform:translateY(${(-p * 1.2).toFixed(2)}em)">01234567890</b></i>`;
+      if (i === dec && dec) h += "<u>.</u>";
+    }
+    lab(id, `<span class="odo">${h}</span>${unit ? `<span class="c">${unit}</span>` : ""}`, x, y, "dl", "cm");
+  }
+
+  /* the engine-order telegraph, big enough for its words, each word the place to click for it: the ordered
+   * one lit and the handle on it, a white mark on the rim where her speed is on the same scale */
+  function bigTelegraph(g, cx, cy, r, f, k, btn) {
+    const bells = C.ESC_BELLS, bf = C.ESC_BELL_F, n = bells.length;
+    dial(g, cx, cy, r);
+    K.ring(g, cx, cy, Math.round(r * 0.34), DIM);
+    const sp = f.spd / k.kn;
+    let made = 0;
+    for (let i = 1; i < n; i++) if (sp >= bf[i - 1]) made = i - 1 + PP.clamp((sp - bf[i - 1]) / (bf[i] - bf[i - 1]), 0, 1);
+    const w = Math.max(18, Math.round(r * 0.5)), h = 9;
+    for (let i = 0; i < n; i++) {
+      const a = sweep(i / (n - 1)), [x, y] = at(cx, cy, r * 0.64, a);
+      tick(g, cx, cy, r - 7, r - 2, a, i === f.bell ? AMBER : TICK);
+      btn("bell" + i, bells[i], x - w / 2, y - h / 2, w, h, { act: "bell" + i, cls: "tel", on: i === f.bell, title: `${bells[i]}: ${Math.round(Math.abs(bf[i]) * k.kn)} knots${bf[i] < 0 ? " astern" : ""}` });
+    }
+    needle(g, cx, cy, Math.round(r * 0.34), sweep(f.bell / (n - 1)), AMBER, 3);
+    const [sx, sy] = at(cx, cy, r - 4, sweep(made / (n - 1)));
+    K.disc(g, sx, sy, 2, 2, "#fff0e6");
+  }
+
+  /* a pattern as it lies on the sea from above, her track up the middle and the first rail at the foot; all at
+   * one scale, so the wide one looks wide. Each charge's reach is a faint disc, the charge a dot, a doubled one two */
+  function patDiagram(g, x, y, w, h, P, sc, lit) {
+    const cx = Math.round(x + w / 2), sp = C.DC.spacing, len = (P.rails - 1) * sp, y0 = Math.round(y + (h - 10) / 2 + len * sc / 2);
+    K.rect(g, cx, y + 3, 1, h - 13, "rgba(255,190,170,.14)");
+    const pts = [];
+    for (let i = 0; i < P.rails; i++) pts.push([0, i * sp]);
+    for (const [after, out] of P.throws) for (const s of [-1, 1]) pts.push([out * s, after * sp]);
+    const reach = Math.max(2, C.DC.hurt / 3 * sc), d = sc > 0.18 ? 3 : 2;
+    for (const [ax, al] of pts) K.disc(g, cx + ax * sc, y0 - al * sc, reach, reach, lit ? "rgba(255,176,0,.09)" : "rgba(255,150,110,.05)");
+    for (const [ax, al] of pts) {
+      const px = Math.round(cx + ax * sc), py = Math.round(y0 - al * sc);
+      /* a doubled charge: the heavy one under it, a shade darker, set off down and to the right */
+      if (P.deep) K.rect(g, px - 1 + d, py - 1 + d, d, d, lit ? "#b8641a" : "#7a4428");
+      K.rect(g, px - 1, py - 1, d, d, lit ? AMBER : "#c98a3c");
+    }
+  }
+
+  /* the hedgehog's throw from above: her bow at the foot, and ahead of it the ring its bombs come down in,
+   * each bomb's reach (it goes off only on a hull) a faint disc; at the patterns' scale where it fits */
+  function hhDiagram(g, x, y, w, h, sc, lit) {
+    const X = C.ESC_SIDE, s = Math.min(sc, (h - 16) / (X.hhRange + X.hhRing + 20)), cx = Math.round(x + w / 2);
+    const by = Math.round(y + (h - 10) / 2 + (X.hhRange + X.hhRing) * s / 2), ry = by - X.hhRange * s;
+    K.poly(g, [[cx, by - 4], [cx + 2, by], [cx + 2, by + 4], [cx - 2, by + 4], [cx - 2, by]], lit ? "#d9b9a6" : "#6e5a52");
+    for (let yy = by - 6; yy > ry + X.hhRing * s + 2; yy -= 3) K.px(g, cx, yy, "rgba(255,190,170,.22)");
+    const reach = Math.max(1, X.hhHit * s);
+    for (let i = 0; i < 24; i++) {
+      const a = i / 24 * PP.TAU, px = cx + Math.cos(a) * X.hhRing * s, py = ry + Math.sin(a) * X.hhRing * s;
+      K.disc(g, px, py, reach, reach, lit ? "rgba(255,176,0,.07)" : "rgba(255,150,110,.04)");
+      K.px(g, px, py, lit ? AMBER : "#8a6a4a");
+    }
+  }
+
+  /* the depth the charges are set for: a slider from the surface (a line of sea, not a setting) down to the deepest,
+   * a mark every 50 feet; drag it, or the arrows at its ends for a step */
+  function depthSlider(g, f, x, y, w, h, btn) {
+    const X = C.ESC_SIDE, lo = X.dcSet[0], hi = X.dcSet[1], cx = x + 9;
+    btn("setU", "&#9650;", cx - 7, y, 14, 10, { act: "shallower", title: "Shallower (Q)" });
+    btn("setD", "&#9660;", cx - 7, y + h - 10, 14, 10, { act: "deeper", title: "Deeper (E)" });
+    const y0 = y + 13, y1 = y + h - 13, Y = d => Math.round(y0 + d / hi * (y1 - y0));
+    K.rect(g, cx - 1, y0, 3, y1 - y0 + 1, INK); K.rect(g, cx, y0, 1, y1 - y0 + 1, DIM);
+    K.rect(g, cx - 5, y0, 11, 1, "#6fb2d6");
+    for (let d = lo; d <= hi; d += 50) K.rect(g, cx + 3, Y(d), d % 100 ? 2 : 4, 1, TICK);
+    const yy = Y(f.dcSet);
+    K.rect(g, cx - 5, yy - 1, 11, 3, AMBER);
+    lab("surf", "Surface", cx + 7, y0, "dl sm sea", "lm");
+    lab("set", `<b>${f.dcSet}</b> <span class="c">ft</span>`, cx + 9, Math.max(yy, y0 + 8), "dl sm amber", "lm");
+    btn("depth", "", x, y0 - 3, w, y1 - y0 + 7, { cls: "slide", slide: { y0, y1, lo, max: hi, step: 25, act: "depth", v: f.dcSet }, title: `Charges set for ${f.dcSet} feet: drag for ${lo} to ${hi}` });
+  }
+
+  /* her stern from above: the throwers down each side, a charge in each one loaded, and the racks down to her two
+   * rails; a launcher just emptied blinks out, the next one being loaded comes up as its crew work. Beside her what
+   * is below, in reserve; under her the button that lays the pattern */
+  const blinks = new Map();
+  let lastRacks = null;
+  function stern(g, S, f, x, y, w, h, now, btn, sel) {
+    const X = C.ESC_SIDE, d = f.dcr || { P: 0, S: 0, R: 0, tP: 0, tS: 0, tR: 0 }, res = Math.max(0, f.dcLeft - d.P - d.S - d.R);
+    if (lastRacks && lastRacks.id === f.id) for (const k of ["P", "S", "R"]) for (let i = d[k]; i < lastRacks[k]; i++) blinks.set(k + i, now);
+    lastRacks = { id: f.id, P: d.P, S: d.S, R: d.R };
+    const slot = (k, i, sx, sy, load) => {
+      const b = blinks.get(k + i);
+      if (b !== undefined && now - b < 700) { if (Math.floor((now - b) / 110) % 2 === 0) K.rect(g, sx - 1, sy - 1, 5, 5, "#fff6e8"); return; }
+      if (b !== undefined) blinks.delete(k + i);
+      K.rect(g, sx, sy, 3, 3, i < d[k] ? AMBER : "#2a1410");
+      if (i === d[k] && load > 0) K.rect(g, sx, sy, 3, 3, `rgba(255,198,90,${(0.12 + 0.55 * load).toFixed(2)})`);
+    };
+    /* the hull, her stern at the foot */
+    const top = y + 2, yb = y + h - 22, scx = x + 21, hw = 7;
+    K.poly(g, [[scx - hw - 1, top], [scx + hw + 1, top], [scx + hw + 1, yb - 4], [scx + 4, yb + 1], [scx - 4, yb + 1], [scx - hw - 1, yb - 4]], "#6e4a3e");
+    K.poly(g, [[scx - hw, top], [scx + hw, top], [scx + hw, yb - 4], [scx + 4, yb], [scx - 4, yb], [scx - hw, yb - 4]], "#24140f");
+    /* the throwers, port to the left and starboard to the right, the aftmost first */
+    const sp = Math.max(4, Math.min(8, Math.floor((yb - top - 22) / (X.throwers - 1))));
+    for (let i = 0; i < X.throwers; i++) {
+      const sy = yb - 22 - i * sp;
+      slot("P", i, scx - hw - 5, sy, d.tP / X.loadThrow);
+      slot("S", i, scx + hw + 2, sy, d.tS / X.loadThrow);
+    }
+    /* the two rails, the charges on them rolling aft, the next to go at the foot */
+    for (const rx of [scx - 3, scx + 1]) K.rect(g, rx + 1, yb - 4 - 4 * (X.rails / 2), 1, 4 * (X.rails / 2) + 3, DIM);
+    for (let j = 0; j < X.rails; j++) slot("R", j, j % 2 ? scx + 1 : scx - 3, yb - 5 - Math.floor(j / 2) * 4, d.tR / X.loadRail);
+    /* below, in reserve */
+    const rx0 = x + 40, per = Math.max(4, Math.floor((x + w - rx0) / 4)), below = X.charges - X.throwers * 2 - X.rails;
+    lab("reserve", `<span class="c">Reserve</span><b>${res}</b>`, rx0, top + 4, "dl sm", "lm");
+    for (let i = 0; i < below; i++) K.rect(g, rx0 + (i % per) * 4, top + 11 + Math.floor(i / per) * 4, 3, 3, i < res ? "#c98a3c" : "#2a1410");
+    const P = C.ESC_PATTERNS[sel];
+    btn("pattern", f.pat ? "Laying&hellip;" : "Lay charges", x, y + h - 17, w, 16, { act: "fire", cls: "danger", on: !!f.pat, title: `Lay the ${P.name.toLowerCase()} pattern, ${C.patCount(P)} charges (Space)` });
+  }
+
+  function escGauges(g, S, ui, now, bt, btn) {
     const f = PP.Escort.flag(S); if (!f) return;
-    const k = C.SHIPS[f.cls], below = gy + r + 4, X = C.ESC_SIDE;
-    telegraph(g, gx, gy, r, C.ESC_BELLS, f.bell, f.spd / k.kn);
-    lab("tele", `<b>${C.ESC_BELLS[f.bell]}</b> <span class="c">${f.spd.toFixed(1)} kn</span>`, gx, below + 6, "dl", "cm");
-    btn("bellU", "&#9650;", gx + r - 6, gy - r - 2, 14, 12, { act: "tU" }); btn("bellD", "&#9660;", gx + r - 6, gy - r + 12, 14, 12, { act: "tD" });
+    const k = C.SHIPS[f.cls], X = C.ESC_SIDE;
+    /* three dials across the top, the telegraph, the compass and the sonar, one size, as big as the band's height
+     * and its width (clear of the buttons on the right) allow, each with its reading under it; the charges under them */
+    const r = Math.max(14, Math.min(Math.round(Math.min(bt.w * 0.075, (bt.h - 84) / 2.8) * 1.4), Math.floor((bt.w - 154) / 6)));
+    const top = bt.y + 6, gy = top + r, oy = top + 2 * r + 9;
+    let gx = bt.x + 10 + r;
+    bigTelegraph(g, gx, gy, r, f, k, btn);
+    odo("tele", Math.abs(f.spd), 3, 1, gx, oy, "kn");
+    /* the compass and the helm */
     gx += r * 2 + 18;
     compass(g, gx, gy, r, f.hdg, f.ordHdg);
-    lab("hdg", `<b>${PP.deg3(f.hdg)}</b>${Math.abs(PP.angDiff(f.hdg, f.ordHdg)) > 0.02 ? `<span class="ord">${PP.deg3(f.ordHdg)}</span>` : ""}`, gx, below + 6, "dl", "cm");
+    odo("hdg", ((f.hdg / PP.DEG) % 360 + 360) % 360, 3, 0, gx, oy, "", 360);
     btn("helmL", "&#9664;", gx - r - 8, gy + r - 10, 14, 12, { hold: "hL" }); btn("helmR", "&#9654;", gx + r - 6, gy + r - 10, 14, 12, { hold: "hR" });
     /* the sonar scope and its P / A switch */
     gx += r * 2 + 18;
     sonarScope(g, gx, gy, r, S, f, now);
-    btn("pa", f.ping ? "A · active" : "P · passive", gx - 26, below + 1, 52, 12, { act: "silent", on: !!f.ping, title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too" });
-    if (f.spd > C.DET.hydFastKn) lab("deaf", "too fast to hear", gx, gy - r - 6, "dl sm amber", "cm");
-    /* the charges: their depth, the racks, the pattern; the hedgehog; the guns */
-    const tw = P.w, th = P.h, px = P.x, py = P.y;
-    well(g, px, py, tw, th);
-    lab("set", `<span class="c">Set</span><b>${f.dcSet} ft</b>`, px + 6, py + 10, "dl", "lm");
-    btn("setU", "&#9650;", px + tw - 34, py + 4, 14, 12, { act: "shallower" }); btn("setD", "&#9660;", px + tw - 18, py + 4, 14, 12, { act: "deeper" });
-    /* the racks: a lamp a charge */
-    const per = Math.max(5, Math.floor((tw - 12) / 6));
-    for (let i = 0; i < X.charges; i++) { const x = px + 6 + (i % per) * 6, y = py + 20 + Math.floor(i / per) * 6; K.rect(g, x, y, 4, 4, i < f.dcLeft ? AMBER : "#2a1410"); }
-    btn("pattern", f.pat ? "Laying" : "PATTERN", px + 4, py + th - 18, 56, 14, { act: "fire", cls: "danger", on: !!f.pat });
-    const hh = C.monthOf(S.t) >= X.hedgehogFrom;
-    btn("hedgehog", `Hedgehog ${f.hhLeft || 0}`, px + 64, py + th - 18, Math.min(60, tw - 68), 14, { act: "bank", dim: !hh, title: hh ? "A ring of bombs ahead, that go off only on a hull" : "Not fitted until Year III" });
+    btn("pa", f.ping ? "A · active" : "P · passive", gx - 26, oy - 6, 52, 12, { act: "silent", on: !!f.ping, title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too" });
+    if (f.spd > C.DET.hydFastKn) lab("deaf", "too fast to hear", gx, gy + Math.round(r * 0.6), "dl sm amber", "cm");
+    /* the charges: the patterns to pick from, the depth they are set for, her launchers and what is below, and the
+     * hedgehog; the patterns and the hedgehog drawn as they lie on the sea, at one scale */
+    const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(40, bt.y + bt.h - 16 - py), SL = 38, SW = 84;
+    well(g, px, py, pw, ph);
+    const ch = ph - 6, cw = Math.max(26, Math.min(Math.round(ch * 1.15), Math.floor((pw - SL - SW - 14) / 4) - 3)), sel = f.patK || 0;
+    const sc = Math.min((cw - 4) / 310, (ch - 14) / 230);
+    C.ESC_PATTERNS.forEach((P, i) => {
+      const x = px + 3 + i * (cw + 3), y = py + 3;
+      patDiagram(g, x, y, cw, ch, P, sc, i === sel);
+      btn("pat" + i, cw >= 44 ? `${P.name} ${C.patCount(P)}` : String(C.patCount(P)), x, y, cw, ch, { act: "pat" + i, cls: "pick", on: i === sel, title: `${P.name} pattern: ${C.patCount(P)} charges${P.deep ? ", in two layers" : ""}` });
+    });
+    /* the depth, then her stern with its launchers, between the patterns and the hedgehog */
+    const x2 = px + 3 + 3 * (cw + 3) + 1, hx = px + pw - 3 - cw;
+    depthSlider(g, f, x2, py + 3, SL, ch, btn);
+    stern(g, S, f, x2 + SL + 4, py + 3, hx - 5 - (x2 + SL + 4), ch, now, btn, sel);
+    /* the hedgehog: its ring ahead of her, the cell its trigger */
+    const hh = C.monthOf(S.t) >= X.hedgehogFrom, hn = f.hhLeft || 0;
+    hhDiagram(g, hx, py + 3, cw, ch, sc, hh && hn > 0);
+    btn("hedgehog", cw >= 44 ? `Hedgehog ${hn}` : String(hn), hx, py + 3, cw, ch, { act: "bank", cls: "pick", dim: !hh, title: hh ? `Hedgehog: a ring of 24 bombs ${X.hhRange} yards ahead, that go off only on a hull (${hn} left)` : "Not fitted until Year III" });
     const cx = bt.x + bt.w - 90;
     let yy = bt.y + 6;
     btn("guns", "Guns", cx, yy, 84, 13, { act: "gun" }); yy += 15;

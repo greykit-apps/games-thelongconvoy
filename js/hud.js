@@ -99,6 +99,15 @@
     if (n.style.top !== top || n.style.right !== right) { n.style.top = top; n.style.right = right; n.style.left = L ? "auto" : ""; }
   }
 
+  /* a slider's value where the pointer is along it (y0 to y1 its length, in the canvas's pixels, 0 to max),
+   * sent as "<act>:<value>" when it moves to another step */
+  function slideTo(n, ev) {
+    const b = n._b, s = b.slide, r = n.getBoundingClientRect(), k = r.height / b.h || 1;
+    const f = (ev.clientY - r.top - (s.y0 - b.y) * k) / ((s.y1 - s.y0) * k);
+    const v = PP.clamp(Math.round(f * s.max / s.step) * s.step, s.lo, s.max);
+    if (v !== n._last && v !== s.v && PP.game.dashAct) { n._last = v; PP.game.dashAct(s.act + ":" + v); }
+  }
+
   /* the dashboard's buttons, set over the canvas where the dashboard puts them; a held one holds its key */
   const dbs = new Map();
   function dashButtons(list) {
@@ -111,6 +120,9 @@
         const up = () => { const b = n._b; if (b && b.hold) { PP.Input.held.delete(b.hold); delete PP.Input.heldT[b.hold]; } };
         n.addEventListener("pointerup", up); n.addEventListener("pointerleave", up);
         n.addEventListener("click", () => { const b = n._b; if (b && b.act && !b.dim && PP.game.dashAct) PP.game.dashAct(b.act); });
+        /* a slider follows the pointer while it is held */
+        n.addEventListener("pointerdown", ev => { if (n._b && n._b.slide) { n._last = null; n.setPointerCapture(ev.pointerId); slideTo(n, ev); } });
+        n.addEventListener("pointermove", ev => { if (n._b && n._b.slide && n.hasPointerCapture(ev.pointerId)) slideTo(n, ev); });
       }
       n._b = B; seen.add(B.id);
       if (n.dataset.h !== B.html) { n.dataset.h = B.html; n.innerHTML = PP.Input.caps(B.html); }

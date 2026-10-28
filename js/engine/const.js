@@ -162,7 +162,20 @@
   /* ---- the escorts' side: the escort you sail yourself ---- */
   C.ESC_BELLS = ["Back", "Stop", "1/3", "2/3", "Std", "Full", "Flank"];
   C.ESC_BELL_F = [-0.2, 0, 0.25, 0.45, 0.65, 0.85, 1];
-  C.ESC_SIDE = { charges: 60, pattern: 6, dcSet: [50, 600], hedgehogFrom: 30, hedgehogs: 8, hhRange: 250, hhSink: 23, hhRing: 40, hhHit: 14, gunReload: 4 };
+  /* throwers: a side's throwers, a charge ready in each; rails: the charges ready in the racks down to her two stern
+   * rails; loadThrow / loadRail: seconds for a crew to load the next one from below (a side's throwers and the rails
+   * each have their own crew), quick enough that a pattern is ready again by the time the last one is laid */
+  C.ESC_SIDE = { charges: 60, throwers: 4, rails: 8, loadThrow: 2, loadRail: 1.5, dcSet: [50, 600], hedgehogFrom: 30, hedgehogs: 8, hhRange: 250, hhSink: 23, hhRing: 40, hhHit: 14, gunReload: 4 };
+  /* the patterns you can order. rails: charges rolled off her stern, one every C.DC.spacing yards along her track,
+   * the first as you order it; throws: [after which rail, yards out on either beam], a charge each side off the
+   * throwers; deep: every charge doubled by a heavy one that much deeper (feet). The diamond is the light pattern,
+   * the double the same diamond in two layers, the wide one a broad oval for a boat whose place is not well known */
+  C.ESC_PATTERNS = [
+    { id: "diamond", name: "Diamond", rails: 3, throws: [[1, 60]] },
+    { id: "double", name: "Double", rails: 3, throws: [[1, 60]], deep: 75 },
+    { id: "wide", name: "Wide", rails: 6, throws: [[1, 60], [2, 110], [3, 110], [4, 60]] },
+  ];
+  C.patCount = P => (P.rails + P.throws.length * 2) * (P.deep ? 2 : 1);
   /* the orders for an escort you are not aboard (the 1990 game's, for its side) */
   C.ESC_ORDERS = [["screen", "Screen", "Keep her station on the convoy and hunt what comes near it"], ["hunt", "Hunt", "Go after the freshest contact any escort has"],
     ["patrol", "Patrol", "Run her waypoints, hunting what she finds"], ["hold", "Hold", "Stop where she is and listen"]];

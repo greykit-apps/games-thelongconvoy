@@ -19,7 +19,7 @@
 
   /* ---- the orders: cmd = { dHdg, acts: [{ a, ... }] } ---- */
   /* the escorts' side: the player's keys give the escort she is aboard her orders (PP.Escort.order) */
-  const ESC_ACTS = new Set(["bell", "setBell", "hdg", "dcSet", "ping", "pattern", "hedgehog", "egun", "commandEsc", "eorders", "ewp", "auto"]);
+  const ESC_ACTS = new Set(["bell", "setBell", "hdg", "dcSet", "ping", "pattern", "patSel", "hedgehog", "egun", "commandEsc", "eorders", "ewp", "auto"]);
   function escOrders(S, cmd, ev) {
     const f = Esc.flag(S);
     /* the helm or the telegraph by hand takes her back from AUTO */
