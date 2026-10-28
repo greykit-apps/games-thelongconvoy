@@ -115,7 +115,7 @@
     const m = L.map;
     ui.mini = ui.mini || { chartZoom: 3, chartAt: null };
     /* (as the title's plot: no names, no rings, at this size they would crowd it) */
-    const mui = { chartZoom: ui.mini.chartZoom, chartAt: null, track: ui.track, sel: ui.sel, title: true };
+    const mui = { chartZoom: ui.mini.chartZoom, chartAt: null, track: ui.track, sel: ui.sel, title: true, mini: true };
     inWindow(g, S, ui, now, m, "m", (cg, w, h) => PP.Chart.draw(cg, S, mui, { tracks: true }, now));
     btn("mapIn", "+", m.x + m.w - 30, m.y + m.h - 14, 13, 12, { act: "miniIn" });
     btn("mapOut", "&minus;", m.x + m.w - 15, m.y + m.h - 14, 13, 12, { act: "miniOut" });

@@ -828,7 +828,7 @@
     if (st === "dash" && R.dash && R.dash.L) {
       const L = R.dash.L, inR = q => px >= q.x && px < q.x + q.w && py >= q.y && py < q.y + q.h;
       if (inR(L.view)) { px -= L.view.x; py -= L.view.y; st = R.innerOf(S); }
-      else if (inR(L.map)) { px -= L.map.x; py -= L.map.y; st = "chart"; cui = { chartZoom: (game.ui.mini || { chartZoom: 3 }).chartZoom, chartAt: null }; cw = L.map.w; chh = L.map.h; }
+      else if (inR(L.map)) { px -= L.map.x; py -= L.map.y; st = "chart"; cui = { chartZoom: (game.ui.mini || { chartZoom: 3 }).chartZoom, chartAt: null, mini: true }; cw = L.map.w; chh = L.map.h; }
       else return;
     }
     if (st === "chart") {

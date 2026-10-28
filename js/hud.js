@@ -90,6 +90,15 @@
     for (const [id, n] of labs) if (!seen.has(id)) { n.remove(); labs.delete(id); }
   }
   HUD.clearLabels = () => { for (const n of labs.values()) n.remove(); labs.clear(); for (const n of dbs.values()) n.remove(); dbs.clear(); HUD.msgs = []; HUD.msgsKey = ""; };
+  /* the pause and sound buttons: on the dashboard, in the top right of the view, over its sky and clear of
+   * the bearing tape and the small map; on the other screens, where the stylesheet puts them */
+  function corner(L) {
+    const n = $("corner"), cv = $("screen");
+    let top = "", right = "";
+    if (L) { const r = cv.getBoundingClientRect(), k = r.width / cv.width || 1; top = Math.round(r.top + (L.view.y + 4) * k) + "px"; right = Math.round(innerWidth - r.left - (L.view.x + L.view.w - 4) * k) + "px"; }
+    if (n.style.top !== top || n.style.right !== right) { n.style.top = top; n.style.right = right; n.style.left = L ? "auto" : ""; }
+  }
+
   /* the dashboard's buttons, set over the canvas where the dashboard puts them; a held one holds its key */
   const dbs = new Map();
   function dashButtons(list) {
@@ -232,6 +241,7 @@
     set(el, "dashMode", st, e => { e.classList.toggle("dashmode", dashOn); e.classList.toggle("statusmode", statusOn); });
     dashButtons(dashOn && PP.Render.dash ? PP.Render.dash.buttons : statusOn ? [{ id: "back", html: "&#9664; Dashboard <kbd>1</kbd>", x: 8, y: 8, w: 92, h: 16, act: "st1" }] : []);
     if (dashOn && PP.Render.dash && PP.Render.dash.msg) msgWindow(PP.Render.dash.msg);
+    corner(dashOn && PP.Render.dash && PP.Render.dash.L);
     const stp = el.querySelector("#h-status");
     if (statusOn) { const h = PP.Dash.statusHTML(S); if (stp.dataset.h !== h) { stp.dataset.h = h; stp.innerHTML = h; } stp.hidden = false; } else stp.hidden = true;
     if (dashOn || statusOn) return;

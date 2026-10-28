@@ -78,7 +78,8 @@
   CH.me = S => (ESCS(S) && PP.Escort.flag(S)) || S.sub;
   const surf = s => !s.subs && s.depth === undefined ? true : Sub.surfaced(s);
   CH.view = (S, ui, Wd, Ht) => {
-    const sf = PP.Render.safe || { t: 28, b: 12 }, top = sf.t, bot = Ht - Math.max(sf.b, 60), my = (top + bot) / 2;
+    /* (the dashboard's small map keeps only its row of buttons along the foot, so she sits in its middle) */
+    const sf = PP.Render.safe || { t: 28, b: 12 }, top = sf.t, bot = Ht - (ui.mini ? 16 : Math.max(sf.b, 60)), my = (top + bot) / 2;
     let z = CH.ZOOMS[ui.chartZoom], cx, cy;
     if (!z) { z = Math.max(CH.seaW() / (Wd - 16), CH.seaH() / Math.max(40, bot - top - 8)); cx = CH.seaW() / 2; cy = CH.seaH() / 2; }
     else { const me = CH.me(S); cx = ui.chartAt ? ui.chartAt.x : me.x; cy = ui.chartAt ? ui.chartAt.y : me.y; }
@@ -205,7 +206,11 @@
         const age = S.t - a.contact; if (age > 900) continue;
         const x = X(a.datum.x), y = Y(a.datum.y), r = Math.max(4, (a.how === "sonar" ? 90 : a.how === "ear" ? 300 : 60) / z);
         ringPx(g, x, y, r, age < 60 ? "#ffc65a" : age < 300 ? "rgba(255,198,90,.6)" : "rgba(255,198,90,.3)", age < 60 ? 2 : 3);
-        if (z <= 150) K.text5(g, (a.how === "sonar" ? "SONAR" : a.how === "ear" ? "HEARD" : "SEEN") + " " + (age < 60 ? "NOW" : Math.round(age / 60) + "M"), Math.round(x + r + 3), Math.round(y - 3), "rgba(255,198,90,.85)", INK);
+        if (z <= 150) {
+          /* its words beside it, on the left of it near the right edge */
+          const t = (a.how === "sonar" ? "SONAR" : a.how === "ear" ? "HEARD" : "SEEN") + " " + (age < 60 ? "NOW" : Math.round(age / 60) + "M"), tw = K.text5w(t);
+          K.text5(g, t, Math.round(x + r + 3 + tw > Wd - 2 ? x - r - 3 - tw : x + r + 3), Math.round(y - 3), "rgba(255,198,90,.85)", INK);
+        }
       }
       for (const q of S.subs) {
         if (q.lost) { cross(g, X(q.x), Y(q.y), 4, COL.ghost); continue; }
@@ -215,7 +220,8 @@
     /* a name beside a mark, unless it would sit on one already written (the nearer to the middle written first) */
     const named = [];
     const nameAt = (txt, x, y, col, ref) => {
-      const w = K.text5w(txt), b = { x: Math.round(x), y: Math.round(y), w };
+      /* a name that would run off the right edge goes on the other side of her */
+      const w = K.text5w(txt), b = { x: Math.round(x + w > Wd - 2 ? x - 16 - w : x), y: Math.round(y), w };
       if (named.some(o => Math.abs(o.y - b.y) < 8 && b.x < o.x + o.w + 4 && o.x < b.x + w + 4)) return;
       named.push(b); K.text5(g, txt, b.x, b.y, col, INK);
       if (ref) {
@@ -252,7 +258,9 @@
     const bar = z >= 400 ? 100 * PP.YD_NM : z >= 60 ? 10000 : 2000, bl = bar / z;
     const sy0 = sf.t + 10;
     K.rect(g, 12, sy0 + 4, bl, 2, "rgba(255,200,180,.75)"); K.rect(g, 12, sy0, 1, 6, "rgba(255,200,180,.75)"); K.rect(g, 12 + bl, sy0, 1, 6, "rgba(255,200,180,.75)");
-    K.text5(g, z >= 400 ? "100 NM" : PP.num(bar) + " YD", 16 + bl, sy0 - 1, "rgba(255,200,180,.85)", INK);
+    /* its words after it, or under it on a small chart */
+    const bt = z >= 400 ? "100 NM" : PP.num(bar) + " YD", under = 16 + bl + K.text5w(bt) > Wd - 4;
+    K.text5(g, bt, under ? 12 : 16 + bl, under ? sy0 + 9 : sy0 - 1, "rgba(255,200,180,.85)", INK);
     return { X, Y, z, cx, cy };
   };
   /* a point on the chart (canvas pixels) to the sea */

@@ -122,7 +122,7 @@
       rail(g, Wd, Ht, now);
     }
     if (ui.aids.labels) ranges(S, v, "bridge");
-    const sf = R.safe || { t: 28 }, tw = Math.round(Wd * 0.3);
+    const sf = R.safe || { t: 28 }, tw = Math.round(Math.min(Wd * 0.3, Wd / 2 - 80));
     tape(g, S, cx, sf.t + 12, tw, brg, Math.min(fov, 40 * PP.DEG), s.hdg);
     lab("look", `<span class="c">${bino ? "Glasses" : "Looking"}</span><b>${PP.deg3(brg)}</b>`, cx - tw - 8, sf.t + 12, "rd brass", "rm");
     const dx = cx - tw - 8 - DIAL, dy = sf.t + 30 + DIAL;
@@ -321,7 +321,7 @@
     }
     if (!bino) rail(g, Wd, Ht, now);
     if (ui.aids.labels && !gunOn) ranges(S, v, "bridge");
-    const sf = R.safe || { t: 28 }, tw = Math.round(Wd * 0.3);
+    const sf = R.safe || { t: 28 }, tw = Math.round(Math.min(Wd * 0.3, Wd / 2 - 80));
     tape(g, S, cx, sf.t + 12, tw, brg, Math.min(fov, 40 * PP.DEG), s.hdg);
     lab("look", `<span class="c">${bino ? "Glasses" : gunOn ? "Gun" : "Looking"}</span><b>${PP.deg3(brg)}</b>`, cx - tw - 8, sf.t + 12, "rd brass", "rm");
     /* off the bow, under it: the figure and the dial */
