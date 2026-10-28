@@ -115,6 +115,10 @@
       btn("scopeUD", S.sub.scope.up ? "Scope down" : "Scope up", st.x + bw + 6, st.y + 2, 58, st.h - 4, { act: "scope", on: S.sub.scope.up });
       btn("power", S.sub.scope.hi ? "Low power" : "High power", st.x + bw + 68, st.y + 2, 58, st.h - 4, { act: "zoom" });
     } else btn("glasses", ui.bino ? "Glasses down" : "Glasses", st.x + bw + 6, st.y + 2, 58, st.h - 4, { act: "zoom", on: !!ui.bino });
+    if (esc) {
+      btn("guns", "Guns <kbd>G</kbd>", st.x + bw + 68, st.y + 2, 50, st.h - 4, { act: "gun", title: "Her guns, on a boat up in sight (G)" });
+      btn("next", "Next escort <kbd>N</kbd>", st.x + bw + 122, st.y + 2, 78, st.h - 4, { act: "boatNext", dim: PP.Escort.mine(S).length < 2, title: "Take command of the next escort (N)" });
+    }
     if (!esc) {
       btn("select", "Select <kbd>T</kbd>", st.x + st.w - bw - 70, st.y + 2, 64, st.h - 4, { act: "lock" });
       btn("swing", "On her <kbd>H</kbd>", st.x + st.w - bw - 138, st.y + 2, 64, st.h - 4, { act: "onHer" });
@@ -366,6 +370,9 @@
     const PH = PP.clamp(Math.round(bt.h * 0.42), 62, 96);
     const r = Math.max(14, Math.min(Math.floor((bt.h - 6 - 18 - PH - 16) / 2), Math.floor((bt.w - 154) / 6)));
     const top = bt.y + 6, gy = top + r, oy = top + 2 * r + 9;
+    /* the contact's panel: beside the dials where the band is wide enough (the charges then run its whole width),
+     * down the right of the band where it is not */
+    const dialsEnd = bt.x + 10 + 6 * r + 36, cpw = bt.x + bt.w - 6 - (dialsEnd + 12), wide = cpw >= 96;
     let gx = bt.x + 10 + r;
     bigTelegraph(g, gx, gy, r, f, k, btn);
     odo("tele", Math.abs(f.spd), 3, 1, gx, oy, "kn");
@@ -385,7 +392,7 @@
     /* the charges, laid out as she is, bow to the right: the patterns stacked on the left (astern), the depth they
      * are set for, her plan with its launchers and reserve and the trigger under it, and the hedgehog on the right
      * (ahead) */
-    const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(PH, bt.y + bt.h - 16 - py), SL = 38;
+    const px = bt.x + 6, py = oy + 10, pw = bt.w - (wide ? 12 : 104), ph = Math.max(PH, bt.y + bt.h - 16 - py), SL = 38;
     well(g, px, py, pw, ph);
     const ch = ph - 6, y0 = py + 3, sel = f.patK || 0;
     const PW = PP.clamp(Math.round(pw * 0.26), 62, 120), HW = PP.clamp(Math.round(pw * 0.16), 40, 80), rh = Math.floor((ch - 4) / 3);
@@ -409,14 +416,12 @@
     const word = f.pat ? "Laying&hellip;" : none ? (sol.hh ? "Hedgehog empty" : "No charges") : sol.hh ? "Fire hedgehog" : sol.ready < sol.need ? `Lay ${sol.ready} of ${sol.need}` : "Lay charges";
     btn("pattern", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "danger" + (f.pat ? " on" : "") + (c && c.over && !none ? " ready" : ""), dim: none,
       title: sol.hh ? "Fire the hedgehog (Space)" : `Lay the ${P.name.toLowerCase()} pattern, ${sol.need} charges${sol.ready < sol.need ? `; ${sol.ready} loaded, the crews are reloading` : ""} (Space)` });
-    const cx = bt.x + bt.w - 90;
-    let yy = bt.y + 6;
-    btn("guns", "Guns", cx, yy, 84, 13, { act: "gun" }); yy += 15;
-    btn("next", "Next escort <kbd>N</kbd>", cx, yy, 84, 13, { act: "boatNext", dim: PP.Escort.mine(S).length < 2 }); yy += 15;
+    if (wide) attackPanel(g, f, sol, dialsEnd + 12, top, Math.min(cpw, 170), oy + 7 - top);
+    else attackPanel(g, f, sol, bt.x + bt.w - 94, top, 88, bt.y + bt.h - 16 - top);
+    /* her name, and her hull, along the foot */
     const hull = Math.max(0, 1 - f.dmg / k.hp);
-    lab("hull", `<span class="c">Hull</span><b>${Math.round(hull * 100)}%</b>`, cx + 2, yy + 8, "dl" + (hull < 0.5 ? " red" : ""), "lm");
-    attackPanel(g, f, sol, cx, yy + 17, 84, bt.y + bt.h - 16 - (yy + 17));
     lab("name", `<b>${PP.esc(f.name)}</b> <span class="c">${PP.esc(k.name)} · PDF</span>`, bt.x + 8, bt.y + bt.h - 7, "dl", "lm");
+    lab("hull", `<span class="c">Hull</span><b>${Math.round(hull * 100)}%</b>`, bt.x + bt.w - 8, bt.y + bt.h - 7, "dl" + (hull < 0.5 ? " red" : ""), "rm");
   }
 
   /* ---- the Status screen: the vessel you are aboard, as the 1990 game's showed it ---- */

@@ -523,6 +523,13 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-dash .db.pick:hover { background: rgba(255,110,80,.08); }
 .h-dash .db.pick.on { color: var(--ps-yellow); border-color: var(--ps-yellow); }
 /* a pattern's row: its plan on the left, its name and count on the right */
+/* the hover tips (hud.js): a small panel in the red light, under what it explains */
+#tip { position: fixed; left: 0; top: 0; z-index: 2147483000; max-width: 300px; padding: 6px 10px 7px; pointer-events: none;
+  font: 500 14px/1.35 var(--ui); color: var(--ps-text); background: var(--ps-panel); border: 1px solid var(--ps-line); border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.55); opacity: 0; transition: opacity .12s ease-out; }
+#tip.on { opacity: 1; }
+#tip[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
 .h-dash .db.pick.row { align-items: center; justify-content: flex-end; padding: 0 5px 0 0; }
 /* the depth slider: the canvas draws it, the button is where to hold it */
 /* the trigger when the lamp says over her: its words and edge in the readout amber */

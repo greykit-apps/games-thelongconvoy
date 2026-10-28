@@ -138,7 +138,11 @@
       if (n.dataset.h !== B.html) { n.dataset.h = B.html; n.innerHTML = PP.Input.caps(B.html); }
       const cls = "db" + (B.on ? " on" : "") + (B.dim ? " dim" : "") + (B.cls ? " " + B.cls : "");
       if (n.className !== cls) n.className = cls;
-      if (B.title && n.title !== B.title) n.title = B.title;
+      /* its tip (HUD.tip shows it, themed; a screen reader hears it as the description) */
+      if ((B.title || "") !== (n.dataset.tip || "")) {
+        if (B.title) { n.dataset.tip = B.title; n.setAttribute("aria-description", B.title); } else { delete n.dataset.tip; n.removeAttribute("aria-description"); }
+        HUD.tipChanged(n);
+      }
       /* its name when its face is a glyph or a number; pressed only for a switch (one that has an on); a dimmed one
        * out of the tab order; a slider as a slider */
       if (B.label) { if (n.getAttribute("aria-label") !== B.label) n.setAttribute("aria-label", B.label); } else n.removeAttribute("aria-label");
@@ -361,4 +365,42 @@
         <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== s ? " · <kbd>Enter</kbd> or click her again: take command" : ""}</p>`);
     });
   };
+
+  /* ---- the hover tips: what a control or a flag is for, on a small panel in the red light under it, not in the
+   * browser's grey box. A title anywhere in the game is taken into data-tip (and aria-description, so a screen
+   * reader still hears it) the first time it is pointed at or focused, which keeps the browser's own tip away; a
+   * pointer that rests shows it, keyboard focus shows it at once, a press, Esc or scrolling puts it away. The
+   * shared boot screen keeps its own. ---- */
+  const tip = document.createElement("div");
+  tip.id = "tip"; tip.setAttribute("role", "tooltip"); tip.hidden = true;
+  document.body.appendChild(tip);
+  let tipOn = null, tipT = 0;
+  const take = el => {
+    const t = el.getAttribute("title");
+    if (t !== null) { el.removeAttribute("title"); if (t) { el.dataset.tip = t; el.setAttribute("aria-description", t); } }
+    return el.dataset.tip || "";
+  };
+  const tipOf = n => { const el = n && n.closest ? n.closest("[title],[data-tip]") : null; return el && !el.closest(".gk-boot") ? el : null; };
+  const hideTip = () => { clearTimeout(tipT); tipT = 0; tipOn = null; tip.classList.remove("on"); tip.hidden = true; };
+  const showTip = el => {
+    const t = take(el); if (!t || !el.isConnected) return;
+    tipOn = el; tip.textContent = t; tip.hidden = false;
+    const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    let y = r.bottom + 8; if (y + h > innerHeight - 8) y = r.top - h - 8;
+    const x = PP.clamp(r.left + r.width / 2 - w / 2, 8, Math.max(8, innerWidth - w - 8));
+    tip.style.transform = `translate(${Math.round(x)}px,${Math.round(Math.max(8, y))}px)`;
+    tip.classList.add("on");
+  };
+  HUD.tipChanged = el => { if (el === tipOn) { if (el.dataset.tip) showTip(el); else hideTip(); } };
+  document.addEventListener("pointerover", ev => {
+    const el = tipOf(ev.target); if (el === tipOn && el) return;
+    hideTip(); if (!el) return;
+    take(el); tipOn = el; tipT = setTimeout(() => { if (tipOn === el) showTip(el); }, 450);
+  });
+  document.addEventListener("pointerdown", hideTip, true);
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape") hideTip(); }, true);
+  document.addEventListener("focusin", ev => { const el = tipOf(ev.target); if (el && el === ev.target && el.matches(":focus-visible")) { hideTip(); showTip(el); } });
+  document.addEventListener("focusout", hideTip);
+  addEventListener("scroll", hideTip, true);
+  addEventListener("blur", hideTip);
 })();
