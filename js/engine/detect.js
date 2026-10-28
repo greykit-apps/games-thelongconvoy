@@ -83,7 +83,8 @@
         }
       }
       if (how && roll(S, p, dt)) {
-        const err = (how === "sonar" ? C.ESC.posErr[expert] : how === "ear" ? 220 + d * 0.12 : 60) * (0.5 + R(S));
+        /* a ping's fix is as good as its bearing: the nearer, the closer (posErr is at 1,050 yards) */
+        const err = (how === "sonar" ? C.ESC.posErr[expert] * (0.3 + d / 1500) : how === "ear" ? 220 + d * 0.12 : 60) * (0.5 + R(S));
         const a = R(S) * PP.TAU;
         const dz = how === "sonar" ? s.depth + PP.gauss(() => R(S)) * C.ESC.depthErr[expert] : how === "ear" ? 150 + PP.gauss(() => R(S)) * 40 : 0;
         /* a boat seen on the surface or at her periscope is marked where she is: the escorts' side draws her */
@@ -94,9 +95,9 @@
           /* a noisemaker near her, still sounding: the escort may take it for her */
           const dec = (how === "ear" || how === "sonar") && (S.decoys || []).find(q => S.t - q.t0 < C.DECOY.life && PP.dist(q.x, q.y, s.x, s.y) < C.DECOY.reach);
           if (dec && R(S) < C.DECOY.fool) { nd = { x: dec.x + (R(S) - 0.5) * 60, y: dec.y + (R(S) - 0.5) * 60, t: S.t, vx: 0, vy: 0, decoy: true }; }
-          /* the escort you are aboard keeps a plot: a fresh contact by the same means on the same boat, within
-           * half a minute, is averaged into the last (run on to now), so her estimate settles the longer she holds it */
-          if (ai.st === "user" && ai.datum && ai.how === how && ai.tgt === s.id && S.t - ai.contact < 30) {
+          /* an escort keeps a plot: a fresh contact by the same means on the same boat, within half a minute, is
+           * averaged into the last (run on to now), so her estimate settles the longer she holds it */
+          if (ai.datum && !ai.datum.decoy && ai.how === how && ai.tgt === s.id && S.t - ai.contact < 30) {
             const age = S.t - ai.datum.t, px = ai.datum.x + (ai.datum.vx || 0) * age, py = ai.datum.y + (ai.datum.vy || 0) * age, w = 0.3;
             nd.x = px + (nd.x - px) * w; nd.y = py + (nd.y - py) * w; ai.dz = ai.dz + (Math.max(30, dz) - ai.dz) * w;
           } else ai.dz = Math.max(30, dz);

@@ -16,10 +16,12 @@
   const R = S => PP.rand(S);
 
   function steer(sh, x, y, kn) { sh.ordHdg = PP.angTo(sh.x, sh.y, x, y); sh.ordSpd = Math.min(kn, C.SHIPS[sh.cls].kn); }
-  const predicted = (S, ai, lead) => {
-    const d = ai.datum, age = S.t - d.t;
+  /* where the boat is thought to be; led, where she will be (ahead, extra seconds on: the charges' time to sink) */
+  const predicted = (S, ai, lead, ahead = 0) => {
+    const d = ai.datum, age = S.t - d.t + ahead;
     return lead ? [d.x + (d.vx || 0) * age, d.y + (d.vy || 0) * age] : [d.x, d.y];
   };
+  Esc.sinkT = z => PP.clamp(z, 30, 700) / C.DC.sink;
 
   /* the boat an escort is after: the one it last had contact with, else the nearest of the pack */
   Esc.quarry = (S, sh) => {
@@ -85,29 +87,32 @@
           break;
         }
         case "attack": {
-          /* in at speed, toward where the boat will be */
-          const [x, y] = predicted(S, ai, true), dd = PP.dist(sh.x, sh.y, x, y);
+          /* in at speed, toward where the boat will be when the charges reach her depth */
+          const [x, y] = predicted(S, ai, true, Esc.sinkT(ai.dz)), dd = PP.dist(sh.x, sh.y, x, y);
           if (!ai.run) { ai.run = { x, y }; ev.push({ t: "escortRun", id: sh.id }); }
           if (fresh) ai.run = { x, y };
           steer(sh, ai.run.x, ai.run.y, C.ESC.attackKn);
-          const dr = PP.dist(sh.x, sh.y, ai.run.x, ai.run.y);
-          if (dr < C.ESC.blind * 0.5 || (dr < C.ESC.blind && Math.abs(PP.angDiff(sh.hdg, PP.angTo(sh.x, sh.y, ai.run.x, ai.run.y))) > 1.2)) {
-            ai.st = "drop"; ai.t = 0; ai.drops = 0; ai.dropAt = { x: sh.x, y: sh.y };
+          const dr = PP.dist(sh.x, sh.y, ai.run.x, ai.run.y), n = k.dc + expert * 2 - 2;
+          /* the rails start half a pattern short, so the pattern lies across the aim point; past it, at once */
+          if (dr < (n - 1) * C.DC.spacing / 2 + 10 || (dr < C.ESC.blind && Math.abs(PP.angDiff(sh.hdg, PP.angTo(sh.x, sh.y, ai.run.x, ai.run.y))) > 1.2)) {
+            ai.st = "drop"; ai.t = 0; ai.drops = 0; ai.dropAt = null; ai.thrown = false;
             ai.set = PP.clamp(ai.dz + PP.gauss(() => R(S)) * C.ESC.depthErr[expert] * 0.5, 30, 700);
-            /* the throwers, either side */
-            for (const side of [-1, 1]) Esc.charge(S, sh.x + Math.cos(sh.hdg) * C.DC.throw * side, sh.y + Math.sin(sh.hdg) * C.DC.throw * side, ai.set + PP.gauss(() => R(S)) * 15, sh.id);
-            ev.push({ t: "chargesAway", id: sh.id, x: sh.x, y: sh.y, by: s.id });
           }
           if (ai.t > 240 && dd > 4000) { ai.st = "search"; ai.t = 0; }
           break;
         }
         case "drop": {
-          /* charges off the rails at intervals along the track */
+          /* charges off the rails at intervals along the track; the throwers, either side, over the middle of it */
           sh.ordSpd = Math.min(C.ESC.attackKn * 0.8, k.kn);
           const n = k.dc + expert * 2 - 2;
-          if (PP.dist(sh.x, sh.y, ai.dropAt.x, ai.dropAt.y) >= C.DC.spacing && ai.drops < n) {
+          if ((!ai.dropAt || PP.dist(sh.x, sh.y, ai.dropAt.x, ai.dropAt.y) >= C.DC.spacing) && ai.drops < n) {
             Esc.charge(S, sh.x - PP.hx(sh.hdg) * 20, sh.y - PP.hy(sh.hdg) * 20, ai.set + (ai.drops % 2 ? 25 : -10) * (1 - expert * 0.5), sh.id);
             ai.dropAt = { x: sh.x, y: sh.y }; ai.drops++;
+            if (!ai.thrown && ai.drops > n / 2) {
+              ai.thrown = true;
+              for (const side of [-1, 1]) Esc.charge(S, sh.x + Math.cos(sh.hdg) * C.DC.throw * side, sh.y + Math.sin(sh.hdg) * C.DC.throw * side, ai.set + PP.gauss(() => R(S)) * 15, sh.id);
+              ev.push({ t: "chargesAway", id: sh.id, x: sh.x, y: sh.y, by: s.id });
+            }
           }
           if (ai.drops >= n) { ai.st = "open"; ai.t = 0; ai.openAt = { x: sh.x, y: sh.y }; }
           break;

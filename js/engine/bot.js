@@ -186,7 +186,7 @@
         if (r > 1200) { helm(PP.angTo(f.x, f.y, d.x, d.y)); bell(r > 5000 ? 5 : 3); }
         else { helm(PP.normAng(PP.angTo(f.x, f.y, d.x, d.y) + Math.PI * 0.45)); bell(2); }
       } else if (best && S.t - best.ai.contact <= 45) {
-        const d = best.ai.datum, age = S.t - d.t, x = d.x + (d.vx || 0) * age, y = d.y + (d.vy || 0) * age, r = PP.dist(f.x, f.y, x, y);
+        const d = best.ai.datum, age = S.t - d.t + PP.Escort.sinkT(best.ai.dz || 150), x = d.x + (d.vx || 0) * age, y = d.y + (d.vy || 0) * age, r = PP.dist(f.x, f.y, x, y);
         helm(PP.angTo(f.x, f.y, x, y)); bell(r > 3000 ? 5 : r > 900 ? 3 : 4);
         const want = Math.round(PP.clamp(best.ai.dz || 150, 50, 600) / 25) * 25;
         if (Math.abs((f.dcSet || 150) - want) >= 25) A({ a: "dcSet", d: want - (f.dcSet || 150) });

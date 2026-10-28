@@ -196,7 +196,7 @@
     gunRange: 6000, ramRange: 300,
     huntT: [1100, 2400], leash: [11000, 18000],      /* seconds and yards an escort will hunt away from its convoy */
     depthErr: [75, 28],                         /* feet, normal and expert */
-    posErr: [90, 45],                           /* yards */
+    posErr: [90, 45],                           /* yards, for a ping at 1,050 yards: nearer is closer (detect.js). Retuned 2026-10-28 with patterns laid across the aim point; owed real play */
   };
   /* ft/s; yards; feet. kill and hurt UNCERTAIN: widened 2026-10-27 so a pattern over a fair contact can sink a boat; owed real play */
   C.DC = { sink: 9, spacing: 28, throw: 60, kill: 30, hurt: 135, sev: 0.7 };
