@@ -126,7 +126,7 @@
     tape(g, S, cx, sf.t + 12, tw, brg, Math.min(fov, 40 * PP.DEG), s.hdg);
     lab("look", `<span class="c">${bino ? "Glasses" : "Looking"}</span><b>${PP.deg3(brg)}</b>`, cx - tw - 8, sf.t + 12, "rd brass", "rm");
     const dx = cx - tw - 8 - DIAL, dy = sf.t + 30 + DIAL;
-    bowDial(g, dx, dy, PP.angDiff(s.hdg, brg), fov);
+    bowDial(g, dx, dy, s.hdg, brg, fov);
     lab("rel", `<span class="c">Rel</span><b>${PP.deg3(brg - s.hdg)}</b>`, dx - DIAL - 6, dy, "rd", "rm");
   }
 
@@ -179,7 +179,7 @@
     /* off the bow, under it: the figure and the dial, as on the bridge (kept on the screen where the window is
      * narrow); the power under them */
     const dx = Math.max(cx - r - 8, 80) - DIAL, dy = ty + 18 + DIAL;
-    bowDial(g, dx, dy, s.scope.brg, fov);
+    bowDial(g, dx, dy, s.hdg, s.hdg + s.scope.brg, fov);
     lab("rel", `<span class="c">Rel</span><b>${PP.deg3(s.scope.brg)}</b>`, dx - DIAL - 6, dy, "rd", "rm");
     lab("power", s.scope.hi ? "High power" : "Low power", dx + DIAL, dy + DIAL + 6, "cap", "rt");
   }
@@ -265,17 +265,20 @@
   const REL_MARKS = [[0, "Bow"], [90, "Stbd"], [180, "Stern"], [270, "Port"]];
   /* the boat from above, bow up, and where the glass or the gun looks off her: a brass line, the field of view a wash */
   const DIAL = 15;
-  function bowDial(g, x, y, rel, fov) {
+  /* a compass card, north up: the vessel turned to her heading, the view's field and its line on the true bearing
+   * it looks along (so the angle between hull and line is the relative bearing beside it) */
+  function bowDial(g, x, y, hdg, brg, fov) {
     const R0 = DIAL, at = (a, d) => [x + Math.sin(a) * d, y - Math.cos(a) * d];
     K.disc(g, x, y, R0 + 1, R0 + 1, INK); K.disc(g, x, y, R0, R0, "#0b1017"); K.ring(g, x, y, R0, "#3a424e");
-    for (let q = 0; q < 4; q++) { const [ax, ay] = at(q * Math.PI / 2, R0 - 1), [bx, by] = at(q * Math.PI / 2, R0 - 3); K.line(g, ax, ay, bx, by, "#c8c0aa"); }
+    for (let q = 0; q < 4; q++) { const [ax, ay] = at(q * Math.PI / 2, R0 - 1), [bx, by] = at(q * Math.PI / 2, R0 - (q ? 3 : 5)); K.line(g, ax, ay, bx, by, q ? "#c8c0aa" : "#e6bd6a"); }
     const w = Math.min(fov, PP.TAU) / 2, n = Math.max(2, Math.ceil(w / 0.15)), wedge = [[x, y]];
-    for (let k = 0; k <= n; k++) wedge.push(at(rel - w + 2 * w * k / n, R0 - 1));
+    for (let k = 0; k <= n; k++) wedge.push(at(brg - w + 2 * w * k / n, R0 - 1));
     K.poly(g, wedge, "rgba(230,189,106,.22)");
-    const hull = [[0, -11], [2, -7], [3, -2], [3, 7], [2, 10], [-2, 10], [-3, 7], [-3, -2], [-2, -7]].map(([a, b]) => [x + a, y + b]);
-    K.poly(g, hull.map(([a, b]) => [a + Math.sign(a - x), b + Math.sign(b - y)]), INK);
-    K.poly(g, hull, "#6a7480"); K.rect(g, x - 1, y - 3, 3, 5, "#9aa3ad");
-    const [ex, ey] = at(rel, R0 - 1);
+    const c = Math.cos(hdg), s = Math.sin(hdg), turn = ([a, b], k = 1) => [x + (a * c - b * s) * k, y + (a * s + b * c) * k];
+    const hull = [[0, -11], [2, -7], [3, -2], [3, 7], [2, 10], [-2, 10], [-3, 7], [-3, -2], [-2, -7]];
+    K.poly(g, hull.map(p => turn(p, 1.22)), INK);
+    K.poly(g, hull.map(p => turn(p)), "#6a7480"); K.poly(g, [[-1, -3], [1, -3], [1, 2], [-1, 2]].map(p => turn(p)), "#9aa3ad");
+    const [ex, ey] = at(brg, R0 - 1);
     K.line(g, x, y, ex, ey, "#e6bd6a");
   }
   function bracket(g, x, y, w, h, col) {
@@ -326,7 +329,7 @@
     lab("look", `<span class="c">${bino ? "Glasses" : gunOn ? "Gun" : "Looking"}</span><b>${PP.deg3(brg)}</b>`, cx - tw - 8, sf.t + 12, "rd brass", "rm");
     /* off the bow, under it: the figure and the dial */
     const dx = cx - tw - 8 - DIAL, dy = sf.t + 30 + DIAL;
-    bowDial(g, dx, dy, PP.angDiff(s.hdg, brg), fov);
+    bowDial(g, dx, dy, s.hdg, brg, fov);
     lab("rel", `<span class="c">Rel</span><b>${PP.deg3(brg - s.hdg)}</b>`, dx - DIAL - 6, dy, "rd", "rm");
   }
   /* the bridge's rail and the TBT post, in front of you */
