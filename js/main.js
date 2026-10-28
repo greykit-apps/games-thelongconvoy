@@ -285,6 +285,8 @@
         case "ordered": if (e.what === "bell") SFX.play("bell"); break;
         case "diveAlarm": SFX.play(e.crash ? "crash" : "klaxon"); toast(e.crash ? "Crash dive! All ahead full" : "Dive, dive", e.crash ? "amber" : "", 1800); break;
         case "surfaced": SFX.play("blow"); toast("Surfaced", "", 1400); break;
+        case "eblow": SFX.play("blow"); SFX.play("klaxon", 0.6); toast(`Emergency blow! She's going up, and she can't dive for ${Math.round(e.lock / 60)} minutes`, "red", 3200); break;
+        case "cantDive": toast(`The tanks are blown: no diving for ${Math.floor(e.left / 60)}:${String(Math.floor(e.left % 60)).padStart(2, "0")}`, "amber", 1800); break;
         case "submerged": break;
         case "atDepth": toast(e.d === C.PD ? "At periscope depth" : `Level at ${e.d} feet`, "", 1600); break;
         case "scopeUp": SFX.play("menu"); break;
@@ -343,7 +345,9 @@
         case "bombs": SFX.play("bombs"); toast(s.depth > 50 ? "Bombs, close aboard" : "Bombs!", "red", 2200); break;
         case "gunManned": toast("Gun crew on deck", "", 1400); break;
         case "gunSecured": toast("Gun secured", "", 1400); break;
-        case "gunFire": SFX.play("gun"); break;
+        case "gunFire": SFX.play("gun"); R.shake = Math.max(R.shake, 3); break;
+        case "gunStowing": SFX.play("klaxon", 0.5); toast(`Securing the gun: she dives when it is fore and aft${e.secs > 1 ? `, ${e.secs} seconds` : ""}`, "amber", 2200); break;
+        case "gunArc": if (S.t - (game.warned.arc || -1e9) > 4) { game.warned.arc = S.t; toast("The tower: the gun bears no further aft. Turn her", "amber", 1800); } break;
         case "gunHit": SFX.play("shellHit", 0.7); toast("A hit", "green", 1000); break;
         case "gunSplash": SFX.play("splash", 0.5); break;
         case "gunNo": toast({ submerged: "Surface to man the gun", damaged: "The gun is damaged", manning: "The gun is not manned yet", shells: "No shells left" }[e.why], "amber"); break;
@@ -500,7 +504,7 @@
     let st = R.stationOf(S, u);
     if (st !== "scope" && st !== "bridge") { game.setStation(Sub.surfaced(s) ? "bridge" : "scope"); st = u.station; }
     if (a === "ahead") {
-      const now = st === "scope" ? s.scope.brg : PP.angDiff(s.hdg, s.gun.on ? s.gun.brg : u.look), rel = Math.abs(now) < 5 * PP.DEG ? Math.PI : 0;
+      const now = st === "scope" ? s.scope.brg : s.gun.on ? (s.gun.ordRel || 0) : PP.angDiff(s.hdg, u.look), rel = Math.abs(now) < 5 * PP.DEG ? Math.PI : 0;
       I.swing(S => S.sub.hdg + rel);
       return;
     }
@@ -627,9 +631,11 @@
       case "help": UI.help(1, () => game.unpause()); break;
       /* the dashboard's telegraph and pattern picker: a position, a pattern, by its number */
       default: {
-        const m = /^(bell|pat)(\d)$/.exec(a), dz = /^depth:(\d+)$/.exec(a);
+        const m = /^(bell|pat)(\d)$/.exec(a), dz = /^depth:(\d+)$/.exec(a), rm = /^rim:(tel|hdg):(\d+)$/.exec(a);
         if (m) I.push(m[1] === "bell" ? { a: "setBell", v: +m[2] } : { a: "patSel", v: +m[2] });
         else if (dz) I.push({ a: "dcSet", v: +dz[1] });
+        else if (rm && rm[1] === "hdg") I.push({ a: "hdg", v: +rm[2] * PP.DEG });
+        else if (rm && rimSweep(+rm[2]) !== null) I.push({ a: "setBell", v: Math.round(rimSweep(+rm[2]) * (C.ESC_BELLS.length - 1)) });
       }
     }
   }
@@ -652,6 +658,7 @@
       case "surface": I.push({ a: "surface" }); break;
       case "pd": I.push({ a: "pd" }); break;
       case "crash": I.push({ a: "crash" }); break;
+      case "eblow": I.push({ a: "eblow" }); break;
       case "zoom": if (st === "chart") { u.chartZoom = (u.chartZoom + (shift ? PP.Chart.ZOOMS.length - 1 : 1)) % PP.Chart.ZOOMS.length; u.chartAt = null; SFX.play("menu"); } else if (st === "bridge") u.bino = !u.bino; else I.push({ a: "zoom" }); break;
       case "lock": lockNearest(); break;
       case "onHer": case "ahead": swing(a); break;
@@ -696,8 +703,32 @@
         break;
       }
       case "takeCmd": if (st === "chart" && game.selIdx() !== S.cmd) I.push({ a: "command", i: game.selIdx() }); break;
+      /* the dashboard: a telegraph's word, a spread, and a dial set from its rim (rim:<dial>:<degrees from the top>) */
+      default: {
+        const m = /^(bell|spr)(\d)$/.exec(a), rm = /^rim:(tel|hdg|dep):(\d+)$/.exec(a), rt = /^rate:(\d+)$/.exec(a);
+        if (m) I.push(m[1] === "bell" ? { a: "setBell", v: +m[2] } : { a: "spread", v: +m[2] });
+        /* the dive bubble's tube, 0 (all the way up) to 100 (all the way down): a rate, or about the middle, hold her depth */
+        else if (rt) {
+          const f = (+rt[1] - 50) / 50;
+          if (Math.abs(f) < 0.08) { if (!Sub.surfaced(s)) I.push({ a: "setDepth", v: Math.round(s.depth / 5) * 5 }); }
+          else I.push({ a: "rate", v: f < 0 ? f * C.DIVE.blow : f * C.DIVE.crash });
+        }
+        else if (rm) {
+          const deg = +rm[2], v = rimSweep(deg);
+          if (rm[1] === "hdg") I.push({ a: "hdg", v: deg * PP.DEG });
+          else if (v !== null && rm[1] === "tel") I.push({ a: "setBell", v: Math.round(v * (C.BELLS.length - 1)) });
+          else if (v !== null) {
+            const top = PP.Dash.depthTop(s), d = v * top;
+            if (Math.abs(d - C.PD) <= PP.Dash.PD_SNAP * top) I.push({ a: "pd" });
+            else if (d < 0.025 * top) I.push({ a: "surface" });
+            else I.push({ a: "setDepth", v: Math.round(d / 25) * 25 });
+          }
+        }
+      }
     }
   }
+  /* where a click on a dial's rim falls on its sweep (-135 to +135 degrees, 0 to 1); in the gap at its foot, nowhere */
+  function rimSweep(deg) { const a = deg > 180 ? deg - 360 : deg; return Math.abs(a) > 150 ? null : PP.clamp((a + 135) / 270, 0, 1); }
   /* a pad's button means what the moment needs: Y ties up at a base, the d-pad lays the gun when it is manned */
   function padAct(a) {
     const S = game.S, st = R.stationOf(S, game.ui);

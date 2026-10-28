@@ -121,7 +121,17 @@
         n.addEventListener("pointerdown", ev => { const b = n._b; if (!b || b.dim) return; if (b.hold) { PP.Input.held.add(b.hold); PP.Input.heldT[b.hold] = performance.now() - 300; } ev.preventDefault(); });
         const up = () => { const b = n._b; if (b && b.hold) { PP.Input.held.delete(b.hold); delete PP.Input.heldT[b.hold]; } };
         n.addEventListener("pointerup", up); n.addEventListener("pointerleave", up);
-        n.addEventListener("click", () => { const b = n._b; if (b && b.act && !b.dim && PP.game.dashAct) PP.game.dashAct(b.act); });
+        n.addEventListener("click", ev => {
+          const b = n._b; if (!b || !b.act || b.dim || !PP.game.dashAct) return;
+          /* a dial's rim: where on it, as a bearing in degrees from its top, clockwise; the middle is not the rim's */
+          if (b.rim) {
+            const q = n.getBoundingClientRect(), dx = ev.clientX - (q.left + q.width / 2), dy = ev.clientY - (q.top + q.height / 2);
+            if (Math.hypot(dx, dy) < q.width / 2 * b.rim.inner) return;
+            PP.game.dashAct(`${b.act}:${Math.round((Math.atan2(dx, -dy) / PP.DEG + 360) % 360)}`);
+            return;
+          }
+          PP.game.dashAct(b.act);
+        });
         /* a slider follows the pointer while it is held */
         n.addEventListener("pointerdown", ev => { if (n._b && n._b.slide) { n._last = null; n.setPointerCapture(ev.pointerId); slideTo(n, ev); } });
         n.addEventListener("pointermove", ev => { if (n._b && n._b.slide && n.hasPointerCapture(ev.pointerId)) slideTo(n, ev); });
@@ -147,11 +157,12 @@
        * out of the tab order; a slider as a slider */
       if (B.label) { if (n.getAttribute("aria-label") !== B.label) n.setAttribute("aria-label", B.label); } else n.removeAttribute("aria-label");
       if (B.on !== undefined) n.setAttribute("aria-pressed", String(!!B.on)); else n.removeAttribute("aria-pressed");
-      if (B.dim) { n.setAttribute("aria-disabled", "true"); n.tabIndex = -1; } else if (n.hasAttribute("aria-disabled")) { n.removeAttribute("aria-disabled"); n.tabIndex = 0; }
+      if (B.rim) n.tabIndex = -1;
+      else if (B.dim) { n.setAttribute("aria-disabled", "true"); n.tabIndex = -1; } else if (n.hasAttribute("aria-disabled")) { n.removeAttribute("aria-disabled"); n.tabIndex = 0; }
       if (B.slide) {
         const s = B.slide;
         n.setAttribute("role", "slider"); n.setAttribute("aria-orientation", "vertical");
-        n.setAttribute("aria-valuemin", s.lo); n.setAttribute("aria-valuemax", s.max); n.setAttribute("aria-valuenow", s.v); n.setAttribute("aria-valuetext", s.v + " feet");
+        n.setAttribute("aria-valuemin", s.lo); n.setAttribute("aria-valuemax", s.max); n.setAttribute("aria-valuenow", s.v); n.setAttribute("aria-valuetext", s.text || s.v + " feet");
       }
       const css = `left:${Math.round(B.x * k)}px;top:${Math.round(B.y * k)}px;width:${Math.round(B.w * k)}px;height:${Math.round(B.h * k)}px;font-size:${Math.max(10, Math.round(Math.min(B.h * k * 0.62, 6.2 * k)))}px` +
         (B.fill !== undefined ? `;--fill:${B.fill.toFixed(2)}` : "");

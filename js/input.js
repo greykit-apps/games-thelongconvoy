@@ -95,7 +95,7 @@
       const s = S.sub, want = I.slew(S);
       if (want === null) I.slew = null;
       else {
-        const now = st === "scope" ? s.hdg + s.scope.brg : s.gun.on ? s.gun.brg : ui.look, d = PP.angDiff(now, want), max = 400 * PP.DEG * sec;
+        const now = st === "scope" ? s.hdg + s.scope.brg : s.gun.on ? s.hdg + (s.gun.ordRel || 0) : ui.look, d = PP.angDiff(now, want), max = 400 * PP.DEG * sec;
         turn(PP.clamp(d, -max, max));
         if (Math.abs(d) <= max) I.slew = null;
       }

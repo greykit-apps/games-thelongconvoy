@@ -226,16 +226,28 @@
   }
 
   /* ---- the deck gun: bearing, range, fire; shells take their time ---- */
+  /* the deck gun is ordered round no further aft than its arc either side of the bow (the tower is in the way), and
+   * trains toward that order the short way, never across the stern. True when the order was held at the stop */
+  W.gunClamp = s => {
+    const g = s.gun;
+    if (g.ordRel === undefined) { g.rel = 0; g.ordRel = 0; }
+    if (Math.abs(g.ordRel) <= C.GUN.arc) return false;
+    g.ordRel = Math.sign(g.ordRel) * C.GUN.arc;
+    return true;
+  };
   W.gunOrder = (S, a, ev) => {
     const s = S.sub, g = s.gun;
     if (a.a === "gun") {
       if (!Sub.surfaced(s)) { ev.push({ t: "gunNo", why: "submerged" }); return; }
       if (s.sys.gun >= 0.5) { ev.push({ t: "gunNo", why: "damaged" }); return; }
-      g.on = !g.on; if (!g.on) g.man = 0;
+      g.on = !g.on; if (!g.on) g.man = 0; else s.pendDive = null;
       ev.push({ t: g.on ? "gunManned" : "gunSecured" });
     }
-    if (a.a === "gunTrain") g.brg = PP.normAng(g.brg + a.d);
-    if (a.a === "gunSetBrg") g.brg = PP.normAng(a.v);
+    if (a.a === "gunTrain" || a.a === "gunSetBrg") {
+      W.gunClamp(s);
+      g.ordRel = a.a === "gunTrain" ? g.ordRel + a.d : PP.angDiff(s.hdg, a.v);
+      if (W.gunClamp(s)) ev.push({ t: "gunArc" });
+    }
     if (a.a === "gunRange") g.rng = PP.clamp(g.rng + a.d, 300, C.GUN.range);
     if (a.a === "gunSetRng") g.rng = PP.clamp(a.v, 300, C.GUN.range);
     if (a.a === "gunFire") {

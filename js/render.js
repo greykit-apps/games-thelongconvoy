@@ -312,11 +312,13 @@
   function bridge(g, S, ui, now, Wd, Ht) {
     const s = S.sub, gunOn = s.gun.on, bino = ui.bino && !gunOn;
     if (gunOn) ui.look = s.gun.brg;
-    const fov = (gunOn ? 14 : bino ? 9 : 70) * PP.DEG, brg = ui.look;
-    const r = Math.round(Wd / 2), cx = Math.round(Wd / 2), cy = Math.round(Ht * (bino ? 0.5 : 0.44));
+    const fov = (gunOn ? 50 : bino ? 9 : 70) * PP.DEG, brg = ui.look;
+    const r = Math.round(Wd / 2), cx = Math.round(Wd / 2), cy = Math.round(Ht * (bino ? 0.5 : gunOn ? 0.44 : 0.4));
     const v = V.draw(g, S, { x: s.x, y: s.y, late: !bino && !gunOn, eyeH: C.EYE.bridge, brg, fov, cx, cy, r, now, aids: ui.aids, calm: PP.calm(), mask: bino ? "bino" : "none" });
     R.last = { view: v, brg, fov, cx, cy, r };
-    if (!bino && !gunOn) { ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht); v.late(); }
+    if (!bino && !gunOn) { ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht, s, hullOf(s.cls), 22); v.late(); }
+    /* on the gun: her deck from the layer's seat, the gun's own barrel running out ahead of him */
+    else if (gunOn) ownBoat(g, S, v.f, cx, cy, brg, now, Wd, Ht, s, hullOf(s.cls), 22, "sub", subGun(s, hullOf(s.cls)).eye);
     if (S.tdc.tgt !== null) { const d = v.drawn.find(q => q.id === S.tdc.tgt); if (d) bracket(g, d.x, (d.top + d.wl) / 2, Math.max(6, d.px * 0.55), Math.max(5, (d.wl - d.top) * 0.6 + 3), "#e6bd6a"); }
     if (bino) {
       /* two circles of the glasses */
@@ -342,7 +344,7 @@
       const ready = s.gun.man >= 1 && s.gun.reload <= 0;
       lab("gunSt", `<b>${s.gun.man < 1 ? "Manning the gun" : s.gun.reload > 0 ? "Loading" : "Ready"}</b><span>${s.shells} shells</span>`, rx, ry + 26, "gun " + (ready ? "green" : "amber"), "ct");
     }
-    if (!bino) rail(g, Wd, Ht, now);
+    if (!bino && !gunOn) rail(g, Wd, Ht, now);
     if (ui.aids.labels && !gunOn) ranges(S, v, "bridge");
     const sf = R.safe || { t: 28 }, tw = Math.round(Math.min(Wd * 0.3, Wd / 2 - 80));
     tape(g, S, cx, sf.t + 12, tw, brg, Math.min(fov, 40 * PP.DEG), s.hdg);
@@ -354,12 +356,13 @@
   }
   /* the bridge's rail and the TBT post, in front of you */
   function rail(g, Wd, Ht, now) {
-    const y = Math.round(Ht * 0.84);
+    const y = Math.round(Ht * 0.93);
     for (let yy = y; yy < Ht + 8; yy++) { const k = (yy - y) / (Ht - y); g.fillStyle = K.mix("#2c333d", "#11151b", k); g.fillRect(-8, yy, Wd + 16, 1); }
     K.rect(g, -8, y - 3, Wd + 16, 3, "#454e5a"); K.rect(g, -8, y - 3, Wd + 16, 1, "#6a7480");
     for (let x = 14; x < Wd; x += 30) K.rivet(g, x, y + 6, "#6a7480", INK);
-    const tx = Math.round(Wd / 2);
-    K.rect(g, tx - 5, y - 22, 10, 22, "#2a3038"); K.rect(g, tx - 14, y - 30, 28, 10, "#3a424c"); K.rect(g, tx - 12, y - 28, 8, 6, "#11151b"); K.rect(g, tx + 4, y - 28, 8, 6, "#11151b");
+    /* the torpedo sight's binocular post, at the front of the bridge to port of the gun */
+    const tx = Math.round(Wd * 0.3);
+    K.rect(g, tx - 4, y - 14, 8, 14, "#2a3038"); K.rect(g, tx - 11, y - 20, 22, 7, "#3a424c"); K.rect(g, tx - 9, y - 19, 6, 4, "#11151b"); K.rect(g, tx + 3, y - 19, 6, 4, "#11151b");
     void now;
   }
 
@@ -378,6 +381,15 @@
     }
     return { st, Lf, B };
   })());
+  /* a boat's deck gun on her hull: where it stands (feet forward of the bridge), its height, and its size by its
+   * calibre; and the eye on it, over the layer's shoulder behind its breech to port, trained with it */
+  function subGun(s, H) {
+    const st = H.st, x = H.Lf * 0.12, k = C.SUBS[s.cls];
+    let z = st[st.length - 1].z;
+    for (let i = 1; i < st.length; i++) if (st[i].x >= x) { const p = st[i - 1], q = st[i]; z = p.z + (q.z - p.z) * (x - p.x) / (q.x - p.x || 1); break; }
+    const big = k.gun === "5-inch" ? 1.25 : k.gun === "4-inch" ? 1.1 : 1, th = s.gun.rel || 0, u = -5 * big, v = -1.5 * big;
+    return { x, z, big, eye: { x: x + u * Math.cos(th) - v * Math.sin(th), y: u * Math.sin(th) + v * Math.cos(th), z: z + 5.9 * big } };
+  }
   /* an escort's hull, as her bridge sees it: a fine bow, a long low quarterdeck to a square stern; the bridge
    * a third of her length back from the stem (feet; x forward of the bridge, z above the water) */
   const SHULL = {};
@@ -394,14 +406,15 @@
   })());
   /* her own deck from the bridge, the bow or the stern: the boat's, or (kind "escort") an escort's, with her gun
    * forward and her depth-charge rails and throwers aft */
-  function ownBoat(g, S, f, cx, cy, brg, now, Wd, Ht, s = S.sub, H = hullOf(s.cls), eye = C.EYE.bridge, kind = "sub") {
+  function ownBoat(g, S, f, cx, cy, brg, now, Wd, Ht, s = S.sub, H = hullOf(s.cls), eye = C.EYE.bridge, kind = "sub", at = null) {
     const st = H.st, NEAR = 2, L = Det.light(S);
     const r = PP.angDiff(s.hdg, brg), cr = Math.cos(r), sr = Math.sin(r);
     /* an escort looking aft sees it from her after lookout instead, over the throwers and the rails: the eye slides
      * back and down as the look swings past the beam */
     const aft = kind === "escort" ? PP.clamp((Math.abs(r) - 1.75) / 0.6, 0, 1) : 0, sl = aft * aft * (3 - 2 * aft);
-    const ox = sl * -0.36 * H.Lf; eye = PP.lerp(eye, 23, sl);
-    const cam = ([x, y, z]) => [(x - ox) * cr + y * sr, -(x - ox) * sr + y * cr, z];
+    /* at: an eye somewhere else on her ({ x, y, z }, feet): the gun layer's, at the deck gun */
+    const ox = at ? at.x : kind === "sub" ? -6 : sl * -0.36 * H.Lf, oy = at ? at.y : 0; eye = at ? at.z : PP.lerp(eye, 23, sl);
+    const cam = ([x, y, z]) => [(x - ox) * cr + (y - oy) * sr, -(x - ox) * sr + (y - oy) * cr, z];
     const scr = ([fw, la, z]) => [cx + f * la / fw, cy + f * (eye - z) / fw];
     const cut = (a, b) => { const t = (NEAR - a[0]) / (b[0] - a[0]); return [NEAR, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; };
     /* a shape cut at the near plane, then put on the screen */
@@ -461,31 +474,57 @@
      * aft her funnel, boats, tubes and pom-pom, the throwers along each side and the rails at the stern. The
      * charges are hers as they are: a thrower or a rail emptied by a pattern shows bare until its crew load it,
      * and the racks of reserve thin out as she uses them */
-    if (kind === "escort") {
-      const X = C.ESC_SIDE, k = C.SHIPS[s.cls], Lf = H.Lf, xb = st[st.length - 1].x, xs = st[0].x, parts = [];
-      const d = PP.Escort.racks(s), res = PP.Escort.reserve(s), full = PP.clamp(res / (X.charges - X.throwers * 2 - X.rails), 0, 1);
-      const deck = x => { for (let i = 1; i < st.length; i++) if (st[i].x >= x) { const p = st[i - 1], q = st[i], u = (x - p.x) / (q.x - p.x || 1); return { z: p.z + (q.z - p.z) * u, d: p.d + (q.d - p.d) * u }; } return st[st.length - 1]; };
-      /* the sun's side of a face: lit, or in its own shade */
-      const sun = PP.angDiff(s.hdg, V.sunPos(S.t).az), sx_ = Math.cos(sun), sy_ = Math.sin(sun);
-      const shade = (col, nx, ny) => K.dim(K.mix(col, "#0d1015", PP.clamp(0.32 - (nx * sx_ + ny * sy_) * 0.3, 0, 0.6)), L);
-      /* an upright solid: its outline on the deck, its sides from z0 to z1, the ones toward the eye drawn, its top */
-      const prism = (pts, z0, z1, col, top = col) => {
-        const mx = pts.reduce((a, p) => a + p[0], 0) / pts.length, my = pts.reduce((a, p) => a + p[1], 0) / pts.length;
-        for (let i = 0; i < pts.length; i++) {
-          const a = pts[i], b = pts[(i + 1) % pts.length], ex = (a[0] + b[0]) / 2, ey = (a[1] + b[1]) / 2;
-          let nx = b[1] - a[1], ny = a[0] - b[0];
-          if ((ex - mx) * nx + (ey - my) * ny < 0) { nx = -nx; ny = -ny; }
-          if ((ex - ox) * nx + ey * ny >= 0) continue;
-          const n = Math.hypot(nx, ny) || 1;
-          fill([[a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1]], shade(col, nx / n, ny / n));
+    /* her fittings, as solids: the deck under a point, faces shaded by the sun, upright prisms with only the sides
+     * toward the eye drawn, and every fitting drawn far to near so the nearer covers the further */
+    const Lf = H.Lf, xb = st[st.length - 1].x, xs = st[0].x, parts = [];
+    const deck = x => { for (let i = 1; i < st.length; i++) if (st[i].x >= x) { const p = st[i - 1], q = st[i], u = (x - p.x) / (q.x - p.x || 1); return { z: p.z + (q.z - p.z) * u, d: p.d + (q.d - p.d) * u }; } return st[st.length - 1]; };
+    /* the sun's side of a face: lit, or in its own shade */
+    const sun = PP.angDiff(s.hdg, V.sunPos(S.t).az), sx_ = Math.cos(sun), sy_ = Math.sin(sun);
+    const shade = (col, nx, ny) => K.dim(K.mix(col, "#0d1015", PP.clamp(0.32 - (nx * sx_ + ny * sy_) * 0.3, 0, 0.6)), L);
+    /* an upright solid: its outline on the deck, its sides from z0 to z1, the ones toward the eye drawn, its top */
+    const prism = (pts, z0, z1, col, top = col) => {
+      const mx = pts.reduce((a, p) => a + p[0], 0) / pts.length, my = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length], ex = (a[0] + b[0]) / 2, ey = (a[1] + b[1]) / 2;
+        let nx = b[1] - a[1], ny = a[0] - b[0];
+        if ((ex - mx) * nx + (ey - my) * ny < 0) { nx = -nx; ny = -ny; }
+        if ((ex - ox) * nx + (ey - oy) * ny >= 0) continue;
+        const n = Math.hypot(nx, ny) || 1;
+        fill([[a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1]], shade(col, nx / n, ny / n));
+      }
+      if (eye > z1) fill(pts.map(([x, y]) => [x, y, z1]), K.dim(top, L));
+    };
+    /* outlines: a rectangle along an axis th (radians off her bow, to starboard), and a round one */
+    const rect = (x, y, th, u0, u1, v0, v1) => { const c = Math.cos(th), sn = Math.sin(th); return [[u0, v0], [u1, v0], [u1, v1], [u0, v1]].map(([u, v]) => [x + u * c - v * sn, y + u * sn + v * c]); };
+    const ring = (x, y, rx, ry = rx, n = 10) => Array.from({ length: n }, (_, i) => [x + Math.cos(i / n * PP.TAU) * rx, y + Math.sin(i / n * PP.TAU) * ry]);
+    const put = (x, y, draw) => parts.push([Math.hypot(x - ox, y - oy), draw]);
+    /* (from the bridge, what stands round the eye itself is left out; from the gun, nothing is) */
+    const drawParts = () => parts.filter(p => p[0] > (at ? 0 : 9)).sort((a, b) => b[0] - a[0]).forEach(p => p[1]());
+    /* a gun's blast, over everything, from its muzzle along its line of fire: a jet of flame that flares and is gone
+     * in a quarter of a second, and its cordite smoke rolling forward, swelling, left astern as she steams on */
+    const drawBlasts = blasts => {
+      const lit = PP.clamp(L + 0.25, 0.3, 1), aftFt = Math.abs(s.spd) * 1.689;
+      const blob = (pt, rFt, col) => { const q = cam(pt); if (q[0] < NEAR) return; const [px, py] = scr(q), r = PP.clamp(f * rFt / q[0], 1, 46); g.fillStyle = col; K.disc(g, px, py, r, r * 0.8); };
+      for (const b of blasts) {
+        if (b.age >= b.life) continue;
+        const at = (u, up) => [b.p[0] + b.c * u - aftFt * b.age, b.p[1] + b.sn * u, b.p[2] + up];
+        const sm = b.age / Math.min(b.life, 2.5);
+        if (sm < 1) for (let i = 3; i >= 0; i--) {
+          const u = b.sz * (5 + i * 6 + b.age * 14), c0 = Math.round((70 + 90 * sm) * lit);
+          blob(at(u, b.sz * (0.5 + b.age * 2.5 + i * 0.4)), b.sz * (2.4 + i * 1.3 + b.age * 5), `rgba(${c0},${c0},${c0 + 6},${(0.55 * (1 - sm) * (1 - i * 0.12)).toFixed(2)})`);
         }
-        fill(pts.map(([x, y]) => [x, y, z1]), K.dim(top, L));
-      };
-      /* outlines: a rectangle along an axis th (radians off her bow, to starboard), and a round one */
-      const rect = (x, y, th, u0, u1, v0, v1) => { const c = Math.cos(th), sn = Math.sin(th); return [[u0, v0], [u1, v0], [u1, v1], [u0, v1]].map(([u, v]) => [x + u * c - v * sn, y + u * sn + v * c]); };
-      const ring = (x, y, rx, ry = rx, n = 10) => Array.from({ length: n }, (_, i) => [x + Math.cos(i / n * PP.TAU) * rx, y + Math.sin(i / n * PP.TAU) * ry]);
-      /* everything is drawn far to near, so the nearer covers the further */
-      const put = (x, y, draw) => parts.push([Math.hypot(x - ox, y), draw]);
+        if (b.age < 0.25) {
+          const a = 1 - b.age / 0.25, len = b.sz * (4 + 12 * Math.min(1, b.age / 0.05));
+          for (let i = 6; i >= 0; i--) {
+            const v = i / 6, u = len * v;
+            blob([b.p[0] + b.c * u, b.p[1] + b.sn * u, b.p[2]], b.sz * (0.7 + 2.6 * v) * (0.5 + 0.5 * a), v < 0.3 ? `rgba(255,248,226,${a.toFixed(2)})` : v < 0.65 ? `rgba(255,206,120,${(0.92 * a).toFixed(2)})` : `rgba(255,138,56,${(0.75 * a).toFixed(2)})`);
+          }
+        }
+      }
+    };
+    if (kind === "escort") {
+      const X = C.ESC_SIDE, k = C.SHIPS[s.cls];
+      const d = PP.Escort.racks(s), res = PP.Escort.reserve(s), full = PP.clamp(res / (X.charges - X.throwers * 2 - X.rails), 0, 1);
       const GREY = "#7a8189", LIGHT = "#9aa1a8", DARK = "#2c3035", DRUM = "#454c54", DRUMT = "#7a838c", SHIELD = "#6c737b";
       /* a depth charge: a drum on its side, its ends athwartships */
       const charge = (x, y, z, th = 0) => { prism(rect(x, y, th, -0.75, 0.75, -1.15, 1.15), z, z + 1.5, DRUM, DRUMT); seg([x, y - 1.15, z + 1.5], [x, y + 1.15, z + 1.5], K.dim("#a7b0b8", L)); };
@@ -594,27 +633,8 @@
           }
         });
       }
-      parts.filter(p => p[0] > 9).sort((a, b) => b[0] - a[0]).forEach(p => p[1]());
-      /* a gun's blast, over everything, from its muzzle along its line of fire: a jet of flame that flares and is gone
-       * in a quarter of a second, and its cordite smoke rolling forward, swelling, left astern as she steams on */
-      const lit = PP.clamp(L + 0.25, 0.3, 1), aftFt = Math.abs(s.spd) * 1.689;
-      const blob = (pt, rFt, col) => { const q = cam(pt); if (q[0] < NEAR) return; const [px, py] = scr(q), r = PP.clamp(f * rFt / q[0], 1, 46); g.fillStyle = col; K.disc(g, px, py, r, r * 0.8); };
-      for (const b of blasts) {
-        if (b.age >= b.life) continue;
-        const at = (u, up) => [b.p[0] + b.c * u - aftFt * b.age, b.p[1] + b.sn * u, b.p[2] + up];
-        const sm = b.age / Math.min(b.life, 2.5);
-        if (sm < 1) for (let i = 3; i >= 0; i--) {
-          const u = b.sz * (5 + i * 6 + b.age * 14), c0 = Math.round((70 + 90 * sm) * lit);
-          blob(at(u, b.sz * (0.5 + b.age * 2.5 + i * 0.4)), b.sz * (2.4 + i * 1.3 + b.age * 5), `rgba(${c0},${c0},${c0 + 6},${(0.55 * (1 - sm) * (1 - i * 0.12)).toFixed(2)})`);
-        }
-        if (b.age < 0.25) {
-          const a = 1 - b.age / 0.25, len = b.sz * (4 + 12 * Math.min(1, b.age / 0.05));
-          for (let i = 6; i >= 0; i--) {
-            const v = i / 6, u = len * v;
-            blob([b.p[0] + b.c * u, b.p[1] + b.sn * u, b.p[2]], b.sz * (0.7 + 2.6 * v) * (0.5 + 0.5 * a), v < 0.3 ? `rgba(255,248,226,${a.toFixed(2)})` : v < 0.65 ? `rgba(255,206,120,${(0.92 * a).toFixed(2)})` : `rgba(255,138,56,${(0.75 * a).toFixed(2)})`);
-          }
-        }
-      }
+      drawParts();
+      drawBlasts(blasts);
     }
     /* the limber holes along her casing, and the foam working at her waterline */
     const hole = K.dim("#0d1015", L), slap = PP.clamp(0.12 + sp / 24 + S.wx.sea * 0.04, 0, 0.7);
@@ -629,6 +649,69 @@
     for (let i = 0; i < st.length; i++) for (const k of [-1, 1]) {
       if (K.hash(i * 2 + (k > 0), tt, 43) > 0.55) continue;
       dab(st[i].xw, k * (st[i].w + 0.4), 1.5, slap);
+    }
+    /* a boat's fittings, as her bridge watch see them: the deck gun on the casing forward, stowed fore and aft; the
+     * jumping wire from the bridge over the bow to the net cutter on her stem; the hatches and bollards on the
+     * casing; and at the water her bow planes, then aft her stern planes and rudder. The planes tilt as she goes up
+     * or down, the rudder swings with the helm */
+    if (kind === "sub") {
+      const GREY = "#5d6670", LIGHT = "#7f8892", DARK = "#1d2228", HULLC = "#525c66", wire = K.dim("#8e969e", L), stem = st[st.length - 1];
+      /* the jumping wire and the net cutter */
+      put(xb * 0.55, 0, () => seg([10, 0, 19], [stem.x - 1.5, 0, stem.z + 4.5], wire));
+      put(xb - 2, 0, () => { seg([stem.x - 1.5, 0, stem.z + 4.5], [stem.x - 1, 0, stem.z], wire); prism(rect(stem.x - 2.5, 0, 0, -1, 1.2, -0.15, 0.15), stem.z, stem.z + 2.2, GREY, LIGHT); });
+      /* the hatches, flush with the casing, and the bollards in pairs at its edges */
+      for (const [hx, hw] of [[xb * 0.62, 2.2], [xs * 0.5, 2.2], [xb * 0.3, 1.4]]) { const q = deck(hx); put(hx, 0, () => fill(rect(hx, 0, 0, -hw, hw, -1.4, 1.4).map(([x, y]) => [x, y, q.z + 0.05]), K.dim(DARK, L))); }
+      for (const bx of [xb * 0.8, xs * 0.72]) for (const sd of [-1, 1]) { const q = deck(bx), by = sd * (q.d - 0.7); put(bx, by, () => prism(ring(bx, by, 0.45, 0.45, 6), q.z, q.z + 0.9, GREY, LIGHT)); }
+      /* the deck gun: pedestal, cradle, the layer's and trainer's seats either side, the barrel run out over it;
+       * trained where its crew last turned it (fore and aft, stowed, unless they have been told otherwise), run back
+       * as it fires */
+      const blasts = [];
+      if (C.SUBS[s.cls].shells > 0) {
+        const G = subGun(s, H), gx = G.x, gz = G.z, big = G.big, th = s.gun.rel || 0, c = Math.cos(th), sn = Math.sin(th);
+        const age = s.gun.reload > 0 ? C.GUN.reload - s.gun.reload : 99, back = age < 0.3 ? 1.4 * big : 0, gp = (u, v) => [gx + u * c - v * sn, u * sn + v * c];
+        put(gx, 0, () => {
+          prism(ring(gx, 0, 1.7 * big, 1.7 * big, 8), gz, gz + 0.6, GREY, LIGHT);
+          prism(rect(gx, 0, th, -0.8, 0.8, -0.7, 0.7), gz + 0.6, gz + 2.8 * big, GREY, LIGHT);
+          prism(rect(gx, 0, th, -1.8 * big, 1.6 * big, -1.1 * big, 1.1 * big), gz + 2.8 * big, gz + 3.8 * big, "#4a525b", LIGHT);
+          for (const sd of [-1, 1]) { const [px, py] = gp(-0.6 * big, sd * 1.9 * big); prism(rect(px, py, th, -0.5, 0.5, -0.45, 0.45), gz + 2.4 * big, gz + 3.2 * big, DARK, GREY); }
+          prism(rect(gx, 0, th, -2.6 * big - back, 15 * big - back, -0.3 * big, 0.3 * big), gz + 3.8 * big, gz + 4.5 * big, "#3a4148", "#68717a");
+          prism(rect(gx, 0, th, -2.9 * big - back, -1.6 * big - back, -0.55 * big, 0.55 * big), gz + 3.6 * big, gz + 4.7 * big, DARK, "#4a525b");
+        });
+        const [mx, my] = gp(15 * big - back, 0);
+        blasts.push({ p: [mx, my, gz + 4.15 * big], c, sn, age, sz: big, life: C.GUN.reload - 0.1 });
+      }
+      /* her tower: the bridge's shell, rounded at the front, its coaming catching the light, the periscope standards
+       * over it; abaft it the lower platform (the wintergarten), railed, with its light gun. From the bridge the shell
+       * is under the eye and left out; from the gun it stands up over the deck aft */
+      const tz0 = deck(0).z, TW = 4.6, plan = [[10, 0], [8.5, -2.8], [5, -TW], [-11, -TW], [-13, -3], [-13, 3], [-11, TW], [5, TW], [8.5, 2.8]], coam = tz0 + 11.5;
+      put(-1, 0, () => {
+        prism(plan, tz0, coam, "#4a535d", "#30373f");
+        for (let i = 0; i < plan.length; i++) { const a = plan[i], b = plan[(i + 1) % plan.length]; seg([a[0], a[1], coam], [b[0], b[1], coam], K.dim("#9aa2aa", L)); }
+        prism(rect(6, 0, 0, -1, 1, -2.2, 2.2), coam - 0.6, coam + 0.6, "#3e464f", "#6a737c");
+        for (const [px, h] of [[-3, 9], [-6.5, 7]]) prism(ring(px, 0, 0.6, 0.6, 6), coam, coam + h, "#3e464f", "#6a737c");
+      });
+      put(-17, 0, () => {
+        const wz = tz0 + 8;
+        prism([[-13, -3.8], [-21, -2.8], [-21, 2.8], [-13, 3.8]], tz0, wz, "#4a535d", "#565f69");
+        for (const [px, py] of [[-14, -3.6], [-17, -3.3], [-20.5, -2.6], [-20.5, 0], [-20.5, 2.6], [-17, 3.3], [-14, 3.6]]) seg([px, py, wz], [px, py, wz + 3], wire);
+        seg([-14, -3.6, wz + 3], [-20.5, -2.6, wz + 3], wire); seg([-20.5, -2.6, wz + 3], [-20.5, 2.6, wz + 3], wire); seg([-20.5, 2.6, wz + 3], [-14, 3.6, wz + 3], wire);
+        prism(ring(-17.5, 0, 0.8, 0.8, 6), wz, wz + 2.2, GREY, LIGHT);
+        prism(rect(-17.5, 0, Math.PI, 0.4, 5.5, -0.15, 0.15), wz + 2, wz + 2.4, DARK, GREY);
+      });
+      /* the planes at her bow and stern, and her rudder: fins at the water, turned as she dives, rises and steers */
+      const tilt = PP.clamp(s.vz / C.DIVE.crash, -1, 1) * 0.5, rud = PP.clamp(PP.angDiff(s.hdg, s.ordHdg) * 2.5, -0.6, 0.6);
+      const fin = (x, sd, span, ch, z, a) => {
+        const w0 = wAt(x), y0 = sd * w0, y1 = sd * (w0 + span), dz = Math.sin(a) * ch / 2;
+        put(x, sd * (w0 + span / 2), () => {
+          fill([[x + ch / 2, y0, z - dz], [x + ch / 2, y1, z - dz], [x - ch / 2, y1, z + dz], [x - ch / 2, y0, z + dz]], shade(HULLC, 0, sd));
+          seg([x + ch / 2, y0, z - dz], [x + ch / 2, y1, z - dz], K.dim(LIGHT, L));
+        });
+      };
+      for (const sd of [-1, 1]) { fin(xb - Lf * 0.07, sd, 7, 4, 2.4, tilt); fin(xs + Lf * 0.04, sd, 8, 4.5, 1, -tilt * 0.7); }
+      const rx = xs - 1;
+      put(rx - 2, 0, () => fill([[rx, 0, -0.5], [rx, 0, 5.5], [rx - Math.cos(rud) * 6, Math.sin(rud) * 6, 5.5], [rx - Math.cos(rud) * 6, Math.sin(rud) * 6, -0.5]], shade(HULLC, 0, rud >= 0 ? 1 : -1)));
+      drawParts();
+      drawBlasts(blasts);
     }
   }
 

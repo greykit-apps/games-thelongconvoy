@@ -518,6 +518,14 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-dash .db.tel { padding: 0; background: none; border-color: transparent; box-shadow: none; color: var(--ps-muted); }
 .h-dash .db.tel:hover { background: rgba(255,110,80,.14); border-color: transparent; color: var(--ps-text); }
 .h-dash .db.tel.on { color: var(--ps-yellow); border-color: transparent; }
+/* the snorkel and the radar on her plan: each one's name written down from the foot of its mast, no frame to break the tower */
+.h-dash .db.mast { writing-mode: vertical-rl; justify-content: flex-start; padding: 0; overflow: visible;
+  background: none; border-color: transparent; box-shadow: none; color: var(--ps-muted); font-weight: 600; letter-spacing: .04em; }
+.h-dash .db.mast:hover { background: rgba(255,110,80,.1); border-color: transparent; color: var(--ps-text); }
+.h-dash .db.mast.on { color: var(--ps-yellow); border-color: transparent; }
+/* a dial's rim: clicked, it sets the dial there (hud.js); it shows only as a ring when pointed at */
+.h-dash .db.rim { padding: 0; background: none; border-color: transparent; box-shadow: none; border-radius: 50%; cursor: crosshair; }
+.h-dash .db.rim:hover { background: none; border-color: transparent; box-shadow: inset 0 0 0 2px rgba(255,198,90,.28); }
 /* the patterns to pick from: the drawing is the canvas's, the button its frame and its count */
 .h-dash .db.pick { align-items: flex-end; padding: 0 0 1px; background: none; box-shadow: none; color: var(--ps-muted); border-color: rgba(255,110,80,.22); }
 .h-dash .db.pick:hover { background: rgba(255,110,80,.08); }

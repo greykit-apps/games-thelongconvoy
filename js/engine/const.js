@@ -130,7 +130,7 @@
   C.BELL_F = [-0.3, 0, 0.3, 0.52, 0.72, 0.88, 1];
   C.ACCEL = 45;                        /* seconds to close most of the way to the ordered speed */
   C.TURN = 2.6 * PP.DEG;               /* the most a boat turns a second, at speed (UNCERTAIN) */
-  C.DIVE = { rate: 1.6, crash: 2.6, blow: 2.2, planesKn: 3 };   /* feet a second */
+  C.DIVE = { rate: 1.6, crash: 2.6, blow: 2.2, planesKn: 3, eblow: 7, lock: 240 };   /* feet a second; lock, seconds (UNCERTAIN): after an emergency blow, no diving until the air banks are charged again */
   /* battery: drain a second submerged = a + b * knots^3 (2 kn lasts about two days, flank about an hour) */
   C.BAT = { a: 2.8e-6, b: 3.77e-7, charge: 3.6e-5, chargeKn: 12 };
   /* fuel: burn a second = c * (0.3 + 0.7 (knots/10)^3), about 10,000 nm at 10 kn */
@@ -239,7 +239,7 @@
   C.SPREAD = 2.5 * PP.DEG;
 
   /* ---- the deck gun ---- */
-  C.GUN = { range: 7000, reload: 6, man: 25, hit: 0.13, spread: 0.018 };
+  C.GUN = { range: 7000, reload: 6, man: 25, hit: 0.13, spread: 0.018, arc: 160 * PP.DEG, train: 15 * PP.DEG };   /* arc: how far either side of the bow it trains, clear of the tower; train: how fast its crew turn it, a second (UNCERTAIN) */
 
   /* ---- the war, month by month (UNCERTAIN: our timeline, after history's shape) ---- */
   const at = (mi, steps) => { let v = steps[0][1]; for (const [m, x] of steps) if (mi >= m) v = x; return v; };

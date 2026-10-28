@@ -31,13 +31,13 @@
     }
   }
   /* the player's own orders (by hand) take the boat back from AUTO */
-  const BY_HAND = new Set(["bell", "setBell", "hdg", "depth", "setDepth", "surface", "pd", "dive", "crash"]);
+  const BY_HAND = new Set(["bell", "setBell", "hdg", "depth", "setDepth", "surface", "pd", "dive", "crash", "rate", "eblow"]);
   function orders(S, cmd, ev, aids, byHand = false) {
     const s = S.sub;
     if (byHand && s.auto && (cmd.dHdg || (cmd.acts || []).some(a => BY_HAND.has(a.a)))) { s.auto = false; ev.push({ t: "auto", on: false, name: s.name }); }
     if (cmd.dHdg) s.ordHdg = PP.normAng(s.ordHdg + cmd.dHdg);
     if (cmd.dTrain) s.scope.brg = PP.normAng(s.scope.brg + cmd.dTrain);
-    if (cmd.dGun) s.gun.brg = PP.normAng(s.gun.brg + cmd.dGun);
+    if (cmd.dGun) { W.gunClamp(s); s.gun.ordRel += cmd.dGun; if (W.gunClamp(s)) ev.push({ t: "gunArc" }); }
     for (const a of cmd.acts || []) {
       switch (a.a) {
         case "tc": S.tcReq = PP.clamp(a.v !== undefined ? a.v : S.tcReq + a.d, 0, C.TC_MAX_IDX); break;

@@ -27,7 +27,7 @@
       bat: 1, fuel: 1, water: 0, hull: 1, sys: Object.fromEntries(Sub.SYS.map(([s]) => [s, 0])), fixing: null,
       tubes: { F: tube(k.tubesF), A: tube(k.tubesA) }, mark: e.torp,
       store: { F: Math.round((k.torps - k.tubesF - k.tubesA) * (k.tubesA ? 0.62 : 1)), A: 0 },
-      shells: k.shells, gun: { man: 0, on: false, brg: 0, rng: 2500, reload: 0 },
+      shells: k.shells, gun: { man: 0, on: false, brg: 0, rel: 0, ordRel: 0, rng: 2500, reload: 0 },
       bank: "F", spread: 3, creakT: 0, bottomed: false, aground: false, decoys: C.DECOY.n,
     };
   };
@@ -77,6 +77,21 @@
   /* ---- orders ---- */
   Sub.order = (S, a, ev) => {
     const s = S.sub, test = Sub.testDepth(s), bot = Sea.depthAt(s.x, s.y);
+    /* the tanks blown in an emergency: nothing takes her down again until the air is back in the banks */
+    if (s.noDive > S.t && (a.a === "pd" || a.a === "dive" || a.a === "crash" || (a.a === "depth" && a.d > 0) || ((a.a === "setDepth" || a.a === "rate") && a.v > 0))) {
+      ev.push({ t: "cantDive", left: s.noDive - S.t }); return;
+    }
+    /* the deck gun out of its stow: before she dives her crew train it back fore and aft and secure it, and the dive
+     * waits for them (so a gun left trained round costs her the seconds it takes) */
+    const diving = a.a === "pd" || a.a === "dive" || a.a === "crash" || (a.a === "depth" && a.d > 0) || ((a.a === "setDepth" || a.a === "rate") && a.v > 0);
+    if (diving && Sub.surfaced(s) && !Sub.gunStowed(s)) {
+      s.gun.on = false; s.gun.man = 0; s.gun.ordRel = 0; s.pendDive = Object.assign({}, a);
+      ev.push({ t: "gunStowing", secs: Math.ceil(Math.abs(s.gun.rel || 0) / C.GUN.train) });
+      return;
+    }
+    if (a.a === "surface" || a.a === "eblow") s.pendDive = null;
+    /* any depth ordered ends a rate held by hand */
+    if (a.a === "depth" || a.a === "setDepth" || a.a === "surface" || a.a === "pd" || a.a === "dive" || a.a === "crash") s.ordRate = null;
     switch (a.a) {
       case "bell":
         /* silent running holds her at a third: say so, or the telegraph just seems stuck */
@@ -97,6 +112,16 @@
       }
       case "setDepth": s.ordDepth = PP.clamp(Math.round(a.v / 5) * 5, 0, test + 100); s.crashing = false; break;
       case "surface": s.ordDepth = 0; s.crashing = false; ev.push({ t: "ordered", what: "surface" }); break;
+      /* a rate up or down (feet a second, down positive), held by hand wherever it takes her: past test depth, onto
+       * the bottom. The captain's call */
+      case "rate": s.ordRate = PP.clamp(a.v, -C.DIVE.blow, C.DIVE.crash); s.crashing = false; if (s.ordRate > 0 && Sub.surfaced(s)) ev.push({ t: "diveAlarm" }); break;
+      /* the emergency blow: every tank blown, straight up; no diving again for a while, so she stays up and fights */
+      case "eblow": {
+        if (Sub.surfaced(s)) break;
+        s.eblow = true; s.ordRate = null; s.ordDepth = 0; s.crashing = false; s.noDive = S.t + C.DIVE.lock; s.scope.up = false; s.snork = false;
+        ev.push({ t: "eblow", lock: C.DIVE.lock });
+        break;
+      }
       case "pd": s.ordDepth = C.PD; s.crashing = false; if (Sub.surfaced(s)) ev.push({ t: "diveAlarm" }); ev.push({ t: "ordered", what: "pd" }); break;
       case "dive": s.ordDepth = Math.max(C.PD, s.ordDepth); s.crashing = false; if (Sub.surfaced(s)) ev.push({ t: "diveAlarm" }); break;
       case "crash": {
@@ -137,8 +162,17 @@
   };
 
   /* ---- a step of the boat ---- */
+  /* her deck gun trained fore and aft, as it must be for her to dive */
+  Sub.gunStowed = s => Math.abs(s.gun.rel || 0) < 1.5 * PP.DEG;
   Sub.step = (S, dt, ev) => {
     const s = S.sub, k = C.SUBS[s.cls];
+    /* the deck gun: its crew turn it toward where it is ordered, no faster than they can (its bearing, the hull's
+     * heading and its training, follows her as she turns); a dive waiting on it goes when it is stowed */
+    const G = s.gun;
+    if (G.rel === undefined) { G.rel = 0; G.ordRel = 0; }
+    G.rel += PP.clamp(G.ordRel - G.rel, -C.GUN.train * dt, C.GUN.train * dt);
+    G.brg = PP.normAng(s.hdg + G.rel);
+    if (s.pendDive && Sub.gunStowed(s)) { const a = s.pendDive; s.pendDive = null; Sub.order(S, a, ev); }
     const surf = Sub.surfaced(s);
     /* the telegraph and the speed through the water */
     s.bell = Math.min(s.bell, Sub.bellMax(s));
@@ -151,14 +185,20 @@
     const bot = Sea.depthAt(s.x, s.y), planesF = PP.clamp(Math.abs(s.spd) / C.DIVE.planesKn, 0.35, 1) * (1 - s.sys.planes * 0.8);
     const want = s.ordDepth - s.depth;
     let vzT = want > 0 ? Math.min(want / 7, (s.crashing ? C.DIVE.crash : C.DIVE.rate) * planesF) : Math.max(want / 7, -C.DIVE.blow * (s.ordDepth === 0 ? 1 : planesF));
-    if (s.sys.planes >= 0.92 && s.ordDepth > 0) vzT = 0;
+    /* a rate held by hand (down needs the planes to bite); the emergency blow, straight up whatever the planes do */
+    if (s.ordRate !== null && s.ordRate !== undefined) vzT = s.ordRate > 0 ? s.ordRate * planesF : s.ordRate;
+    if (s.eblow) vzT = -C.DIVE.eblow;
+    else if (s.sys.planes >= 0.92 && s.ordDepth > 0 && !(s.ordRate < 0)) vzT = 0;
     /* water in her makes her heavy: she sinks unless she is blowing for the surface */
     if (s.water > C.WATER.heavy) vzT += C.WATER.sinkRate * (s.water - C.WATER.heavy) / (1 - C.WATER.heavy) * (s.ordDepth === 0 ? 0.5 : 1);
-    s.vz += (vzT - s.vz) * (1 - Math.exp(-dt / 5));
+    s.vz += (vzT - s.vz) * (1 - Math.exp(-dt / (s.eblow ? 1.5 : 5)));
     const wasSurf = surf;
     s.depth += s.vz * dt;
     if (s.depth <= 0) { s.depth = 0; s.vz = Math.max(0, s.vz); }
     if (s.crashing && s.depth >= s.ordDepth - 5) s.crashing = false;
+    /* a rate held: the ordered depth is where she is (so nothing else pulls her back), until she breaks surface */
+    if (s.ordRate !== null && s.ordRate !== undefined) { s.ordDepth = Math.max(0, Math.round(s.depth)); s.atDepth = true; if (s.ordRate < 0 && s.depth <= 0) { s.ordRate = null; s.ordDepth = 0; } }
+    if (s.eblow && s.depth <= 0) s.eblow = false;
     /* the bottom */
     s.bottomed = false;
     if (bot > 0 && s.depth > bot - 3 && s.depth > 0) {
