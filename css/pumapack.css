@@ -522,6 +522,8 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-dash .db.pick { align-items: flex-end; padding: 0 0 1px; background: none; box-shadow: none; color: var(--ps-muted); border-color: rgba(255,110,80,.22); }
 .h-dash .db.pick:hover { background: rgba(255,110,80,.08); }
 .h-dash .db.pick.on { color: var(--ps-yellow); border-color: var(--ps-yellow); }
+/* a pattern's row: its plan on the left, its name and count on the right */
+.h-dash .db.pick.row { align-items: center; justify-content: flex-end; padding: 0 5px 0 0; }
 /* the depth slider: the canvas draws it, the button is where to hold it */
 /* the trigger when the lamp says over her: its words and edge in the readout amber */
 .h-dash .db.danger.ready { color: var(--ps-yellow); border-color: var(--ps-yellow); }

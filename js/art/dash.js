@@ -242,36 +242,34 @@
     K.disc(g, sx, sy, 2, 2, "#fff0e6");
   }
 
-  /* a pattern as it lies on the sea from above, her track up the middle and the first rail at the foot; all at
-   * one scale, so the wide one looks wide. Each charge's reach is a faint disc, the charge a dot, a doubled one two */
-  function patDiagram(g, x, y, w, h, P, sc, lit) {
-    const cx = Math.round(x + w / 2), sp = C.DC.spacing, len = (P.rails - 1) * sp, y0 = Math.round(y + (h - 10) / 2 + len * sc / 2);
-    K.rect(g, cx, y + 3, 1, h - 13, "rgba(255,190,170,.14)");
+  /* the charges' box reads as the ship does, bow to the right: the patterns she lays astern on the left, her
+   * launchers in the middle, the hedgehog's throw ahead on the right */
+
+  /* a pattern as it lies astern, her track running to the right and the first rail on the left: a plan, not to
+   * scale (a rail a few pixels on, a thrower's reach out to the side), so the three read apart at any size; a
+   * doubled charge is two dots, the heavy one under it a shade darker */
+  function patRow(g, x, y, h, P, lit) {
+    const u = 5, a = Math.min(1, (h - 4) / 22) / 10, cy = Math.round(y + h / 2), x0 = x + 4;
+    K.rect(g, x0 - 2, cy, (P.rails - 1) * u + 6, 1, "rgba(255,190,170,.16)");
     const pts = [];
-    for (let i = 0; i < P.rails; i++) pts.push([0, i * sp]);
-    for (const [after, out] of P.throws) for (const s of [-1, 1]) pts.push([out * s, after * sp]);
-    const reach = Math.max(2, C.DC.hurt / 3 * sc), d = sc > 0.18 ? 3 : 2;
-    for (const [ax, al] of pts) K.disc(g, cx + ax * sc, y0 - al * sc, reach, reach, lit ? "rgba(255,176,0,.09)" : "rgba(255,150,110,.05)");
-    for (const [ax, al] of pts) {
-      const px = Math.round(cx + ax * sc), py = Math.round(y0 - al * sc);
-      /* a doubled charge: the heavy one under it, a shade darker, set off down and to the right */
-      if (P.deep) K.rect(g, px - 1 + d, py - 1 + d, d, d, lit ? "#b8641a" : "#7a4428");
-      K.rect(g, px - 1, py - 1, d, d, lit ? AMBER : "#c98a3c");
+    for (let i = 0; i < P.rails; i++) pts.push([i, 0]);
+    for (const [after, out] of P.throws) for (const s of [-1, 1]) pts.push([after, out * s]);
+    for (const [i, out] of pts) {
+      const px = x0 + i * u, py = Math.round(cy + out * a);
+      if (P.deep) K.rect(g, px, py, 2, 2, lit ? "#b8641a" : "#7a4428");
+      K.rect(g, px - 1, py - 1, 2, 2, lit ? AMBER : "#c98a3c");
     }
   }
 
-  /* the hedgehog's throw from above: her bow at the foot, and ahead of it the ring its bombs come down in,
-   * each bomb's reach (it goes off only on a hull) a faint disc; at the patterns' scale where it fits */
-  function hhDiagram(g, x, y, w, h, sc, lit) {
-    const X = C.ESC_SIDE, s = Math.min(sc, (h - 16) / (X.hhRange + X.hhRing + 20)), cx = Math.round(x + w / 2);
-    const by = Math.round(y + (h - 10) / 2 + (X.hhRange + X.hhRing) * s / 2), ry = by - X.hhRange * s;
-    K.poly(g, [[cx, by - 4], [cx + 2, by], [cx + 2, by + 4], [cx - 2, by + 4], [cx - 2, by]], lit ? "#d9b9a6" : "#6e5a52");
-    for (let yy = by - 6; yy > ry + X.hhRing * s + 2; yy -= 3) K.px(g, cx, yy, "rgba(255,190,170,.22)");
-    const reach = Math.max(1, X.hhHit * s);
+  /* the hedgehog's throw: her bow on the left, and ahead of it the ring its bombs come down in */
+  function hhDiagram(g, x, y, w, h, lit) {
+    const X = C.ESC_SIDE, cy = Math.round(y + (h - 10) / 2), bx = x + 8;
+    const s = Math.min((w - 14) / (X.hhRange + X.hhRing), (h - 16) / (2 * X.hhRing + 8)), rx = bx + X.hhRange * s;
+    K.poly(g, [[bx + 4, cy], [bx, cy - 2], [bx - 4, cy - 2], [bx - 4, cy + 2], [bx, cy + 2]], lit ? "#d9b9a6" : "#6e5a52");
+    for (let xx = bx + 6; xx < rx - X.hhRing * s - 2; xx += 3) K.px(g, xx, cy, "rgba(255,190,170,.22)");
     for (let i = 0; i < 24; i++) {
-      const a = i / 24 * PP.TAU, px = cx + Math.cos(a) * X.hhRing * s, py = ry + Math.sin(a) * X.hhRing * s;
-      K.disc(g, px, py, reach, reach, lit ? "rgba(255,176,0,.07)" : "rgba(255,150,110,.04)");
-      K.px(g, px, py, lit ? AMBER : "#8a6a4a");
+      const an = i / 24 * PP.TAU;
+      K.px(g, rx + Math.cos(an) * X.hhRing * s, cy + Math.sin(an) * X.hhRing * s, lit ? AMBER : "#8a6a4a");
     }
   }
 
@@ -292,12 +290,13 @@
     btn("depth", "", x, y0 - 3, w, y1 - y0 + 7, { cls: "slide", slide: { y0, y1, lo, max: hi, step: 25, act: "depth", v: f.dcSet }, label: "Charges' depth", title: `Charges set for ${f.dcSet} feet: drag for ${lo} to ${hi}` });
   }
 
-  /* her stern from above: the throwers down each side, a charge in each one loaded, and the racks down to her two
-   * rails; a launcher just emptied blinks out, the next one being loaded comes up as its crew work. Beside her what
-   * is below, in reserve; under her the button that lays the pattern */
+  /* her plan, bow to the right: the throwers along each side (port above, starboard below, the aftmost first), a
+   * charge in each one loaded, and the racks to her two rails at the stern, the next to go at the stern; a
+   * launcher just emptied blinks out, the next one being loaded comes up as its crew work. What is below, in
+   * reserve, beside her where there is room and under her where there is not; at the foot the one trigger */
   const blinks = new Map();
   let lastRacks = null;
-  function stern(g, S, f, x, y, w, h, now) {
+  function ship(g, S, f, x, y, w, h, now) {
     const X = C.ESC_SIDE, d = f.dcr || { P: 0, S: 0, R: 0, tP: 0, tS: 0, tR: 0 }, res = Math.max(0, f.dcLeft - d.P - d.S - d.R);
     if (lastRacks && lastRacks.id === f.id) for (const k of ["P", "S", "R"]) for (let i = d[k]; i < lastRacks[k]; i++) blinks.set(k + i, now);
     lastRacks = { id: f.id, P: d.P, S: d.S, R: d.R };
@@ -308,24 +307,31 @@
       K.rect(g, sx, sy, 3, 3, i < d[k] ? AMBER : "#2a1410");
       if (i === d[k] && load > 0) K.rect(g, sx, sy, 3, 3, `rgba(255,198,90,${(0.12 + 0.55 * load).toFixed(2)})`);
     };
-    /* the hull, her stern at the foot */
-    const top = y + 2, yb = y + h - 22, scx = x + 21, hw = 7;
-    K.poly(g, [[scx - hw - 1, top], [scx + hw + 1, top], [scx + hw + 1, yb - 4], [scx + 4, yb + 1], [scx - 4, yb + 1], [scx - hw - 1, yb - 4]], "#6e4a3e");
-    K.poly(g, [[scx - hw, top], [scx + hw, top], [scx + hw, yb - 4], [scx + 4, yb], [scx - 4, yb], [scx - hw, yb - 4]], "#24140f");
-    /* the throwers, port to the left and starboard to the right, the aftmost first */
-    const sp = PP.clamp(Math.floor((yb - top - 10) / (X.throwers - 1)), 4, 8);
+    /* where the reserve goes, and so how much of the box she has */
+    const below = X.charges - X.throwers * 2 - X.rails, beside = w >= 140;
+    const shipW = beside ? Math.min(w - 52, 160) : w, foot = y + h - 19;
+    let band = foot - y, rx0, rtop, per;
+    if (beside) { rx0 = x + shipW + 8; per = PP.clamp(Math.floor((x + w - rx0) / 4), 4, 11); rtop = y + 11; }
+    else { rx0 = x + 2; per = PP.clamp(Math.floor((x + w - rx0) / 4), 4, 22); rtop = foot - 2 - Math.ceil(below / per) * 4; band = rtop - 11 - y; }
+    lab("reserve", `<span class="c">Reserve</span><b>${res}</b>`, rx0, beside ? y + 4 : rtop - 5, "dl sm", "lm");
+    for (let i = 0; i < below; i++) K.rect(g, rx0 + (i % per) * 4, rtop + Math.floor(i / per) * 4, 3, 3, i < res ? "#c98a3c" : "#2a1410");
+    /* the hull, stern on the left, bow on the right */
+    const yc = Math.round(y + band / 2), hb = PP.clamp(Math.round(band * 0.3), 6, 14), t = yc - Math.floor(hb / 2), b = t + hb;
+    const xs = x + 4, xb = x + shipW - 2, pt = [[xs + 3, t], [xb - hb, t], [xb, yc], [xb - hb, b], [xs + 3, b], [xs, b - 3], [xs, t + 3]];
+    K.poly(g, pt.map(([px, py]) => [px + Math.sign(px - (xs + xb) / 2), py + Math.sign(py - yc)]), "#6e4a3e");
+    K.poly(g, pt, "#24140f");
+    K.rect(g, Math.round(xs + (xb - xs) * 0.52), t + 2, Math.max(4, Math.round(hb * 0.9)), hb - 4, "#3a2620");
+    /* the throwers, the aftmost first */
+    const sp = PP.clamp(Math.floor((xb - xs) * 0.4 / (X.throwers - 1)), 4, 8);
     for (let i = 0; i < X.throwers; i++) {
-      const sy = yb - 8 - i * sp;
-      slot("P", i, scx - hw - 5, sy, d.tP / X.loadThrow);
-      slot("S", i, scx + hw + 2, sy, d.tS / X.loadThrow);
+      const sx = xs + 9 + i * sp;
+      slot("P", i, sx, t - 5, d.tP / X.loadThrow);
+      slot("S", i, sx, b + 2, d.tS / X.loadThrow);
     }
-    /* the two rails, the charges on them rolling aft, the next to go at the foot */
-    for (const rx of [scx - 3, scx + 1]) K.rect(g, rx + 1, yb - 4 - 4 * (X.rails / 2), 1, 4 * (X.rails / 2) + 3, DIM);
-    for (let j = 0; j < X.rails; j++) slot("R", j, j % 2 ? scx + 1 : scx - 3, yb - 5 - Math.floor(j / 2) * 4, d.tR / X.loadRail);
-    /* below, in reserve */
-    const rx0 = x + 40, per = PP.clamp(Math.floor((x + w - rx0) / 4), 4, 11), below = X.charges - X.throwers * 2 - X.rails;
-    lab("reserve", `<span class="c">Reserve</span><b>${res}</b>`, rx0, top + 4, "dl sm", "lm");
-    for (let i = 0; i < below; i++) K.rect(g, rx0 + (i % per) * 4, top + 11 + Math.floor(i / per) * 4, 3, 3, i < res ? "#c98a3c" : "#2a1410");
+    /* the two rails, the charges on them rolling aft */
+    const ra = yc - 3, rb = yc + 1;
+    for (const ry of [ra, rb]) K.rect(g, xs + 1, ry + 1, 4 * (X.rails / 2) + 2, 1, DIM);
+    for (let j = 0; j < X.rails; j++) slot("R", j, xs + 1 + Math.floor(j / 2) * 4, j % 2 ? rb : ra, d.tR / X.loadRail);
   }
 
   /* the attack, beside the dials: what the contact is and where, and a lamp that says when to fire. RUN IN (an
@@ -376,33 +382,32 @@
     lab("reach", PP.num(reach) + " yd", gx, gy + Math.round(r * 0.78), "dl sm", "cm");
     btn("pa", f.ping ? "A · active" : "P · passive", gx - 26, oy - 6, 52, 12, { act: "silent", on: !!f.ping, label: f.ping ? "Sonar active, pinging" : "Sonar passive, listening", title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too (X)" });
     if (f.spd > C.DET.hydFastKn) lab("deaf", "too fast to hear", gx, gy - Math.round(r * 0.45), "dl sm amber", "cm");
-    /* the charges: the patterns to pick from, the depth they are set for, her launchers and what is below, and the
-     * hedgehog; the patterns and the hedgehog drawn as they lie on the sea, at one scale */
-    const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(PH, bt.y + bt.h - 16 - py), SL = 38, SW = 84;
+    /* the charges, laid out as she is, bow to the right: the patterns stacked on the left (astern), the depth they
+     * are set for, her plan with its launchers and reserve and the trigger under it, and the hedgehog on the right
+     * (ahead) */
+    const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(PH, bt.y + bt.h - 16 - py), SL = 38;
     well(g, px, py, pw, ph);
-    const ch = ph - 6, cw = Math.max(26, Math.min(Math.round(ch * 1.15), Math.floor((pw - SL - SW - 14) / 4) - 3)), sel = f.patK || 0;
-    const sc = Math.min((cw - 4) / 310, (ch - 14) / 230);
+    const ch = ph - 6, y0 = py + 3, sel = f.patK || 0;
+    const PW = PP.clamp(Math.round(pw * 0.26), 62, 120), HW = PP.clamp(Math.round(pw * 0.16), 40, 80), rh = Math.floor((ch - 4) / 3);
     C.ESC_PATTERNS.forEach((P, i) => {
-      const x = px + 3 + i * (cw + 3), y = py + 3;
-      patDiagram(g, x, y, cw, ch, P, sc, i === sel);
-      const n = C.patCount(P);
-      btn("pat" + i, cw >= 44 ? `${P.name} ${n}` : String(n), x, y, cw, ch, { act: "pat" + i, cls: "pick", on: i === sel, dim: f.dcLeft < n,
+      const y = y0 + i * (rh + 2), n = C.patCount(P);
+      patRow(g, px + 3, y, rh, P, i === sel);
+      btn("pat" + i, PW >= 60 ? `${P.name} ${n}` : String(n), px + 3, y, PW, rh, { act: "pat" + i, cls: "pick row", on: i === sel, dim: f.dcLeft < n,
         label: `${P.name} pattern, ${n} charges`, title: `${P.name} pattern: ${n} charges${P.deep ? ", in two layers" : ""}${f.dcLeft < n ? `; only ${f.dcLeft} aboard` : ""} (V)` });
     });
-    /* the depth, then her stern with its launchers, between the patterns and the hedgehog */
-    const x2 = px + 3 + 3 * (cw + 3) + 1, hx = px + pw - 3 - cw;
-    depthSlider(g, f, x2, py + 3, SL, ch, btn);
+    const x2 = px + 3 + PW + 3, hx = px + pw - 3 - HW;
+    depthSlider(g, f, x2, y0, SL, ch, btn);
     const sx = x2 + SL + 4, sw = hx - 5 - sx;
-    stern(g, S, f, sx, py + 3, sw, ch, now);
+    ship(g, S, f, sx, y0, sw, ch, now);
     /* the hedgehog: its ring ahead of her, a fourth choice for the one trigger */
     const hh = C.monthOf(S.t) >= X.hedgehogFrom, hn = f.hhLeft || 0;
-    hhDiagram(g, hx, py + 3, cw, ch, sc, hh && hn > 0);
-    btn("hedgehog", cw >= 44 ? `Hedgehog ${hn}` : String(hn), hx, py + 3, cw, ch, { act: "pat" + C.ESC_PATTERNS.length, cls: "pick", on: sol.hh, dim: !hh || hn <= 0,
+    hhDiagram(g, hx, y0, HW, ch, hh && hn > 0);
+    btn("hedgehog", HW >= 44 ? `Hedgehog ${hn}` : String(hn), hx, y0, HW, ch, { act: "pat" + C.ESC_PATTERNS.length, cls: "pick", on: sol.hh, dim: !hh || hn <= 0,
       label: hh ? `Hedgehog, ${hn} salvoes left` : "Hedgehog, not fitted", title: hh ? `Hedgehog: a ring of 24 bombs ${X.hhRange} yards ahead, that go off only on a hull; ${hn} left (V, or F to fire it at once)` : "Not fitted until Year III" });
     /* the one trigger: what it fires, whether it is ready, and lit when the lamp says over her */
     const none = sol.hh ? hn <= 0 : f.dcLeft <= 0, P = C.ESC_PATTERNS[sel];
     const word = f.pat ? "Laying&hellip;" : none ? (sol.hh ? "Hedgehog empty" : "No charges") : sol.hh ? "Fire hedgehog" : sol.ready < sol.need ? `Lay ${sol.ready} of ${sol.need}` : "Lay charges";
-    btn("pattern", word, sx, py + 3 + ch - 17, sw, 16, { act: "fire", cls: "danger" + (f.pat ? " on" : "") + (c && c.over && !none ? " ready" : ""), dim: none,
+    btn("pattern", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "danger" + (f.pat ? " on" : "") + (c && c.over && !none ? " ready" : ""), dim: none,
       title: sol.hh ? "Fire the hedgehog (Space)" : `Lay the ${P.name.toLowerCase()} pattern, ${sol.need} charges${sol.ready < sol.need ? `; ${sol.ready} loaded, the crews are reloading` : ""} (Space)` });
     const cx = bt.x + bt.w - 90;
     let yy = bt.y + 6;
