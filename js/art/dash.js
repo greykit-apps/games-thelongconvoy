@@ -20,9 +20,12 @@
   const well = (g, x, y, w, h) => { K.rect(g, x - 1, y - 1, w + 2, h + 2, EDGE); K.rect(g, x, y, w, h, INK); };
 
   /* ---- the layout, in canvas pixels, from the size of the screen ---- */
-  D.layout = (Wd, Ht) => {
-    /* on a squarer screen the view gives up some height, for the gauges' band to stack in */
-    const m = 6, lw = Math.round(Wd * 0.25), vx = m + lw + m, vw = Wd - vx - m, vh = Math.round(Ht * (Wd / Ht < 1.55 ? 0.46 : 0.55)), strip = 16;
+  /* minBand: the least height the gauges' band must keep (an escort's dials over her charges need it) */
+  D.layout = (Wd, Ht, minBand = 0) => {
+    /* on a squarer screen the view gives up some height, for the gauges' band to stack in; on a wide one it gives
+     * up what the band needs at least, and stays a wide window */
+    const m = 6, lw = Math.round(Wd * 0.25), vx = m + lw + m, vw = Wd - vx - m, strip = 16;
+    const vh = Math.min(Math.round(Ht * (Wd / Ht < 1.55 ? 0.46 : 0.55)), Ht - 2 * m - strip - 6 - minBand);
     const by = m + vh + strip + 6, bh = Ht - by - m;
     return {
       view: { x: vx, y: m, w: vw, h: vh }, strip: { x: vx, y: m + vh + 2, w: vw, h: strip },
@@ -97,7 +100,7 @@
 
   /* ---- the dashboard ---- */
   D.draw = (g, S, ui, now, Wd, Ht) => {
-    const L = D.layout(Wd, Ht), esc = S.side === "escorts", B = [];
+    const esc = S.side === "escorts", L = D.layout(Wd, Ht, esc ? 164 : 0), B = [];
     const btn = (id, html, x, y, w, h, o = {}) => B.push(Object.assign({ id, html, x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) }, o));
     K.rect(g, 0, 0, Wd, Ht, "#0d0504");
     /* the view out */
@@ -310,9 +313,9 @@
     K.poly(g, [[scx - hw - 1, top], [scx + hw + 1, top], [scx + hw + 1, yb - 4], [scx + 4, yb + 1], [scx - 4, yb + 1], [scx - hw - 1, yb - 4]], "#6e4a3e");
     K.poly(g, [[scx - hw, top], [scx + hw, top], [scx + hw, yb - 4], [scx + 4, yb], [scx - 4, yb], [scx - hw, yb - 4]], "#24140f");
     /* the throwers, port to the left and starboard to the right, the aftmost first */
-    const sp = Math.max(4, Math.min(8, Math.floor((yb - top - 22) / (X.throwers - 1))));
+    const sp = PP.clamp(Math.floor((yb - top - 10) / (X.throwers - 1)), 4, 8);
     for (let i = 0; i < X.throwers; i++) {
-      const sy = yb - 22 - i * sp;
+      const sy = yb - 8 - i * sp;
       slot("P", i, scx - hw - 5, sy, d.tP / X.loadThrow);
       slot("S", i, scx + hw + 2, sy, d.tS / X.loadThrow);
     }
@@ -320,7 +323,7 @@
     for (const rx of [scx - 3, scx + 1]) K.rect(g, rx + 1, yb - 4 - 4 * (X.rails / 2), 1, 4 * (X.rails / 2) + 3, DIM);
     for (let j = 0; j < X.rails; j++) slot("R", j, j % 2 ? scx + 1 : scx - 3, yb - 5 - Math.floor(j / 2) * 4, d.tR / X.loadRail);
     /* below, in reserve */
-    const rx0 = x + 40, per = Math.max(4, Math.floor((x + w - rx0) / 4)), below = X.charges - X.throwers * 2 - X.rails;
+    const rx0 = x + 40, per = PP.clamp(Math.floor((x + w - rx0) / 4), 4, 11), below = X.charges - X.throwers * 2 - X.rails;
     lab("reserve", `<span class="c">Reserve</span><b>${res}</b>`, rx0, top + 4, "dl sm", "lm");
     for (let i = 0; i < below; i++) K.rect(g, rx0 + (i % per) * 4, top + 11 + Math.floor(i / per) * 4, 3, 3, i < res ? "#c98a3c" : "#2a1410");
   }
@@ -351,9 +354,11 @@
   function escGauges(g, S, ui, now, bt, btn) {
     const f = PP.Escort.flag(S); if (!f) return;
     const k = C.SHIPS[f.cls], X = C.ESC_SIDE, sol = PP.Escort.solution(S, f), c = sol.contact;
-    /* three dials across the top, the telegraph, the compass and the sonar, one size, as big as the band's height
-     * and its width (clear of the buttons on the right) allow, each with its reading under it; the charges under them */
-    const r = Math.max(14, Math.min(Math.round(Math.min(bt.w * 0.075, (bt.h - 84) / 2.8) * 1.4), Math.floor((bt.w - 154) / 6)));
+    /* three dials across the top, the telegraph, the compass and the sonar, one size, each with its reading under it;
+     * the charges under them. The charges' panel keeps its height (about two fifths of the band) whatever the screen's
+     * shape, and the dials take what is left, as wide as the room clear of the buttons on the right allows */
+    const PH = PP.clamp(Math.round(bt.h * 0.42), 62, 96);
+    const r = Math.max(14, Math.min(Math.floor((bt.h - 6 - 18 - PH - 16) / 2), Math.floor((bt.w - 154) / 6)));
     const top = bt.y + 6, gy = top + r, oy = top + 2 * r + 9;
     let gx = bt.x + 10 + r;
     bigTelegraph(g, gx, gy, r, f, k, btn);
@@ -373,7 +378,7 @@
     if (f.spd > C.DET.hydFastKn) lab("deaf", "too fast to hear", gx, gy - Math.round(r * 0.45), "dl sm amber", "cm");
     /* the charges: the patterns to pick from, the depth they are set for, her launchers and what is below, and the
      * hedgehog; the patterns and the hedgehog drawn as they lie on the sea, at one scale */
-    const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(40, bt.y + bt.h - 16 - py), SL = 38, SW = 84;
+    const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(PH, bt.y + bt.h - 16 - py), SL = 38, SW = 84;
     well(g, px, py, pw, ph);
     const ch = ph - 6, cw = Math.max(26, Math.min(Math.round(ch * 1.15), Math.floor((pw - SL - SW - 14) / 4) - 3)), sel = f.patK || 0;
     const sc = Math.min((cw - 4) / 310, (ch - 14) / 230);
