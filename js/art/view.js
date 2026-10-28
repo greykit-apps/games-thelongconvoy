@@ -228,6 +228,28 @@
       } else if (p.k === "smoke") {
         const c = Math.round(PP.lerp(40, 120, 1 - p.dark) * PP.clamp(L + 0.25, 0.3, 1));
         g.fillStyle = `rgba(${c},${c},${c + 4},${(0.6 * a).toFixed(2)})`; K.disc(g, x, base - p.z * s, p.r * s, p.r * s * 0.8);
+      } else if (p.k === "oil" || p.k === "debris") {
+        if (d > dh) continue;
+        const sd = p.seed, flat = (ox, oy, rr) => { const dd = Math.max(3, d + oy); return [x + ox * f / d, dd < dh ? hz + f * (eyeYd / dd + dd / (2 * RE) - dip) : hz, rr * f / d, Math.max(1, rr * f / dd * eyeYd / dd)]; };
+        const fade = Math.min(1, p.t / 3) * Math.min(1, (p.life - p.t) / (p.life * 0.25));
+        if (p.k === "oil") {
+          /* a slick: dark, flat water where the swell's glitter dies, spreading; a sheen of colour on it by day */
+          const rr = PP.lerp(p.r0, p.r, Math.min(1, p.t / p.grow));
+          for (let i = 0; i < 5; i++) {
+            const [ex, ey, ew, eh] = flat((K.hash(sd, i, 70) - 0.5) * rr * 1.3, (K.hash(sd, i, 71) - 0.5) * rr * 0.9, rr * (0.45 + 0.35 * K.hash(sd, i, 72)));
+            g.fillStyle = `rgba(14,16,20,${(0.32 * fade).toFixed(2)})`; K.disc(g, ex, ey, ew, eh);
+            if (L > 0.35 && eh >= 2) { g.fillStyle = i % 2 ? `rgba(120,70,150,${(0.1 * fade).toFixed(2)})` : `rgba(60,140,110,${(0.1 * fade).toFixed(2)})`; K.disc(g, ex + ew * 0.2, ey, ew * 0.5, Math.max(1, eh * 0.4)); }
+          }
+        } else {
+          /* wreckage in the oil: planks, cork, a locker's insides, riding the swell */
+          for (let i = 0; i < p.n; i++) {
+            const [ex, ey] = flat((K.hash(sd, i, 73) - 0.5) * p.r * 1.6, (K.hash(sd, i, 74) - 0.5) * p.r, 0);
+            const sz = 1 + 3 * K.hash(sd, i, 75), w = Math.max(1, Math.round(sz * (1 + K.hash(sd, i, 76)) * s)), h = Math.max(1, Math.round(sz * 0.5 * s));
+            const bob = Math.sin(o.now / 700 + i * 1.7) * Math.max(0.5, s * 0.6);
+            g.fillStyle = K.dim(K.hash(sd, i, 77) < 0.5 ? "#5a4632" : "#8a8478", Math.max(L, 0.3));
+            g.globalAlpha = fade; g.fillRect(Math.round(ex - w / 2), Math.round(ey - h + bob), w, h); g.globalAlpha = 1;
+          }
+        }
       } else if (p.k === "boil") {
         /* white water welling up in patches, spreading and going grey as it settles */
         const grow = 0.6 + 0.4 * Math.min(1, p.t / 2), sd = p.seed || 0;

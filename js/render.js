@@ -43,6 +43,7 @@
     R.labels = [];
     FX.step(dt);
     tossNew(S);
+    leaks(S, dt);
     const st = R.stationOf(S, ui);
     g.save();
     if (R.shake > 0.3 && PP.prefs.shake) { g.translate(Math.round((Math.random() - 0.5) * R.shake), Math.round((Math.random() - 0.5) * R.shake)); }
@@ -88,6 +89,11 @@
         FX.toss(sh.x - hx * stern, sh.y - hy * stern, 9, tx, ty, 1, 0.5, 2.5);
       }
     }
+  }
+
+  /* a boat hurt badly enough weeps oil as she goes, where anyone on the surface may see it */
+  function leaks(S, dt) {
+    for (const s of S.subs || []) if (!s.lost && s.hull < 0.5 && Math.random() < dt * (0.5 - s.hull) * 0.5) FX.oil(s.x, s.y, s.depth, 0);
   }
 
   /* ---- the escort's bridge: high above the water, the glasses, no deck of a boat in front of you ---- */
@@ -463,7 +469,13 @@
         case "torpPremature": FX.add({ k: "column", x: e.x, y: e.y, h: 110, w: 30, life: 2.6 }); break;
         case "dcBoom": { const at = tossed.at.get(e.id); tossed.at.delete(e.id); FX.charge(at ? at[0] : e.x, at ? at[1] : e.y, e.z); } R.shake = Math.max(R.shake, PP.clamp(14 - e.d / 25, 0, 14)); break;
         case "bombs": FX.add({ k: "column", x: e.x + 30, y: e.y, h: 80, w: 25, life: 2.2 }); R.shake = Math.max(R.shake, 8); break;
-        case "hullHit": R.shake = Math.max(R.shake, 4 + e.sev * 20); break;
+        case "hullHit": {
+          R.shake = Math.max(R.shake, 4 + e.sev * 20);
+          const s = (S.subs || []).find(q => q.id === e.by);
+          if (s && e.sev >= 0.15) FX.oil(s.x, s.y, s.depth, e.sev >= 0.4 ? 1 : 0);
+          break;
+        }
+        case "subLost": { const s = (S.subs || []).find(q => q.id === e.by); if (s) FX.oil(s.x, s.y, s.depth, 2); break; }
       }
     }
   };

@@ -1,7 +1,7 @@
 /* PumaPack -- what happens for a moment: the column of water a torpedo
  * throws up, the flash, smoke from a burning ship, a depth charge in the
  * air and its splash, the fountain and the white boil where it went off,
- * a shell's splash.
+ * a shell's splash; and what a hurt boat sends up, oil and wreckage.
  *
  * These live in the world (yards, and feet above the water), not on the
  * screen: the periscope projects each one where it is, so turning the
@@ -40,6 +40,16 @@
     const k = PP.clamp(1 - z / 260, 0, 1);
     FX.add({ k: "boil", x, y, r: 12 + 14 * k, life: 7 + 4 * k, seed: Math.floor(Math.random() * 1e4) });
     if (k > 0) FX.add({ k: "fountain", x, y, h: 30 + 170 * k * k, w: 14 + 30 * k, life: 2.6 + 2 * k, seed: Math.floor(Math.random() * 1e4) });
+  };
+  /* what comes up from a boat hurt at z feet, after the time it takes to rise: oil spreading into a slick and,
+   * hurt badly, wreckage floating in it (k: 0 a weep of oil, 1 a bad hit, 2 the boat lost) */
+  FX.oil = (x, y, z, k) => {
+    const delay = PP.clamp(z / 45, 0.5, 9) + Math.random(), seed = () => Math.floor(Math.random() * 1e4);
+    const r = [6, 16, 45][k], life = [40, 90, 240][k];
+    FX.add({ k: "oil", x: x + rnd(-8, 8), y: y + rnd(-8, 8), r0: r * 0.2, r, life, grow: life * 0.35, seed: seed(), delay });
+    const n = [0, 6, 26][k];
+    if (n) FX.add({ k: "debris", x, y, n, r: r * 0.7, life: life * 0.8, seed: seed(), delay: delay + 1.5 });
+    if (k === 2) FX.add({ k: "boil", x, y, r: 10, life: 9, seed: seed(), delay });
   };
   FX.smoke = (x, y, z, o = {}) => FX.add(Object.assign({ k: "smoke", x, y, z, r: 14, grow: 10, vz: 7, life: 10, dark: 0.75 }, o));
   FX.step = dt => {
