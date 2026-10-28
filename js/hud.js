@@ -78,6 +78,8 @@
   const ANCHOR = { l: "0", c: "-50%", r: "-100%", t: "0", m: "-50%", b: "-100%" };
   function labels(list) {
     const box = HUD.el.querySelector(".h-labels"), cv = $("screen"), k = cv.getBoundingClientRect().width / cv.width || 1, seen = new Set();
+    /* the dashboard's readings grow with the canvas, as its buttons do (drawn for two screen pixels to one) */
+    const dk = PP.clamp(k / 2, 0.8, 2).toFixed(2); if (box.style.getPropertyValue("--dk") !== dk) box.style.setProperty("--dk", dk);
     for (const L of list) {
       let n = labs.get(L.id);
       if (!n) { n = document.createElement("div"); box.appendChild(n); labs.set(L.id, n); }
@@ -123,13 +125,30 @@
         /* a slider follows the pointer while it is held */
         n.addEventListener("pointerdown", ev => { if (n._b && n._b.slide) { n._last = null; n.setPointerCapture(ev.pointerId); slideTo(n, ev); } });
         n.addEventListener("pointermove", ev => { if (n._b && n._b.slide && n.hasPointerCapture(ev.pointerId)) slideTo(n, ev); });
+        /* a focused slider takes the arrows (up is shallower, toward the surface), Page Up / Down and Home / End */
+        n.addEventListener("keydown", ev => {
+          const s = n._b && n._b.slide; if (!s) return;
+          const d = { ArrowUp: -s.step, ArrowLeft: -s.step, ArrowDown: s.step, ArrowRight: s.step, PageUp: -4 * s.step, PageDown: 4 * s.step, Home: -s.max, End: s.max }[ev.key];
+          if (d === undefined) return;
+          ev.preventDefault(); ev.stopPropagation();
+          const v = PP.clamp(s.v + d, s.lo, s.max); if (v !== s.v && PP.game.dashAct) PP.game.dashAct(s.act + ":" + v);
+        });
       }
       n._b = B; seen.add(B.id);
       if (n.dataset.h !== B.html) { n.dataset.h = B.html; n.innerHTML = PP.Input.caps(B.html); }
       const cls = "db" + (B.on ? " on" : "") + (B.dim ? " dim" : "") + (B.cls ? " " + B.cls : "");
       if (n.className !== cls) n.className = cls;
       if (B.title && n.title !== B.title) n.title = B.title;
-      n.setAttribute("aria-pressed", String(!!B.on));
+      /* its name when its face is a glyph or a number; pressed only for a switch (one that has an on); a dimmed one
+       * out of the tab order; a slider as a slider */
+      if (B.label) { if (n.getAttribute("aria-label") !== B.label) n.setAttribute("aria-label", B.label); } else n.removeAttribute("aria-label");
+      if (B.on !== undefined) n.setAttribute("aria-pressed", String(!!B.on)); else n.removeAttribute("aria-pressed");
+      if (B.dim) { n.setAttribute("aria-disabled", "true"); n.tabIndex = -1; } else if (n.hasAttribute("aria-disabled")) { n.removeAttribute("aria-disabled"); n.tabIndex = 0; }
+      if (B.slide) {
+        const s = B.slide;
+        n.setAttribute("role", "slider"); n.setAttribute("aria-orientation", "vertical");
+        n.setAttribute("aria-valuemin", s.lo); n.setAttribute("aria-valuemax", s.max); n.setAttribute("aria-valuenow", s.v); n.setAttribute("aria-valuetext", s.v + " feet");
+      }
       const css = `left:${Math.round(B.x * k)}px;top:${Math.round(B.y * k)}px;width:${Math.round(B.w * k)}px;height:${Math.round(B.h * k)}px;font-size:${Math.max(10, Math.round(Math.min(B.h * k * 0.62, 6.2 * k)))}px`;
       if (n.dataset.css !== css) { n.dataset.css = css; n.style.cssText = css; }
     }
@@ -160,6 +179,15 @@
   }
   /* what the station shows, in words, for a screen reader */
   function describe(S, ui, st) {
+    if (S.side === "escorts") {
+      const f = PP.Escort.flag(S); if (!f) return;
+      const sol = PP.Escort.solution(S, f), c = sol.contact, P = C.ESC_PATTERNS[f.patK || 0];
+      const t = `Aboard ${f.name}: ${Math.abs(f.spd).toFixed(0)} knots, heading ${PP.deg3(f.hdg)}, ${C.ESC_BELLS[f.bell]}. ` +
+        `${sol.hh ? `Hedgehog chosen, ${f.hhLeft || 0} left` : `${P.name} pattern, ${sol.ready} of ${sol.need} loaded, ${f.dcLeft} charges aboard`}, set ${f.dcSet} feet. ` +
+        (c ? `Contact bearing ${PP.deg3(c.brg)}, ${Math.round(c.rng / 50) * 50} yards, ${c.surf ? "on the surface" : "about " + Math.round(c.dz / 25) * 25 + " feet"}: ${c.over ? (sol.hh ? "in range" : "over her") : c.near ? "stand by" : "run in"}.` : "No contact.");
+      if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "PumaPack: " + t); }
+      return;
+    }
     const s = S.sub, n = S.ships.filter(q => PP.Detect.known(S, q) && PP.Ships.alive(q)).length;
     const what = { scope: `Periscope, ${s.scope.up && s.scope.h >= 1 ? "up, bearing " + PP.deg3(s.hdg + s.scope.brg) + (s.scope.hi ? ", high power" : ", low power") : "down"}`, bridge: `Bridge, looking ${PP.deg3(ui.look)}`,
       panel: "Instruments", chart: "Chart", damage: `Damage report: hull ${Math.round(s.hull * 100)}%, ${Sub.SYS.filter(([k2]) => s.sys[k2] > 0.001).map(([, nm]) => nm.toLowerCase()).join(", ") || "nothing damaged"}` }[st] || st;
@@ -191,14 +219,13 @@
         <div class="hb-flags">${f.ping ? '<span class="on">Sonar pinging</span>' : '<span>Sonar listening</span>'}${f.spd > C.DET.hydFastKn ? '<span title="Above 15 knots her own noise deafens her hydrophones">Too fast to hear</span>' : ""}</div>`);
     });
     /* the freshest contact any escort has, from her */
-    const best = mine.filter(q => q.ai.datum && q.ai.contact).sort((a, b) => b.ai.contact - a.ai.contact)[0];
+    const sol = PP.Escort.solution(S, f), c = sol.contact;
     let ct = `<div class="ht-name">Contacts</div><p class="ht-none">None. Sprint, then slow under 15 knots and listen; <kbd>X</kbd> pings with the sonar, which they hear too.</p>`;
-    if (best && S.t - best.ai.contact < 900) {
-      const d = best.ai.datum, age = S.t - best.ai.contact, r = PP.dist(f.x, f.y, d.x, d.y);
-      ct = `<div class="ht-name">${best.ai.how === "sonar" ? "Sonar contact" : best.ai.how === "ear" ? "Heard" : "Sighted"}</div><div class="ht-cls">${best === f ? "Her own" : "From " + esc(best.name)}, ${age < 60 ? "now" : Math.round(age / 60) + " min ago"}</div>
-        <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(PP.angTo(f.x, f.y, d.x, d.y))}</b><span class="lbl">Range</span><b>${PP.num(Math.round(r / 50) * 50)}</b>
-        <span class="lbl">Depth, about</span><b>${best.ai.how === "eye" || best.ai.how === "radar" ? "surface" : Math.round((best.ai.dz || 150) / 25) * 25 + " ft"}</b><span class="lbl">Charges</span><b>${f.dcSet} ft</b></div>
-        <div class="ht-sol ${r < 300 && age < 60 ? "ok" : "no"}"><span class="ht-lamp"></span><span>${r < 300 && age < 60 ? "Over her: <kbd>Space</kbd> a pattern" : "Run in to her"}</span></div>`;
+    if (c) {
+      ct = `<div class="ht-name">${c.how === "sonar" ? "Sonar contact" : c.how === "ear" ? "Heard" : "Sighted"}</div><div class="ht-cls">${c.by === f ? "Her own" : "From " + esc(c.by.name)}, ${c.age < 60 ? "now" : Math.round(c.age / 60) + " min ago"}</div>
+        <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(c.brg)}</b><span class="lbl">Range</span><b>${PP.num(Math.round(c.rng / 50) * 50)}</b>
+        <span class="lbl">Depth, about</span><b>${c.surf ? "surface" : Math.round(c.dz / 25) * 25 + " ft"}</b><span class="lbl">Charges</span><b>${f.dcSet} ft</b></div>
+        <div class="ht-sol ${c.over ? "ok" : "no"}"><span class="ht-lamp"></span><span>${c.over ? `Over her: <kbd>Space</kbd> ${sol.hh ? "the hedgehog" : "a pattern"}` : c.near ? "Stand by: hold her steady" : "Run in to her"}</span></div>`;
     }
     set(el.querySelector("#h-tdc"), "tdc", ct + PP.Input.device, x => { x.innerHTML = PP.Input.caps(ct); });
     /* the map's orders for the escort selected there */

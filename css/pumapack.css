@@ -523,6 +523,8 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-dash .db.pick:hover { background: rgba(255,110,80,.08); }
 .h-dash .db.pick.on { color: var(--ps-yellow); border-color: var(--ps-yellow); }
 /* the depth slider: the canvas draws it, the button is where to hold it */
+/* the trigger when the lamp says over her: its words and edge in the readout amber */
+.h-dash .db.danger.ready { color: var(--ps-yellow); border-color: var(--ps-yellow); }
 .h-dash .db.slide { background: none; border-color: transparent; box-shadow: none; cursor: ns-resize; touch-action: none; }
 .h-dash .db.slide:hover { background: rgba(255,110,80,.06); border-color: transparent; }
 .h-labels .hl.sea { color: #8cc4e2; }
@@ -534,17 +536,21 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-msgs p.red { color: var(--ps-red-text); } .h-msgs p.amber { color: var(--ps-amber); } .h-msgs p.green { color: var(--ps-green); }
 .h-msgs .t { color: var(--ps-faint); font-variant-numeric: tabular-nums; }
 .h-msgs kbd { font-size: .85em; }
-.h-labels .hl.dl { font-size: 13px; }
+.h-labels .hl.dl { font-size: calc(13px * var(--dk, 1)); }
+.h-labels .hl.dl.sm { font-size: calc(11px * var(--dk, 1)); }
+.h-labels .hl.dl .c { font-size: calc(10px * var(--dk, 1)); margin-right: 4px; }
+.h-labels .hl.read { color: var(--ps-yellow); }
+/* the attack lamp's word: the readout amber while it waits, bright and heavy when it says fire */
+.h-labels .hl.lamp { letter-spacing: .12em; font-weight: 600; }
+.h-labels .hl.lamp.lit { color: var(--ps-yellow-hi, #ffe08f); font-weight: 700; }
 /* the dashboard's odometers: figures on drums, the tenths on a pale one, rolling over as they turn */
 .h-labels .odo { display: inline-flex; align-items: center; gap: 1px; padding: 2px; vertical-align: middle; background: #050202; border: 1px solid rgba(255,110,80,.38); border-radius: 2px; }
-.h-labels .odo i { display: block; width: .8em; height: 1.2em; overflow: hidden; font: 500 15px/1.2em var(--px); font-style: normal; text-align: center; color: #f2e6d8;
+.h-labels .odo i { display: block; width: .8em; height: 1.2em; overflow: hidden; font: 500 calc(15px * var(--dk, 1))/1.2em var(--px); font-style: normal; text-align: center; color: #f2e6d8;
   background: linear-gradient(#0a0605, #2c211e 35%, #2c211e 65%, #0a0605); }
 .h-labels .odo i.d { color: #1c0b08; background: linear-gradient(#7d7064, #eadfce 35%, #eadfce 65%, #7d7064); }
 .h-labels .odo b { display: block; width: min-content; margin: 0 auto; white-space: normal; word-break: break-all; font-weight: inherit; }
-.h-labels .odo u { text-decoration: none; font: 500 15px/1 var(--px); color: #f2e6d8; margin: 0 -1px; }
+.h-labels .odo u { text-decoration: none; font: 500 calc(15px * var(--dk, 1))/1 var(--px); color: #f2e6d8; margin: 0 -1px; }
 .h-labels .odo + .c { margin: 0 0 0 4px; }
-.h-labels .hl.dl.sm { font-size: 11px; }
-.h-labels .hl.dl .c { font-size: 10px; margin-right: 4px; }
 .h-labels .hl.green { color: var(--ps-green); } .h-labels .hl.amber { color: var(--ps-amber); } .h-labels .hl.red { color: var(--ps-red-text); }
 #h-status { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 80vw); padding: 14px 18px 16px; }
 #h-status table { width: 100%; }

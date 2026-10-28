@@ -212,8 +212,15 @@
       case "hdg": sh.ordHdg = PP.normAng(a.v); break;
       case "dcSet": sh.dcSet = PP.clamp(a.v !== undefined ? a.v : (sh.dcSet || 150) + a.d, X.dcSet[0], X.dcSet[1]); ev.push({ t: "dcSet", v: sh.dcSet, slide: a.v !== undefined }); break;
       case "ping": sh.ping = a.v === undefined ? !sh.ping : !!a.v; ev.push({ t: "ping", on: sh.ping }); break;
-      case "patSel": sh.patK = PP.clamp(a.v | 0, 0, C.ESC_PATTERNS.length - 1); ev.push({ t: "patSel", v: sh.patK }); break;
+      /* the weapon "Lay charges" fires: a pattern, or (the one after the patterns, once fitted) the hedgehog */
+      case "patSel": {
+        const v = PP.clamp(a.v | 0, 0, C.ESC_PATTERNS.length);
+        if (v === C.ESC_PATTERNS.length && C.monthOf(S.t) < X.hedgehogFrom) { ev.push({ t: "noHedgehog" }); break; }
+        sh.patK = v; ev.push({ t: "patSel", v });
+        break;
+      }
       case "pattern": {
+        if ((sh.patK || 0) === C.ESC_PATTERNS.length) { hedgehog(S, sh, ev); break; }
         if (sh.pat) break;
         if ((sh.dcLeft || 0) < 1) { ev.push({ t: "noCharges" }); break; }
         /* the first rail goes now, the rest as she runs on (Esc.user) */
@@ -222,16 +229,7 @@
         ev.push({ t: "patternAway", id: sh.id });
         break;
       }
-      case "hedgehog": {
-        if (C.monthOf(S.t) < X.hedgehogFrom) { ev.push({ t: "noHedgehog" }); break; }
-        if ((sh.hhLeft || 0) <= 0) { ev.push({ t: "noHedgehog", empty: true }); break; }
-        sh.hhLeft--;
-        const cx = sh.x + PP.hx(sh.hdg) * X.hhRange, cy = sh.y + PP.hy(sh.hdg) * X.hhRange;
-        for (let i = 0; i < 24; i++) { const an = i / 24 * PP.TAU; S.charges.push({ id: S.nextId++, x: cx + Math.cos(an) * X.hhRing, y: cy + Math.sin(an) * X.hhRing, z: 0, set: 900, by: sh.id, hh: true }); }
-        S.stats.hedgehogs = (S.stats.hedgehogs || 0) + 1;
-        ev.push({ t: "hedgehogAway", id: sh.id });
-        break;
-      }
+      case "hedgehog": hedgehog(S, sh, ev); break;
       case "egun": {
         if ((sh.gunT || 0) > 0) break;
         const q = E_().afloat(S).filter(b => Sub.surfaced(b) && b.seenT !== undefined && S.t - b.seenT < 10).map(b => ({ b, d: PP.dist(sh.x, sh.y, b.x, b.y) })).filter(o => o.d < C.ESC.gunRange).sort((p, r) => p.d - r.d)[0];
@@ -267,6 +265,42 @@
     if (q.hhLeft === undefined) q.hhLeft = C.monthOf(S.t) >= C.ESC_SIDE.hedgehogFrom ? C.ESC_SIDE.hedgehogs : 0;
     ev.push({ t: "command", id: q.id, name: q.name });
   };
+  /* the hedgehog: a ring of 24 bombs ahead of her, that go off only on a hull */
+  function hedgehog(S, sh, ev) {
+    const X = C.ESC_SIDE;
+    if (C.monthOf(S.t) < X.hedgehogFrom) { ev.push({ t: "noHedgehog" }); return; }
+    if ((sh.hhLeft || 0) <= 0) { ev.push({ t: "noHedgehog", empty: true }); return; }
+    sh.hhLeft--;
+    const cx = sh.x + PP.hx(sh.hdg) * X.hhRange, cy = sh.y + PP.hy(sh.hdg) * X.hhRange;
+    for (let i = 0; i < 24; i++) { const an = i / 24 * PP.TAU; S.charges.push({ id: S.nextId++, x: cx + Math.cos(an) * X.hhRing, y: cy + Math.sin(an) * X.hhRing, z: 0, set: 900, by: sh.id, hh: true }); }
+    S.stats.hedgehogs = (S.stats.hedgehogs || 0) + 1;
+    ev.push({ t: "hedgehogAway", id: sh.id });
+  }
+
+  /* the attack as her bridge sees it (read only, for the dashboard and the map's panel): the freshest contact any
+   * of ours holds, where it is now, where it will be when what she fires reaches its depth, and whether firing now
+   * puts it there. over: the pattern laid now lies across that point (the hedgehog: the point is in its ring);
+   * near: close enough to stand by. ready / need: the charges loaded for the pattern, and how many it takes */
+  Esc.solution = (S, f) => {
+    const X = C.ESC_SIDE, best = Esc.mine(S).filter(q => q.ai.datum && q.ai.contact).sort((a, b) => b.ai.contact - a.ai.contact)[0];
+    const k = f.patK || 0, hh = k === C.ESC_PATTERNS.length, P = C.ESC_PATTERNS[hh ? 0 : k];
+    const d = f.dcr || { P: 0, S: 0, R: 0 }, two = P.deep ? 2 : 1, side = P.throws.length * two;
+    const ready = hh ? Math.min(1, f.hhLeft || 0) : Math.min(P.rails * two, d.R) + Math.min(side, d.P) + Math.min(side, d.S), need = hh ? 1 : C.patCount(P);
+    const out = { hh, ready, need, contact: null };
+    if (!best || S.t - best.ai.contact > 900) return out;
+    const c = best.ai.datum, age = S.t - best.ai.contact, since = S.t - (c.t !== undefined ? c.t : best.ai.contact);
+    const surf = best.ai.how === "eye" || best.ai.how === "radar", dz = surf ? 0 : best.ai.dz || 150;
+    const nx = c.x + (c.vx || 0) * since, ny = c.y + (c.vy || 0) * since;
+    const lead = since + (surf ? 0 : hh ? dz / X.hhSink + 2.6 : Esc.sinkT(dz));
+    const ax = c.x + (c.vx || 0) * lead, ay = c.y + (c.vy || 0) * lead, ra = PP.dist(f.x, f.y, ax, ay);
+    const off = Math.abs(PP.angDiff(f.hdg, PP.angTo(f.x, f.y, ax, ay)));
+    const over = age < 60 && (hh ? Math.abs(ra * Math.cos(off) - X.hhRange) < X.hhRing + 15 && ra * Math.sin(off) < X.hhRing + 15
+      : ra < (P.rails - 1) * C.DC.spacing / 2 + 40);
+    out.contact = { by: best, how: best.ai.how, age, surf, dz, brg: PP.angTo(f.x, f.y, nx, ny), rng: PP.dist(f.x, f.y, nx, ny),
+      aim: { x: ax, y: ay }, aimRng: ra, over, near: !over && ra < (hh ? 700 : 600) };
+    return out;
+  };
+
   /* her launchers: P and S, the charges ready in the port and starboard throwers, R those in the racks down to the
    * rails; dcLeft counts every charge aboard, so what is not in a launcher is below, in reserve. Made when first
    * wanted, from what she has (an older save has none) */

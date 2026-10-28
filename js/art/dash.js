@@ -61,9 +61,10 @@
     needle(g, cx, cy, r - 7, sweep(s.depth / top), s.depth > test ? HOT : AMBER, 2);
   }
   function vbar(g, x, y, w, h, v, col) { well(g, x, y, w, h); const n = Math.round(PP.clamp(v, 0, 1) * (h - 2)); K.rect(g, x + 1, y + h - 1 - n, w - 2, n, col); for (let k = 1; k < 10; k++) K.rect(g, x + 1, y + Math.round(h * k / 10), w - 2, 1, INK); }
-  function sonarScope(g, cx, cy, r, S, f, now) {
+  /* the sonar scope: each contact ours hold, out to reach yards; aim, where what she fires should go (a cross) */
+  function sonarScope(g, cx, cy, r, S, f, now, reach = 6000, aim = null) {
     dial(g, cx, cy, r); K.ring(g, cx, cy, Math.round(r * 0.5), DIM);
-    const reach = 6000, hd = f.hdg;
+    const hd = f.hdg;
     tick(g, cx, cy, 0, r - 3, hd, DIM);
     if (f.ping) { const a = (now / 900) % PP.TAU; tick(g, cx, cy, 0, r - 3, a, "rgba(143,227,161,.5)"); }
     for (const q of PP.Escort.mine(S)) {
@@ -71,6 +72,10 @@
       const b = PP.angTo(f.x, f.y, ai.datum.x, ai.datum.y), d = PP.dist(f.x, f.y, ai.datum.x, ai.datum.y), age = S.t - ai.contact;
       const [x, y] = at(cx, cy, Math.min(r - 4, (r - 4) * d / reach), b);
       K.disc(g, x, y, 2, 2, age < 60 ? AMBER : age < 300 ? "#c98a3c" : DIM);
+    }
+    if (aim) {
+      const [x, y] = at(cx, cy, Math.min(r - 4, (r - 4) * aim.rng / reach), aim.brg), col = aim.over ? AMBER : "#c98a3c";
+      K.rect(g, x - 3, y, 7, 1, col); K.rect(g, x, y - 3, 1, 7, col);
     }
     K.disc(g, cx, cy, 1.5, 1.5, "#fff0e6");
   }
@@ -223,7 +228,7 @@
     const sp = f.spd / k.kn;
     let made = 0;
     for (let i = 1; i < n; i++) if (sp >= bf[i - 1]) made = i - 1 + PP.clamp((sp - bf[i - 1]) / (bf[i] - bf[i - 1]), 0, 1);
-    const w = Math.max(18, Math.round(r * 0.5)), h = 9;
+    const w = Math.max(18, Math.round(r * 0.46)), h = 12;
     for (let i = 0; i < n; i++) {
       const a = sweep(i / (n - 1)), [x, y] = at(cx, cy, r * 0.64, a);
       tick(g, cx, cy, r - 7, r - 2, a, i === f.bell ? AMBER : TICK);
@@ -271,17 +276,17 @@
    * a mark every 50 feet; drag it, or the arrows at its ends for a step */
   function depthSlider(g, f, x, y, w, h, btn) {
     const X = C.ESC_SIDE, lo = X.dcSet[0], hi = X.dcSet[1], cx = x + 9;
-    btn("setU", "&#9650;", cx - 7, y, 14, 10, { act: "shallower", title: "Shallower (Q)" });
-    btn("setD", "&#9660;", cx - 7, y + h - 10, 14, 10, { act: "deeper", title: "Deeper (E)" });
-    const y0 = y + 13, y1 = y + h - 13, Y = d => Math.round(y0 + d / hi * (y1 - y0));
+    btn("setU", "&#9650;", cx - 7, y, 14, 12, { act: "shallower", label: "Shallower", title: "Shallower (Q; Shift+Q 100 feet)" });
+    btn("setD", "&#9660;", cx - 7, y + h - 12, 14, 12, { act: "deeper", label: "Deeper", title: "Deeper (E; Shift+E 100 feet)" });
+    const y0 = y + 15, y1 = y + h - 15, Y = d => Math.round(y0 + d / hi * (y1 - y0));
     K.rect(g, cx - 1, y0, 3, y1 - y0 + 1, INK); K.rect(g, cx, y0, 1, y1 - y0 + 1, DIM);
     K.rect(g, cx - 5, y0, 11, 1, "#6fb2d6");
     for (let d = lo; d <= hi; d += 50) K.rect(g, cx + 3, Y(d), d % 100 ? 2 : 4, 1, TICK);
     const yy = Y(f.dcSet);
     K.rect(g, cx - 5, yy - 1, 11, 3, AMBER);
     lab("surf", "Surface", cx + 7, y0, "dl sm sea", "lm");
-    lab("set", `<b>${f.dcSet}</b> <span class="c">ft</span>`, cx + 9, Math.max(yy, y0 + 8), "dl sm amber", "lm");
-    btn("depth", "", x, y0 - 3, w, y1 - y0 + 7, { cls: "slide", slide: { y0, y1, lo, max: hi, step: 25, act: "depth", v: f.dcSet }, title: `Charges set for ${f.dcSet} feet: drag for ${lo} to ${hi}` });
+    lab("set", `<b>${f.dcSet}</b> <span class="c">ft</span>`, cx + 9, Math.max(yy, y0 + 8), "dl sm read", "lm");
+    btn("depth", "", x, y0 - 3, w, y1 - y0 + 7, { cls: "slide", slide: { y0, y1, lo, max: hi, step: 25, act: "depth", v: f.dcSet }, label: "Charges' depth", title: `Charges set for ${f.dcSet} feet: drag for ${lo} to ${hi}` });
   }
 
   /* her stern from above: the throwers down each side, a charge in each one loaded, and the racks down to her two
@@ -289,7 +294,7 @@
    * is below, in reserve; under her the button that lays the pattern */
   const blinks = new Map();
   let lastRacks = null;
-  function stern(g, S, f, x, y, w, h, now, btn, sel) {
+  function stern(g, S, f, x, y, w, h, now) {
     const X = C.ESC_SIDE, d = f.dcr || { P: 0, S: 0, R: 0, tP: 0, tS: 0, tR: 0 }, res = Math.max(0, f.dcLeft - d.P - d.S - d.R);
     if (lastRacks && lastRacks.id === f.id) for (const k of ["P", "S", "R"]) for (let i = d[k]; i < lastRacks[k]; i++) blinks.set(k + i, now);
     lastRacks = { id: f.id, P: d.P, S: d.S, R: d.R };
@@ -318,13 +323,34 @@
     const rx0 = x + 40, per = Math.max(4, Math.floor((x + w - rx0) / 4)), below = X.charges - X.throwers * 2 - X.rails;
     lab("reserve", `<span class="c">Reserve</span><b>${res}</b>`, rx0, top + 4, "dl sm", "lm");
     for (let i = 0; i < below; i++) K.rect(g, rx0 + (i % per) * 4, top + 11 + Math.floor(i / per) * 4, 3, 3, i < res ? "#c98a3c" : "#2a1410");
-    const P = C.ESC_PATTERNS[sel];
-    btn("pattern", f.pat ? "Laying&hellip;" : "Lay charges", x, y + h - 17, w, 16, { act: "fire", cls: "danger", on: !!f.pat, title: `Lay the ${P.name.toLowerCase()} pattern, ${C.patCount(P)} charges (Space)` });
+  }
+
+  /* the attack, beside the dials: what the contact is and where, and a lamp that says when to fire. RUN IN (an
+   * empty ring), STAND BY (a ring round a point), OVER HER or, for the hedgehog, IN RANGE (filled): it reads by its
+   * word and its shape as well as its light */
+  function attackPanel(g, f, sol, x, y, w, h) {
+    well(g, x, y, w, h);
+    const c = sol.contact;
+    if (!c) {
+      lab("ct", `<span class="c">Contact</span><b>none</b>`, x + 4, y + 7, "dl", "lm");
+      lab("ct0", "Under 15 kn to listen", x + 4, y + 17, "dl sm", "lm");
+      lab("ct1", "X pings, and they hear it", x + 4, y + 25, "dl sm", "lm");
+    } else {
+      lab("ct", `<span class="c">${c.how === "sonar" ? "Sonar" : c.how === "ear" ? "Heard" : "Sighted"}</span><b>${c.age < 60 ? "now" : Math.round(c.age / 60) + " min ago"}</b>`, x + 4, y + 7, "dl", "lm");
+      const rows = [["Bearing", PP.deg3(c.brg)], ["Range", PP.num(Math.round(c.rng / 25) * 25) + " yd"], ["Depth", c.surf ? "surface" : "about " + Math.round(c.dz / 25) * 25 + " ft"]];
+      rows.forEach(([l, v], i) => lab("ct" + i, `<span class="c">${l}</span><b>${v}</b>`, x + 4, y + 18 + i * 9, "dl", "lm"));
+      if (!c.surf && !sol.hh && Math.abs(f.dcSet - c.dz) > 50) lab("ctw", `Charges set ${f.dcSet} ft`, x + 4, y + 45, "dl sm amber", "lm");
+    }
+    const st = c ? (c.over ? 2 : c.near ? 1 : 0) : -1, ly = y + h - 9, lx = x + 9;
+    K.ring(g, lx, ly, 4, st >= 0 ? AMBER : DIM);
+    if (st === 1) K.disc(g, lx, ly, 1.5, 1.5, AMBER);
+    if (st === 2) K.disc(g, lx, ly, 4, 4, AMBER);
+    lab("lamp", st === 2 ? (sol.hh ? "IN RANGE" : "OVER HER") : st === 1 ? "STAND BY" : st === 0 ? "RUN IN" : "NO CONTACT", x + 17, ly, "dl lamp" + (st === 2 ? " lit" : st >= 0 ? " read" : ""), "lm");
   }
 
   function escGauges(g, S, ui, now, bt, btn) {
     const f = PP.Escort.flag(S); if (!f) return;
-    const k = C.SHIPS[f.cls], X = C.ESC_SIDE;
+    const k = C.SHIPS[f.cls], X = C.ESC_SIDE, sol = PP.Escort.solution(S, f), c = sol.contact;
     /* three dials across the top, the telegraph, the compass and the sonar, one size, as big as the band's height
      * and its width (clear of the buttons on the right) allow, each with its reading under it; the charges under them */
     const r = Math.max(14, Math.min(Math.round(Math.min(bt.w * 0.075, (bt.h - 84) / 2.8) * 1.4), Math.floor((bt.w - 154) / 6)));
@@ -336,12 +362,15 @@
     gx += r * 2 + 18;
     compass(g, gx, gy, r, f.hdg, f.ordHdg);
     odo("hdg", ((f.hdg / PP.DEG) % 360 + 360) % 360, 3, 0, gx, oy, "", 360);
-    btn("helmL", "&#9664;", gx - r - 8, gy + r - 10, 14, 12, { hold: "hL" }); btn("helmR", "&#9654;", gx + r - 6, gy + r - 10, 14, 12, { hold: "hR" });
-    /* the sonar scope and its P / A switch */
+    btn("helmL", "&#9664;", gx - r - 8, gy + r - 10, 14, 12, { hold: "hL", label: "Helm to port", title: "Helm to port (A)" });
+    btn("helmR", "&#9654;", gx + r - 6, gy + r - 10, 14, 12, { hold: "hR", label: "Helm to starboard", title: "Helm to starboard (D)" });
+    /* the sonar scope and its P / A switch; close on a fresh contact it reaches 2,000 yards, not 6,000 */
     gx += r * 2 + 18;
-    sonarScope(g, gx, gy, r, S, f, now);
-    btn("pa", f.ping ? "A · active" : "P · passive", gx - 26, oy - 6, 52, 12, { act: "silent", on: !!f.ping, title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too" });
-    if (f.spd > C.DET.hydFastKn) lab("deaf", "too fast to hear", gx, gy + Math.round(r * 0.6), "dl sm amber", "cm");
+    const reach = c && c.age < 120 && c.rng < 1600 ? 2000 : 6000;
+    sonarScope(g, gx, gy, r, S, f, now, reach, c && { rng: c.aimRng, brg: PP.angTo(f.x, f.y, c.aim.x, c.aim.y), over: c.over });
+    lab("reach", PP.num(reach) + " yd", gx, gy + Math.round(r * 0.78), "dl sm", "cm");
+    btn("pa", f.ping ? "A · active" : "P · passive", gx - 26, oy - 6, 52, 12, { act: "silent", on: !!f.ping, label: f.ping ? "Sonar active, pinging" : "Sonar passive, listening", title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too (X)" });
+    if (f.spd > C.DET.hydFastKn) lab("deaf", "too fast to hear", gx, gy - Math.round(r * 0.45), "dl sm amber", "cm");
     /* the charges: the patterns to pick from, the depth they are set for, her launchers and what is below, and the
      * hedgehog; the patterns and the hedgehog drawn as they lie on the sea, at one scale */
     const px = bt.x + 6, py = oy + 10, pw = bt.w - 108, ph = Math.max(40, bt.y + bt.h - 16 - py), SL = 38, SW = 84;
@@ -351,22 +380,32 @@
     C.ESC_PATTERNS.forEach((P, i) => {
       const x = px + 3 + i * (cw + 3), y = py + 3;
       patDiagram(g, x, y, cw, ch, P, sc, i === sel);
-      btn("pat" + i, cw >= 44 ? `${P.name} ${C.patCount(P)}` : String(C.patCount(P)), x, y, cw, ch, { act: "pat" + i, cls: "pick", on: i === sel, title: `${P.name} pattern: ${C.patCount(P)} charges${P.deep ? ", in two layers" : ""}` });
+      const n = C.patCount(P);
+      btn("pat" + i, cw >= 44 ? `${P.name} ${n}` : String(n), x, y, cw, ch, { act: "pat" + i, cls: "pick", on: i === sel, dim: f.dcLeft < n,
+        label: `${P.name} pattern, ${n} charges`, title: `${P.name} pattern: ${n} charges${P.deep ? ", in two layers" : ""}${f.dcLeft < n ? `; only ${f.dcLeft} aboard` : ""} (V)` });
     });
     /* the depth, then her stern with its launchers, between the patterns and the hedgehog */
     const x2 = px + 3 + 3 * (cw + 3) + 1, hx = px + pw - 3 - cw;
     depthSlider(g, f, x2, py + 3, SL, ch, btn);
-    stern(g, S, f, x2 + SL + 4, py + 3, hx - 5 - (x2 + SL + 4), ch, now, btn, sel);
-    /* the hedgehog: its ring ahead of her, the cell its trigger */
+    const sx = x2 + SL + 4, sw = hx - 5 - sx;
+    stern(g, S, f, sx, py + 3, sw, ch, now);
+    /* the hedgehog: its ring ahead of her, a fourth choice for the one trigger */
     const hh = C.monthOf(S.t) >= X.hedgehogFrom, hn = f.hhLeft || 0;
     hhDiagram(g, hx, py + 3, cw, ch, sc, hh && hn > 0);
-    btn("hedgehog", cw >= 44 ? `Hedgehog ${hn}` : String(hn), hx, py + 3, cw, ch, { act: "bank", cls: "pick", dim: !hh, title: hh ? `Hedgehog: a ring of 24 bombs ${X.hhRange} yards ahead, that go off only on a hull (${hn} left)` : "Not fitted until Year III" });
+    btn("hedgehog", cw >= 44 ? `Hedgehog ${hn}` : String(hn), hx, py + 3, cw, ch, { act: "pat" + C.ESC_PATTERNS.length, cls: "pick", on: sol.hh, dim: !hh || hn <= 0,
+      label: hh ? `Hedgehog, ${hn} salvoes left` : "Hedgehog, not fitted", title: hh ? `Hedgehog: a ring of 24 bombs ${X.hhRange} yards ahead, that go off only on a hull; ${hn} left (V, or F to fire it at once)` : "Not fitted until Year III" });
+    /* the one trigger: what it fires, whether it is ready, and lit when the lamp says over her */
+    const none = sol.hh ? hn <= 0 : f.dcLeft <= 0, P = C.ESC_PATTERNS[sel];
+    const word = f.pat ? "Laying&hellip;" : none ? (sol.hh ? "Hedgehog empty" : "No charges") : sol.hh ? "Fire hedgehog" : sol.ready < sol.need ? `Lay ${sol.ready} of ${sol.need}` : "Lay charges";
+    btn("pattern", word, sx, py + 3 + ch - 17, sw, 16, { act: "fire", cls: "danger" + (f.pat ? " on" : "") + (c && c.over && !none ? " ready" : ""), dim: none,
+      title: sol.hh ? "Fire the hedgehog (Space)" : `Lay the ${P.name.toLowerCase()} pattern, ${sol.need} charges${sol.ready < sol.need ? `; ${sol.ready} loaded, the crews are reloading` : ""} (Space)` });
     const cx = bt.x + bt.w - 90;
     let yy = bt.y + 6;
     btn("guns", "Guns", cx, yy, 84, 13, { act: "gun" }); yy += 15;
     btn("next", "Next escort <kbd>N</kbd>", cx, yy, 84, 13, { act: "boatNext", dim: PP.Escort.mine(S).length < 2 }); yy += 15;
     const hull = Math.max(0, 1 - f.dmg / k.hp);
     lab("hull", `<span class="c">Hull</span><b>${Math.round(hull * 100)}%</b>`, cx + 2, yy + 8, "dl" + (hull < 0.5 ? " red" : ""), "lm");
+    attackPanel(g, f, sol, cx, yy + 17, 84, bt.y + bt.h - 16 - (yy + 17));
     lab("name", `<b>${PP.esc(f.name)}</b> <span class="c">${PP.esc(k.name)} · PDF</span>`, bt.x + 8, bt.y + bt.h - 7, "dl", "lm");
   }
 
