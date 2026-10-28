@@ -153,7 +153,8 @@
         n.setAttribute("role", "slider"); n.setAttribute("aria-orientation", "vertical");
         n.setAttribute("aria-valuemin", s.lo); n.setAttribute("aria-valuemax", s.max); n.setAttribute("aria-valuenow", s.v); n.setAttribute("aria-valuetext", s.v + " feet");
       }
-      const css = `left:${Math.round(B.x * k)}px;top:${Math.round(B.y * k)}px;width:${Math.round(B.w * k)}px;height:${Math.round(B.h * k)}px;font-size:${Math.max(10, Math.round(Math.min(B.h * k * 0.62, 6.2 * k)))}px`;
+      const css = `left:${Math.round(B.x * k)}px;top:${Math.round(B.y * k)}px;width:${Math.round(B.w * k)}px;height:${Math.round(B.h * k)}px;font-size:${Math.max(10, Math.round(Math.min(B.h * k * 0.62, 6.2 * k)))}px` +
+        (B.fill !== undefined ? `;--fill:${B.fill.toFixed(2)}` : "");
       if (n.dataset.css !== css) { n.dataset.css = css; n.style.cssText = css; }
     }
     for (const [id, n] of dbs) if (!seen.has(id)) { n.remove(); dbs.delete(id); }

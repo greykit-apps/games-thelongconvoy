@@ -165,7 +165,20 @@
   /* throwers: a side's throwers, a charge ready in each; rails: the charges ready in the racks down to her two stern
    * rails; loadThrow / loadRail: seconds for a crew to load the next one from below (a side's throwers and the rails
    * each have their own crew), quick enough that a pattern is ready again by the time the last one is laid */
-  C.ESC_SIDE = { charges: 60, throwers: 4, rails: 8, loadThrow: 2, loadRail: 1.5, dcSet: [50, 600], hedgehogFrom: 30, hedgehogs: 8, hhRange: 250, hhSink: 23, hhRing: 40, hhHit: 14, gunReload: 4 };
+  /* a shell's flight, yards a second (for when its splash shows) */
+  C.SHELL_YPS = 800;
+  C.ESC_SIDE = { charges: 60, throwers: 4, rails: 8, loadThrow: 6, loadRail: 3, dcSet: [50, 600], hedgehogFrom: 30, hedgehogs: 8, hhRange: 250, hhSink: 23, hhRing: 40, hhHit: 14 };
+  /* an escort's guns, by her class: each mount forward (bearing from right ahead to arc degrees either side) or aft
+   * (from arc degrees off the bow round to right astern), its reach in yards, its reload in seconds, how fast it
+   * trains (degrees a second) and how hard its shells hit. A destroyer has A and B forward and X aft; every escort
+   * a pom-pom aft, for close work */
+  const POM = { k: "pom", fwd: false, arc: 25, range: 2000, reload: 1.5, train: 50, dmg: 0.4 };
+  const MAIN = (k, fwd, arc) => ({ k, fwd, arc, range: 6000, reload: 4, train: 35, dmg: 1 });
+  C.ESC_GUNS = {
+    destroyer: [MAIN("A", true, 150), MAIN("B", true, 150), MAIN("X", false, 35), POM],
+    frigate: [MAIN("A", true, 150), POM],
+    chaser: [MAIN("A", true, 150), POM],
+  };
   /* the patterns you can order. rails: charges rolled off her stern, one every C.DC.spacing yards along her track,
    * the first as you order it; throws: [after which rail, yards out on either beam], a charge each side off the
    * throwers; deep: every charge doubled by a heavy one that much deeper (feet). The diamond is the light pattern,

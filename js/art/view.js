@@ -124,7 +124,7 @@
     }
     crests(g, S, o, f, hz, x0, x1, y1, eyeYd, tt);
     /* ---- the ships, far to near ---- */
-    const drawn = [];
+    const drawn = [], boatsDrawn = [];
     /* the boats of the pack on the surface, as ships to the eye (the one looking is under 30 yards, and left out) */
     const boats = (S.subs || []).filter(q => !q.lost && q.depth <= 2).map(q => ({ id: "b" + q.id, boat: true, cls: "sub", x: q.x, y: q.y, hdg: q.hdg, spd: q.spd, sinking: 0, fire: 0, lit: false }));
     const list = S.ships.concat(boats).filter(sh => sh.id !== o.self && !(sh.sunk && S.t - sh.sunkT > 60)).map(sh => ({ sh, d: PP.dist(o.x, o.y, sh.x, sh.y), b: PP.angTo(o.x, o.y, sh.x, sh.y) })).filter(q => q.d > 30 && inView(q.b)).sort((a, b) => b.d - a.d);
@@ -169,6 +169,7 @@
       }
       if (sh.fire > 0.05 && Math.random() < sh.fire * 0.25) FX.smoke(sh.x + (Math.random() - 0.5) * k.len * 0.5, sh.y + (Math.random() - 0.5) * 20, 20, { r: 10 + k.len * 0.1, dark: 0.85 });
       if (!sh.boat) drawn.push({ id: sh.id, x, y: wl - spr.top * kk * 0.5, top: wl - spr.top * kk, wl, d: q.d, px, haze });
+      else boatsDrawn.push({ id: +sh.id.slice(1), x, top: wl - spr.top * kk, wl, d: q.d, px, haze });
     }
     /* ---- our torpedoes' wakes, by day ---- */
     if (L > 0.35) for (const tp of S.torps) {
@@ -276,6 +277,6 @@
     if (S.wx.vis < 0.5) { g.fillStyle = K.mix(horizonCol, "#8a929a", 0.3); g.globalAlpha = (0.5 - S.wx.vis) * 0.7; g.fillRect(x0, y0, x1 - x0, hz - y0 + 8); g.globalAlpha = 1; }
     g.restore();
     const late = () => { g.save(); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); g.clip(); fxDraw(true); g.restore(); };
-    return { f, hz, drawn, toX, x0, x1, y0, y1, late };
+    return { f, hz, drawn, boats: boatsDrawn, toX, x0, x1, y0, y1, late };
   };
 })();

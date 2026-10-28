@@ -20,9 +20,9 @@
     FX.add({ k: "flash", x, y, h: 30, r: 60 * big, life: 0.35 });
     for (let i = 0; i < 6 * big; i++) FX.add({ k: "smoke", x: x + rnd(-30, 30), y: y + rnd(-30, 30), z: rnd(10, 60), r: rnd(20, 40), grow: rnd(10, 22), vz: rnd(8, 16), life: rnd(8, 16), dark: 0.8 });
   };
-  FX.shell = (x, y, hit) => {
-    if (hit) { FX.add({ k: "flash", x, y, h: 20, r: 25, life: 0.2 }); FX.add({ k: "smoke", x, y, z: 20, r: 12, grow: 8, vz: 6, life: 6, dark: 0.7 }); }
-    else FX.add({ k: "column", x, y, h: 45, w: 10, life: 1.8 });
+  FX.shell = (x, y, hit, delay = 0) => {
+    if (hit) { FX.add({ k: "flash", x, y, h: 20, r: 25, life: 0.2, delay }); FX.add({ k: "smoke", x, y, z: 20, r: 12, grow: 8, vz: 6, life: 6, dark: 0.7, delay }); }
+    else FX.add({ k: "column", x, y, h: 45, w: 10, life: 1.8, delay });
   };
   /* something thrown: from (x, y), z feet up, to (tx, ty) on the water, peaking hp feet higher, dur seconds in the
    * air, sz feet across; then its splash, big times a charge's */

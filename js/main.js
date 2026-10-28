@@ -238,9 +238,17 @@
         case "hedgehogAway": SFX.play("splashes", 0.5); toast("Hedgehog away", "amber", 1600); break;
         case "noHedgehog": toast(e.empty ? "The hedgehog is empty" : "No hedgehog fitted yet", "amber", 1800); break;
         case "noGunTarget": toast("No boat in sight on the surface", "amber", 1600); break;
-        case "escortGun": SFX.play("gun", 0.6); break;
-        case "eGunHit": SFX.play("shellHit", 0.7); toast("A hit on her!", "green", 1400); break;
-        case "eGunMiss": SFX.play("splash", 0.5); break;
+        case "gunHold": toast({ loading: "The guns are loading", training: "The guns are training round onto her", range: "Out of range of the guns that bear: turn to bring the main guns on her", arc: "None of her guns bear on her: turn toward her" }[e.why], e.why === "loading" ? "" : "amber", e.why === "loading" ? 900 : 1800); break;
+        case "eTarget": SFX.play("menu"); if (e.id !== null) toast(`Target: ${e.name}, ${PP.num(Math.round(e.d / 50) * 50)} yards${e.d >= C.ESC.gunRange ? ", out of the guns' range" : ""}`, "", 1600); break;
+        /* her own gun loud; the others' by how far off they are */
+        case "escortGun": {
+          const q = S.ships.find(o => o.id === e.id);
+          SFX.play("gun", f && e.id === f.id ? 1 : q && f ? PP.clamp(0.45 - PP.dist(q.x, q.y, f.x, f.y) / 12000, 0.06, 0.4) : 0.3);
+          break;
+        }
+        /* her shell's fall, heard when it lands */
+        case "eGunHit": setTimeout(() => { SFX.play("shellHit", 0.7); toast("A hit on her!", "green", 1400); }, e.d / C.SHELL_YPS * 1000); break;
+        case "eGunMiss": setTimeout(() => SFX.play("splash", 0.4), e.d / C.SHELL_YPS * 1000); break;
         case "dcBoom": { const d = f ? PP.dist(e.x, e.y, f.x, f.y) : 9999; SFX.play(e.hh ? "dcNear" : "dc", PP.clamp(1.2 - d / 3000, 0.15, 1)); if (e.hh) toast("A hedgehog has hit something!", "green", 2400); break; }
         case "escortContact": if (S.t - (game.warned.contact || -1e9) > 30) { game.warned.contact = S.t; const q = S.ships.find(o => o.id === e.id); SFX.play(e.how === "sonar" ? "pingNear" : "sighted"); toast(`${q ? q.name : "An escort"}: ${e.how === "sonar" ? "sonar contact" : e.how === "eye" ? "a boat sighted" : e.how === "radar" ? "radar contact" : "contact"}`, "amber", 2400); } break;
         case "subLost": SFX.play("sunk"); toast(`A boat is sunk${e.why === "crushed" ? ": crushed" : ": she flooded"}`, "green", 3600); break;
@@ -433,7 +441,7 @@
     const st = R.stationOf(S, game.ui), m = PP.Escort.mine(S), fresh = m.some(q => q.ai.contact && S.t - q.ai.contact < 60);
     const C2 = (k, w) => k.map(I.cap).join("") + " " + w;
     if (fresh) return ["danger", "Contact", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["Q", "E"], "charges' depth"), C2(["Space"], "pattern"), C2(["F"], "hedgehog")]];
-    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "her orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
+    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "her orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
   }
   function strip(S) {
     const s = S.sub, st = R.stationOf(S, game.ui), surf = Sub.surfaced(s), locked = S.tdc.tgt !== null;
@@ -591,6 +599,14 @@
         break;
       }
       case "gun": I.push({ a: "egun" }); break;
+      /* T: the next boat up in sight for her target, Shift+T the one before (nearest first) */
+      case "lock": {
+        const L = PP.Escort.sighted(S, f), t = PP.Escort.target(S, f);
+        if (!L.length) { toast("No boat in sight on the surface", "amber", 1600); break; }
+        const i = t ? L.findIndex(o => o.b.id === t.b.id) : -1;
+        I.push({ a: "eTarget", id: L[(i + (shift ? L.length - 1 : 1) + L.length) % L.length].b.id });
+        break;
+      }
       case "silent": I.push({ a: "ping" }); break;
       case "zoom": if (onMap) { u.chartZoom = (u.chartZoom + (shift ? PP.Chart.ZOOMS.length - 1 : 1)) % PP.Chart.ZOOMS.length; u.chartAt = null; SFX.play("menu"); } else u.bino = !u.bino; break;
       case "tcU": I.push({ a: "tc", d: 1 }); break;
@@ -863,6 +879,10 @@
       const mate = S.subs.map((q, i) => ({ q, i, d: PP.dist(q.x, q.y, p.x, p.y) })).filter(m => !m.q.lost).sort((a, b) => a.d - b.d)[0];
       if (mate && mate.d < 10 * z) { if (game.selIdx() === mate.i && mate.i !== S.cmd) I.push({ a: "command", i: mate.i }); else { game.ui.sel = mate.q.id; SFX.play("menu"); } return; }
       if (PP.modern()) I.push({ a: "hdg", v: PP.angTo(S.sub.x, S.sub.y, p.x, p.y) });
+    } else if (st === "ebridge" && R.last && R.last.view && R.last.view.boats) {
+      /* a boat up in sight, clicked in the view: her target */
+      const d = R.last.view.boats.filter(q => PP.Escort.flag(S) && PP.Escort.sighted(S, PP.Escort.flag(S)).some(o => o.b.id === q.id)).sort((a, b) => Math.abs(a.x - px) - Math.abs(b.x - px))[0];
+      if (d && Math.abs(d.x - px) < Math.max(14, d.px * 0.6) && py > d.top - 24 && py < d.wl + 18) I.push({ a: "eTarget", id: d.id });
     } else if ((st === "scope" || st === "bridge" || st === "ebridge") && R.last && R.last.view && S.side !== "escorts") {
       const d = R.last.view.drawn.filter(q => PP.Detect.known(S, PP.Ships.byId(S, q.id))).sort((a, b) => Math.abs(a.x - px) - Math.abs(b.x - px))[0];
       if (d && Math.abs(d.x - px) < Math.max(12, d.px * 0.6)) I.push({ a: "lock", id: d.id });

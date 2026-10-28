@@ -230,15 +230,26 @@
         break;
       }
       case "hedgehog": hedgehog(S, sh, ev); break;
+      /* the boat she means to shoot at: one of those up in sight, picked in the view or with T; none, the nearest */
+      case "eTarget": {
+        const b = a.id === null || a.id === undefined ? null : Esc.sighted(S, sh).find(o => o.b.id === a.id);
+        sh.gunTgt = b ? b.b.id : null;
+        ev.push({ t: "eTarget", id: sh.gunTgt, name: b ? b.b.name : "", d: b ? b.d : 0 });
+        break;
+      }
+      /* her guns: every one that is on her target, in its reach and loaded fires; none, and she says why */
       case "egun": {
-        if ((sh.gunT || 0) > 0) break;
-        const q = E_().afloat(S).filter(b => Sub.surfaced(b) && b.seenT !== undefined && S.t - b.seenT < 10).map(b => ({ b, d: PP.dist(sh.x, sh.y, b.x, b.y) })).filter(o => o.d < C.ESC.gunRange).sort((p, r) => p.d - r.d)[0];
+        const q = Esc.target(S, sh);
         if (!q) { ev.push({ t: "noGunTarget" }); break; }
-        sh.gunT = X.gunReload; S.stats.escShots = (S.stats.escShots || 0) + 1;
-        const p = 0.5 * Math.pow(1 - q.d / C.ESC.gunRange, 1.4) * (0.4 + Det.light(S) * 0.6);
-        if (PP.rand(S) < p) { S.stats.escHits = (S.stats.escHits || 0) + 1; Sub.hurt(S, 0.06 + PP.rand(S) * 0.08, "deck", ev, q.b, "gun"); ev.push({ t: "eGunHit", id: q.b.id }); }
-        else ev.push({ t: "eGunMiss", x: q.b.x + (PP.rand(S) - 0.5) * 120, y: q.b.y + (PP.rand(S) - 0.5) * 120 });
-        ev.push({ t: "escortGun", id: sh.id });
+        const G = Esc.guns(S, sh, q), go = G.filter(o => o.bears && o.load <= 0);
+        if (!go.length) { ev.push({ t: "gunHold", why: G.some(o => o.bears) ? "loading" : G.some(o => o.inArc && o.inRange) ? "training" : G.some(o => o.inArc) ? "range" : "arc" }); break; }
+        for (const o of go) {
+          o.m.t = o.g.reload; S.stats.escShots = (S.stats.escShots || 0) + 1;
+          const p = 0.5 * Math.pow(1 - q.d / o.g.range, 1.4) * (0.4 + Det.light(S) * 0.6);
+          if (PP.rand(S) < p) { S.stats.escHits = (S.stats.escHits || 0) + 1; Sub.hurt(S, (0.06 + PP.rand(S) * 0.08) * o.g.dmg, "deck", ev, q.b, "gun"); ev.push({ t: "eGunHit", id: q.b.id, d: q.d, k: o.g.k }); }
+          else ev.push({ t: "eGunMiss", x: q.b.x + (PP.rand(S) - 0.5) * 120, y: q.b.y + (PP.rand(S) - 0.5) * 120, d: q.d, k: o.g.k });
+          ev.push({ t: "escortGun", id: sh.id, by: q.b.id, k: o.g.k });
+        }
         break;
       }
       /* AUTO / USER CONTROL for the escort you are aboard: on AUTO her own captain sails her under her order */
@@ -281,6 +292,32 @@
    * of ours holds, where it is now, where it will be when what she fires reaches its depth, and whether firing now
    * puts it there. over: the pattern laid now lies across that point (the hedgehog: the point is in its ring);
    * near: close enough to stand by. ready / need: the charges loaded for the pattern, and how many it takes */
+  /* the boats up in sight: on the surface and seen in the last few seconds, the nearest first */
+  Esc.sighted = (S, sh) => E_().afloat(S).filter(b => Sub.surfaced(b) && b.seenT !== undefined && S.t - b.seenT < 10)
+    .map(b => ({ b, d: PP.dist(sh.x, sh.y, b.x, b.y) })).sort((p, r) => p.d - r.d);
+  /* her target: the boat picked, while she is up in sight; else the nearest that is */
+  Esc.target = (S, sh) => { const L = Esc.sighted(S, sh); return L.find(o => o.b.id === sh.gunTgt) || L[0] || null; };
+  /* her guns as mounted (C.ESC_GUNS): each one's training, radians off where it stows (right ahead for a gun
+   * forward, right astern for one aft), and the seconds left on its reload. Made when first wanted */
+  Esc.mounts = sh => {
+    const G = C.ESC_GUNS[sh.cls] || C.ESC_GUNS.frigate;
+    if (!sh.gm || sh.gm.length !== G.length) sh.gm = G.map(() => ({ u: 0, t: 0 }));
+    return sh.gm;
+  };
+  /* each gun against a boat: where to lay it (as far round as its arc lets it), whether she is in its arc and its
+   * reach, whether it is on her (within a couple of degrees), its reload, and where it points now off her bow */
+  Esc.guns = (S, sh, t = Esc.target(S, sh)) => {
+    const G = C.ESC_GUNS[sh.cls] || C.ESC_GUNS.frigate, M = Esc.mounts(sh);
+    const rel = t ? PP.angDiff(sh.hdg, PP.angTo(sh.x, sh.y, t.b.x, t.b.y)) : 0;
+    return G.map((g, i) => {
+      const lim = (g.fwd ? g.arc : 180 - g.arc) * PP.DEG, want = t ? (g.fwd ? rel : PP.angDiff(Math.PI, rel)) : 0;
+      const inArc = !!t && Math.abs(want) <= lim, inRange = !!t && t.d < g.range, aim = PP.clamp(want, -lim, lim);
+      const on = inArc && Math.abs(M[i].u - aim) < 2 * PP.DEG;
+      return { g, m: M[i], aim, rel: g.fwd ? M[i].u : Math.PI + M[i].u, inArc, inRange, bears: on && inRange, load: M[i].t };
+    });
+  };
+  /* whether any gun of hers would fire on her target now */
+  Esc.gunReady = (S, sh) => Esc.guns(S, sh).some(o => o.bears && o.load <= 0);
   Esc.solution = (S, f) => {
     const X = C.ESC_SIDE, best = Esc.mine(S).filter(q => q.ai.datum && q.ai.contact).sort((a, b) => b.ai.contact - a.ai.contact)[0];
     const k = f.patK || 0, hh = k === C.ESC_PATTERNS.length, P = C.ESC_PATTERNS[hh ? 0 : k];
@@ -312,9 +349,12 @@
     return sh.dcr;
   };
   Esc.reserve = sh => { const d = Esc.racks(sh); return Math.max(0, (sh.dcLeft || 0) - d.P - d.S - d.R); };
-  /* the crews load the launchers from below, one charge at a time each */
+  /* the crews load the launchers from below, one charge at a time each (a thrower's crew six seconds a charge, the
+   * racks three), and stand clear while a pattern is going: so a pattern drains them, and a big one takes a while
+   * to come back from */
   function reload(sh, dt) {
     const X = C.ESC_SIDE, d = Esc.racks(sh);
+    if (sh.pat) return;
     for (const [k, cap, t] of [["P", X.throwers, X.loadThrow], ["S", X.throwers, X.loadThrow], ["R", X.rails, X.loadRail]]) {
       if (d[k] >= cap || Esc.reserve(sh) <= 0) { d["t" + k] = 0; continue; }
       d["t" + k] += dt;
@@ -334,7 +374,9 @@
   }
   Esc.user = (S, sh, dt, ev) => {
     sh.lit = false;
-    if (sh.gunT > 0) sh.gunT = Math.max(0, sh.gunT - dt);
+    /* her guns train round toward her target (back to where they stow with none), never across their own dead arc,
+     * and reload */
+    for (const o of Esc.guns(S, sh)) { const st = o.g.train * PP.DEG * dt; o.m.u += PP.clamp(o.aim - o.m.u, -st, st); if (o.m.t > 0) o.m.t = Math.max(0, o.m.t - dt); }
     reload(sh, dt);
     /* the rest of an ordered pattern, off the rails along her track */
     if (sh.pat) {

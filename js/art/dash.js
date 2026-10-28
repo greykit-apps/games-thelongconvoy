@@ -116,7 +116,17 @@
       btn("power", S.sub.scope.hi ? "Low power" : "High power", st.x + bw + 68, st.y + 2, 58, st.h - 4, { act: "zoom" });
     } else btn("glasses", ui.bino ? "Glasses down" : "Glasses", st.x + bw + 6, st.y + 2, 58, st.h - 4, { act: "zoom", on: !!ui.bino });
     if (esc) {
-      btn("guns", "Guns <kbd>G</kbd>", st.x + bw + 68, st.y + 2, 50, st.h - 4, { act: "gun", title: "Her guns, on a boat up in sight (G)" });
+      /* her guns: dark with nothing up in sight; live (the trigger's amber, its lamp lit) when one is on her target,
+       * in reach and loaded; reloading, the bar along the foot filling as the next round goes in; the tip says which
+       * bear, or why none do */
+      const f = PP.Escort.flag(S), tg = f && PP.Escort.target(S, f), G = tg ? PP.Escort.guns(S, f, tg) : [], bear = G.filter(o => o.bears), ready = bear.some(o => o.load <= 0);
+      const why = !tg ? "" : ready ? "fire (G)" : bear.length ? "loading" : G.some(o => o.inArc && o.inRange) ? "training round" : G.some(o => o.inArc) ? "out of range of those that bear" : "none bear on her";
+      const names = bear.map(o => o.g.k === "pom" ? "the pom-pom" : o.g.k).join(", ");
+      btn("guns", "<i class=\"lamp\"></i>Guns <kbd>G</kbd>", st.x + bw + 68, st.y + 2, 50, st.h - 4, { act: "gun", dim: !tg,
+        cls: "guns" + (tg ? " danger" + (ready ? " ready" : bear.length ? " loading" : "") : ""),
+        fill: bear.length && !ready ? Math.max(...bear.map(o => 1 - o.load / o.g.reload)) : undefined,
+        label: !tg ? "Guns, nothing in sight" : `Guns, ${ready ? "ready" : why}`,
+        title: tg ? `Guns: ${tg.b.name}, ${Math.round(tg.d).toLocaleString()} yd; ${bear.length ? `${names} bear${bear.length === 1 ? "s" : ""}; ` : ""}${why}` : "Her guns: nothing up in sight (G)" });
       btn("next", "Next escort <kbd>N</kbd>", st.x + bw + 122, st.y + 2, 78, st.h - 4, { act: "boatNext", dim: PP.Escort.mine(S).length < 2, title: "Take command of the next escort (N)" });
     }
     if (!esc) {
