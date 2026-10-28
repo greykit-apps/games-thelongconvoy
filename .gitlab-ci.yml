@@ -24,8 +24,13 @@ deploy:
   image: debian:bookworm-slim
   only:
     - main
+  # A deploy takes seconds; the rsync retries below add at most ~8 minutes.
+  # Without this a stalled job runs to the project's 60-minute limit, ends as
+  # job_token_expired, and holds the production resource group all the while.
+  timeout: 10m
   before_script:
-    - apt-get update -qq && apt-get install -y -qq openssh-client rsync > /dev/null 2>&1
+    # Output left visible: when the job stalls here, the log says which step.
+    - apt-get update -q && apt-get install -y -q openssh-client rsync
     - mkdir -p ~/.ssh
     - cp "$DREAMHOST_SSH_KEY" ~/.ssh/id_rsa
     - echo "" >> ~/.ssh/id_rsa
