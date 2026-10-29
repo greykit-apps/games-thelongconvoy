@@ -308,8 +308,11 @@
     const boat = Z.boat, lo = -boat.w - 30 * s, span = W + 30 * s - lo, b0 = W * 0.68 - boat.w / 2 - (t - 40) * (L.vs + L.vc);
     const bxx = ((b0 - lo) % span + span) % span + lo, by = L.yS + Math.sin(t * 0.4) * 3 * s - boat.oy;
     blit(F, boat, bxx, by);
-    /* the sonar's pings from the destroyer: a ring going out and down through the water */
-    const pingT = (t % 5.5) / 5.5, pr = pingT * 260 * s, pcx = dx + ship.dome[0], pcy = L.yW + ship.dome[1] - ship.oy;
+    /* the sonar's pings from the destroyer: a ring going out and down through the water, on the title theme's
+     * pings while it plays (PP.SFX.pings), else on its beat from the painting's own clock */
+    const SX = PP.SFX, every = (SX && SX.PING_EVERY || 8.57) * 1000, heard = SX && SX.tune && SX.pings ? SX.pings.filter(p => p <= now).pop() : undefined;
+    const p0 = heard !== undefined && now - heard < every ? heard : Z.t0 + Math.floor((now - Z.t0) / every) * every;
+    const pingT = (now - p0) / 5500, pr = pingT * 260 * s, pcx = dx + ship.dome[0], pcy = L.yW + ship.dome[1] - ship.oy;
     if (!calm && pingT < 0.9) for (let a = 0.12; a < Math.PI - 0.12; a += 0.6 / Math.max(20, pr)) {
       const x = pcx + Math.cos(a) * pr, y = pcy + Math.sin(a) * pr * 0.8;
       if (y > L.yW + 3 && y < L.bed && bay(Math.round(x), Math.round(y)) < 0.4 * (1 - pingT)) put(F, x, y, add(px[Math.round(y) * W + Math.round(x)] || 0, 40, 14, 8));
