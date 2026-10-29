@@ -167,10 +167,20 @@
     y += 16;
     btn("auto", auto ? "AUTO" : "USER CONTROL", lf.x + 4, y, lf.w - 8, 16, { act: "auto", on: !auto, cls: auto ? "auto" : "user", title: auto ? "On AUTO, following orders: J, or a touch of the helm, gives you control" : "You have control: J hands over to AUTO, following orders" });
     y += 20;
-    const scr = esc ? [["Map", "st2"], ["Status", "st4"], ["Log", "st6"]] : [["Map", "st2"], ["Damage", "st3"], ["Status", "st4"], ["Log", "st6"]];
-    const sw = Math.floor((lf.w - 8 - (scr.length - 1) * 3) / scr.length);
-    scr.forEach(([n, a], i) => btn("scr" + n, n, lf.x + 4 + i * (sw + 3), y, sw, 14, { act: a }));
-    y += 18;
+    /* the screens, in the order of their keys; more than four go in two rows */
+    const scr = esc ? [["Map", "st2"], ["Sonar", "st7"], ["Log", "st6"]] : [["Map", "st2"], ["Sonar", "st7"], ["Damage", "st3"], ["Log", "st6"]];
+    const per = scr.length > 4 ? 3 : scr.length;
+    scr.forEach(([n, a], i) => {
+      const r0 = Math.floor(i / per), inRow = Math.min(per, scr.length - r0 * per), sw = Math.floor((lf.w - 8 - (inRow - 1) * 3) / inRow);
+      btn("scr" + n, n, lf.x + 4 + (i % per) * (sw + 3), y + r0 * 17, sw, 14, { act: a });
+    });
+    y += 18 + Math.floor((scr.length - 1) / per) * 17;
+    /* the sonar's waterfall, small: what she hears; a click on it, or 6, the Sonar screen */
+    const wfh = PP.clamp(Math.round((lf.y + lf.h - y) * 0.42), 46, 110);
+    well(g, lf.x + 4, y, lf.w - 8, wfh);
+    PP.Sonar.draw(g, S, lf.x + 4, y, lf.w - 8, wfh, true);
+    btn("sonar", "", lf.x + 4, y, lf.w - 8, wfh, { act: "st7", cls: "bank", label: "Sonar", title: "The sonar's waterfall: a band for each thing heard, at its bearing from the bow. Click for the Sonar screen (3)" });
+    y += wfh + 5;
     D.msgRect = { x: lf.x + 4, y, w: lf.w - 8, h: lf.y + lf.h - y - 4 };
     well(g, D.msgRect.x, D.msgRect.y, D.msgRect.w, D.msgRect.h);
     /* the gauges */
@@ -604,24 +614,42 @@
     lab("hull", `<span class="c">Hull</span><b>${Math.round(hull * 100)}%</b>`, bt.x + bt.w - 8, bt.y + bt.h - 7, "dl" + (hull < 0.5 ? " red" : ""), "rm");
   }
 
-  /* ---- the Status screen: the vessel you are aboard, as the 1990 game's showed it ---- */
-  D.status = (g, S, ui, now, Wd, Ht) => { K.rect(g, 0, 0, Wd, Ht, "#0d0504"); R.dash = { status: true, buttons: [] }; };
-  D.statusHTML = S => {
-    const esc = PP.esc;
+  /* ---- the fleet, for the map's panel (hud.js): your whole side, a row a vessel; the one you are aboard lit, the
+   * one selected marked. A click on a row selects her (as her name on the map does), a second takes command ---- */
+  D.fleetHTML = S => {
+    const esc = PP.esc, sel = PP.game.ui.sel, pc = v => Math.round(v * 100) + "%", ago = t => t === undefined || t < 0 ? "&mdash;" : S.t - t < 60 ? "now" : Math.round((S.t - t) / 60) + "m";
+    const row = (q, aboard, chosen, lost, cells) => `<tr data-pick="${q.id}" class="${aboard ? "on" : ""}${chosen && !aboard ? " sel" : ""}${lost ? " lost" : ""}">` +
+      `<td><button type="button" data-pick="${q.id}"${lost ? " disabled" : ""}>${esc(q.name)}</button></td>${cells.map(c => `<td>${c}</td>`).join("")}</tr>`;
+    /* her order, a button of its own: a click gives her the next (Shift, the one before) */
+    const ord = (q, name) => `<button type="button" class="cyc" data-cycle="${q.id}" aria-label="${name}: click for the next order" title="Click for her next order (Shift: the one before)">${name}</button>`;
+    /* her lamps: only those lit, each a word, red for danger, amber for a state she is in, green for good */
+    const lamps = L => L.filter(l => l[0]).map(([, w, c, tip]) => `<span class="lmp ${c}" title="${tip}">${w}</span>`).join("") || '<span class="c">&mdash;</span>';
+    /* fixed columns (cols, in em; the last takes what is left), so nothing in it moves as the numbers change */
+    const table = (head, rows, cols) => `<table class="fleet"><colgroup>${cols.map(w => `<col${w ? ` style="width:${w}em"` : ""}>`).join("")}</colgroup><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
     if (S.side === "escorts") {
-      const f = PP.Escort.flag(S); if (!f) return "";
-      const k = C.SHIPS[f.cls], hull = Math.max(0, 1 - f.dmg / k.hp);
-      return `<div class="ht-name">${esc(f.name)}</div><div class="ht-cls">${esc(k.name)} of the Pumacity Defense Fleet · ${f.auto ? "AUTO, following orders" : "USER CONTROL"}</div>
-        <table class="aids">${[["Speed", `${f.spd.toFixed(1)} kn, ${C.ESC_BELLS[f.bell]}`], ["Course", PP.deg3(f.hdg)], ["Hull", Math.round(hull * 100) + "%" + (f.fire > 0.1 ? ", on fire" : "")],
-          ["Sonar", f.ping ? "Active: pinging" : "Passive: listening"], ["Depth charges", `${f.dcLeft} left, set for ${f.dcSet} ft`], ["Hedgehog", C.monthOf(S.t) >= C.ESC_SIDE.hedgehogFrom ? `${f.hhLeft} salvoes` : "not fitted"],
-          ["Order", (C.ESC_ORDERS.find(o => o[0] === f.ord) || C.ESC_ORDERS[0])[1]]].map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</table>`;
+      const f = PP.Escort.flag(S), mine = PP.Escort.mine(S), q0 = mine.find(o => o.id === sel) || f;
+      return table(["Escort", "Order", "Kn", "Contact", "DC", "Hull", "Status"], mine.map(q => {
+        const k = C.SHIPS[q.cls], ai = q.ai || {}, hull = Math.max(0, 1 - q.dmg / k.hp);
+        return row(q, q === f, q === q0, false, [ord(q, (C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]), Math.round(q.spd),
+          ai.contact ? `${ai.how === "sonar" ? "sonar" : ai.how === "ear" ? "heard" : "seen"} ${ago(ai.contact)}` : "&mdash;",
+          `${q.dcLeft === undefined ? C.ESC_SIDE.charges : q.dcLeft}${C.monthOf(S.t) >= C.ESC_SIDE.hedgehogFrom ? ` <span class="c">· HH ${q.hhLeft === undefined ? C.ESC_SIDE.hedgehogs : q.hhLeft}</span>` : ""}`,
+          `<span class="${hull < 0.5 ? "red" : ""}">${pc(hull)}</span>`,
+          lamps([[q.ping, "Active", "amber", "Sonar active: pinging, and they hear it"], [q.spd > C.DET.hydFastKn, "Deaf", "red", "Over 15 knots: her own noise drowns her hydrophones"],
+            [!!q.pat, "Laying", "amber", "Laying a pattern"], [q.fire > 0.1, "Fire", "red", "On fire"]])]);
+      }), [7, 5.6, 2.4, 6.4, 5.4, 3.6, 0]);
     }
-    const s = S.sub, k = C.SUBS[s.cls], e = C.era(C.monthOf(S.t)), hurt = Sub.SYS.filter(([q]) => s.sys[q] > 0.001).map(([q, n]) => `${n} ${s.sys[q] >= 0.5 ? "out" : "damaged"}`);
-    return `<div class="ht-name">${esc(s.name)}</div><div class="ht-cls">${esc(k.name)} class of the Wolf Empire · Captain ${esc(s.capt || "")} · ${s.auto ? "AUTO, following orders" : "USER CONTROL"}</div>
-      <table class="aids">${[["Depth", Sub.surfaced(s) ? "on the surface" : Math.round(s.depth) + " ft" + (Sub.snorkeling(s) ? ", snorkelling" : "")], ["Speed", `${s.spd.toFixed(1)} kn, ${C.BELLS[s.bell]}`], ["Course", PP.deg3(s.hdg)],
-        ["Battery", Math.round(s.bat * 100) + "%"], ["Fuel", Math.round(s.fuel * 100) + "%"], ["Torpedoes", `${Sub.torpsLeft(s)} (forward ${Sub.loaded(s, "F")} loaded, aft ${Sub.loaded(s, "A")})`], ["Noisemakers", s.decoys || 0],
-        ["Hull", Math.round(s.hull * 100) + "%" + (s.water > 0.05 ? `, ${Math.round(s.water * 100)}% water` : "")], ["Damage", hurt.length ? hurt.join(", ") : "none"],
-        ["Snorkel", e.snorkel ? (s.snork ? "up" : "down") : "not fitted"], ["Radar warning", e.metox ? (s.metoxT !== undefined && S.t - s.metoxT < 6 ? "an escort's radar on the boat" : "quiet") : "not fitted"],
-        ["Order", PP.Orders.name(s.orders)]].map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</table>`;
+    const qs = S.subs[PP.game.selIdx ? PP.game.selIdx() : S.cmd];
+    const hunted = q => S.ships.some(e => e.role === "escort" && !e.sinking && e.ai && e.ai.tgt === q.id && e.ai.contact && S.t - e.ai.contact < 60);
+    return table(["Boat", "Order", "Depth", "Kn", "Batt", "Fuel", "Tubes", "Dec", "Hull", "Status"], S.subs.map(q => {
+      if (q.lost) return row(q, false, false, true, ["Lost", "", "", "", "", "", "", "", ""]);
+      const hurt = Sub.SYS.filter(([k]) => q.sys[k] >= 0.001), out = hurt.some(([k]) => q.sys[k] >= 0.5);
+      return row(q, q === S.sub, q === qs, false, [ord(q, PP.Orders.name(q.orders)), Sub.surfaced(q) ? "surf" : `${Math.round(q.depth / 5) * 5}`, Math.round(Math.abs(q.spd)),
+        `<span class="${q.bat < 0.2 ? "red" : ""}">${pc(q.bat)}</span>`, `<span class="${q.fuel < 0.15 ? "red" : ""}">${pc(q.fuel)}</span>`,
+        `${Sub.loaded(q, "F") + Sub.loaded(q, "A")}<span class="c">/${Sub.torpsLeft(q)}</span>`, q.decoys || 0,
+        `<span class="${q.hull < 0.5 ? "red" : ""}">${pc(q.hull)}</span>${hurt.length ? ` <span class="${out ? "red" : "amber"}" title="${esc(hurt.map(([, n]) => n).join(", "))}">&#9679;</span>` : ""}`,
+        lamps([[hunted(q), "Hunted", "red", "An escort has her"], [q.water > 0.2, "Flooding", "red", "Taking water"], [q.sys.radio >= 0.5, "Radio out", "red", "Takes no orders, sends no news"],
+          [q.silent, "Silent", "amber", "Silent running"], [Sub.snorkeling(q), "Snorkel", "amber", "Snorkelling: diesels at periscope depth, loud"], [Sub.radarWorks(q), "Radar", "amber", "Her radar on: they can hear it"],
+          [q.bottomed, "Bottomed", "amber", "Lying on the bottom"], [Sub.charge(q).why === null && Sub.charge(q).rate > 0, "Charging", "green", "Charging her battery"]])]);
+    }), [7, 7.4, 3, 2.4, 3.3, 3.3, 3.6, 2.2, 3.9, 0]);
   };
 })();

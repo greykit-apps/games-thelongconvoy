@@ -15,18 +15,19 @@
   const HUD = PP.HUD = { el: null, toasts: [], last: {}, built: false };
   const $ = id => document.getElementById(id);
   const set = (el, k, v, f) => { if (HUD.last[k] !== v) { HUD.last[k] = v; f(el, v); } };
-  HUD.STATIONS = [["dash", "Dashboard", "1"], ["chart", "Map", "2"], ["damage", "Damage", "3"], ["status", "Status", "4"]];
+  HUD.STATIONS = [["dash", "Dashboard", "1"], ["chart", "Map", "2"], ["sonar", "Sonar", "3"], ["damage", "Damage", "4"]];
   const WHY = { ships: "ships near", contact: "a contact", close: "ships close", torps: "torpedoes running", plane: "aircraft", hunted: "hunted", charges: "depth charges", danger: "danger" };
 
   HUD.build = (side = "pack") => {
     const el = HUD.el = $("hud");
     HUD.side = side;
-    const tabs = side === "escorts" ? [["dash", "Dashboard", "1"], ["chart", "Map", "2"], ["status", "Status", "4"]] : HUD.STATIONS;
+    const tabs = side === "escorts" ? [["dash", "Dashboard", "1"], ["chart", "Map", "2"], ["sonar", "Sonar", "3"]] : HUD.STATIONS;
     el.innerHTML = `
       <div class="h-labels" aria-hidden="true"></div>
       <nav class="hp" id="h-tabs" aria-label="Stations">${tabs.map(([k, n, key]) => `<button data-st="${k}"><kbd>${key}</kbd>${n}</button>`).join("")}</nav>
       <div class="hp" id="h-clock"><div class="hc-time num">0000</div><div class="hc-date"></div><div class="hc-tc"><span class="why"></span><span class="lbl">Time</span> <b>1x</b></div></div>
       <div class="hp" id="h-boat">
+        <div class="hb-who"></div>
         <div class="hb-pack" aria-label="The pack"></div>
         <div class="hb-row" data-r="depth"><span class="lbl">Depth</span><b class="v">0 ft</b><span class="ord"></span></div>
         <div class="hb-row" data-r="speed"><span class="lbl">Speed</span><b class="v">0 kn</b><span class="ord"></span></div>
@@ -46,10 +47,23 @@
       <div class="h-flash"></div>
       <div class="h-dash"></div>
       <div class="h-msgs" aria-hidden="true"></div>
-      <div class="hp" id="h-status" hidden></div>`;
+`;
+    /* the mouse over a row of the map's list: that vessel on the card at the lower left */
+    el.addEventListener("pointerover", ev => { const tr = ev.target.closest && ev.target.closest("#h-orders tr[data-pick]"); HUD.hoverRow = tr ? +tr.dataset.pick : null; });
+    el.addEventListener("pointerleave", () => { HUD.hoverRow = null; });
     el.querySelector("#h-tabs").addEventListener("click", ev => { const b = ev.target.closest("[data-st]"); if (b && PP.game.setStation) PP.game.setStation(b.dataset.st); });
     HUD.last = {};
     HUD.built = true;
+  };
+
+  /* the vessel of your side the mouse is over: a row of the map's list (HUD.hoverRow), or her name or mark on the map
+   * (HUD.hoverMap, main.js); null when none, or she is lost */
+  HUD.hoverRow = null; HUD.hoverMap = null;
+  HUD.hovered = S => {
+    const id = HUD.hoverRow !== null ? HUD.hoverRow : HUD.hoverMap;
+    if (id === null || id === undefined || PP.Render.stationOf(S, PP.game.ui) !== "chart") return null;
+    const q = S.side === "escorts" ? PP.Escort.mine(S).find(o => o.id === id) : S.subs.find(o => o.id === id);
+    return q && !q.lost ? q : null;
   };
 
   HUD.toast = (text, tone = "", ms = 2800) => {
@@ -222,17 +236,18 @@
     set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
     /* her panel */
     const mine = PP.Escort.mine(S), hh = C.monthOf(S.t) >= X.hedgehogFrom;
-    const key = [ui.sel, f.id, f.spd.toFixed(1), f.bell, PP.deg3(f.hdg), PP.deg3(f.ordHdg), f.dcSet, f.dcLeft, f.hhLeft, f.ping, !!f.pat, Math.round(f.dmg * 20), mine.map(q => q.id).join("."), PP.Input.device].join(":");
+    /* the card at the lower left: the escort the mouse is over (in the map's list, or her name on the map), else yours */
+    const b = HUD.hovered(S) || f;
+    const key = [ui.sel, b.id, b === f, b.ord, b.spd.toFixed(1), b.bell, PP.deg3(b.hdg), PP.deg3(b.ordHdg), b.dcSet, b.dcLeft, b.hhLeft, b.ping, !!b.pat, Math.round(b.dmg * 20), PP.Input.device].join(":");
     set(el.querySelector("#h-boat"), "escBoat", key, x => {
-      const hull = Math.max(0, 1 - f.dmg / k.hp);
-      x.innerHTML = PP.Input.caps(`<div class="hb-pack">${mine.map(q => `<button type="button" data-pick="${q.id}" class="pk${q === f ? " on" : ""}${q.id === ui.sel && q !== f ? " sel" : ""}" title="${esc(q.name)}${q === f ? ": you are aboard her" : ": click to select her; again to go aboard"}">${esc(q.name)}</button>`).join("")}${mine.length > 1 ? `<span class="pk-key"><kbd>N</kbd> next</span>` : ""}</div>
-        <div class="hb-row"><span class="lbl">Ship</span><b class="v sm">${esc(k.name)}</b><span></span></div>
-        <div class="hb-row"><span class="lbl">Speed</span><b class="v">${f.spd.toFixed(1)} kn</b><span class="ord">${C.ESC_BELLS[f.bell]}</span></div>
-        <div class="hb-row"><span class="lbl">Course</span><b class="v">${PP.deg3(f.hdg)}</b><span class="ord">${Math.abs(PP.angDiff(f.hdg, f.ordHdg)) > 0.02 ? PP.deg3(f.ordHdg) : ""}</span></div>
-        <div class="hb-row"><span class="lbl">Charges</span><b class="v">${f.dcLeft}</b><span class="ord">${f.pat ? "laying" : "set " + f.dcSet + " ft"}</span></div>
-        ${hh ? `<div class="hb-row"><span class="lbl">Hedgehog</span><b class="v">${f.hhLeft}</b><span></span></div>` : ""}
+      const kb = C.SHIPS[b.cls], hull = Math.max(0, 1 - b.dmg / kb.hp);
+      x.innerHTML = PP.Input.caps(`<div class="hb-who"><b>${esc(b.name)}</b> <span class="c">${esc(kb.name)}</span> <i>${b === f ? "aboard" : (C.ESC_ORDERS.find(o => o[0] === b.ord) || C.ESC_ORDERS[0])[1]}</i></div>
+        <div class="hb-row"><span class="lbl">Speed</span><b class="v">${b.spd.toFixed(1)} kn</b><span class="ord">${C.ESC_BELLS[b.bell] || ""}</span></div>
+        <div class="hb-row"><span class="lbl">Course</span><b class="v">${PP.deg3(b.hdg)}</b><span class="ord">${Math.abs(PP.angDiff(b.hdg, b.ordHdg)) > 0.02 ? PP.deg3(b.ordHdg) : ""}</span></div>
+        <div class="hb-row"><span class="lbl">Charges</span><b class="v">${b.dcLeft === undefined ? X.charges : b.dcLeft}</b><span class="ord">${b.pat ? "laying" : b.dcSet ? "set " + b.dcSet + " ft" : ""}</span></div>
+        ${hh ? `<div class="hb-row"><span class="lbl">Hedgehog</span><b class="v">${b.hhLeft === undefined ? X.hedgehogs : b.hhLeft}</b><span></span></div>` : ""}
         <div class="hb-row${hull < 0.5 ? " crit" : hull < 0.8 ? " warn" : ""}"><span class="lbl">Hull</span><b class="v">${Math.round(hull * 100)}%</b><span></span></div>
-        <div class="hb-flags">${f.ping ? '<span class="on">Sonar pinging</span>' : '<span>Sonar listening</span>'}${f.spd > C.DET.hydFastKn ? '<span title="Above 15 knots the ship&rsquo;s own noise deafens its hydrophones">Too fast to hear</span>' : ""}</div>`);
+        <div class="hb-flags">${b.ping ? '<span class="on">Sonar pinging</span>' : '<span>Sonar listening</span>'}${b.spd > C.DET.hydFastKn ? '<span title="Above 15 knots the ship&rsquo;s own noise deafens its hydrophones">Too fast to hear</span>' : ""}</div>`);
     });
     /* the freshest contact any escort has, from her */
     const sol = PP.Escort.solution(S, f), c = sol.contact;
@@ -244,14 +259,11 @@
         <div class="ht-sol ${c.over ? "ok" : "no"}"><span class="ht-lamp"></span><span>${c.over ? `Over the contact: <kbd>Space</kbd> ${sol.hh ? "the hedgehog" : "a pattern"}` : c.near ? "Stand by: hold steady" : "Run in on the contact"}</span></div>`;
     }
     set(el.querySelector("#h-tdc"), "tdc", ct + PP.Input.device, x => { x.innerHTML = PP.Input.caps(ct); });
-    /* the map's orders for the escort selected there */
-    const onMap = st === "chart" && mine.length > 1, q = mine.find(o => o.id === ui.sel) || f;
-    set(el.querySelector("#h-orders"), "orders", onMap ? `${q.id}:${q.ord}:${q === f}:${(q.wps || []).length}` : "", x => {
+    /* the map's panel: the escort group, a row each (an order in it a click to change) */
+    const onMap = st === "chart", fleetE = onMap ? PP.Dash.fleetHTML(S) : "";
+    set(el.querySelector("#h-orders"), "orders", onMap ? fleetE + PP.Input.device : "", x => {
       x.hidden = !onMap; if (!onMap) return;
-      x.innerHTML = PP.Input.caps(`<div class="ht-name">${esc(q.name)}</div><div class="ht-cls">${esc(C.SHIPS[q.cls].name)}</div>
-        <p class="ho-now">${q === f ? "You are aboard. Her order, once you leave:" : "Order:"} <b>${esc((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1])}</b></p>
-        <div class="ho-list">${C.ESC_ORDERS.map(([o, n, note]) => `<button data-eorder="${o}" title="${esc(note)}" aria-pressed="${q.ord === o}"${q.ord === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
-        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== f ? " · <kbd>Enter</kbd> or click it again: take command" : ""}</p>`);
+      x.innerHTML = PP.Input.caps(`<div class="ht-name">The escort group</div>${fleetE}`);
     });
     el.querySelector("#h-hull").hidden = true; el.querySelector("#h-dmg").hidden = true; el.querySelector("#h-port").hidden = true;
   }
@@ -291,15 +303,13 @@
     set(el, "onPanel", `${st}:${gunNow}`, e => { e.querySelector("#h-boat").hidden = st === "panel" || dmg; e.querySelector("#h-tdc").hidden = dmg || gunNow; e.querySelector("#h-hull").hidden = !dmg; e.querySelector("#h-dmg").hidden = !dmg; });
     if (now - (HUD.safeAt || 0) > 250) { HUD.safeAt = now; safe(); describe(S, ui, st); }
     labels(PP.Render.labels || []);
-    /* the dashboard, and the Status screen: their own buttons and message window; the old panels stand down */
-    const dashOn = st === "dash", statusOn = st === "status";
-    set(el, "dashMode", st, e => { e.classList.toggle("dashmode", dashOn); e.classList.toggle("statusmode", statusOn); });
-    dashButtons(dashOn && PP.Render.dash ? PP.Render.dash.buttons : statusOn ? [{ id: "back", html: "&#9664; Dashboard <kbd>1</kbd>", x: 8, y: 8, w: 92, h: 16, act: "st1" }] : []);
+    /* the dashboard, and the Sonar screen (js/art/sonar.js): their own buttons; the old panels stand down */
+    const dashOn = st === "dash", sonarOn = st === "sonar";
+    set(el, "dashMode", st, e => { e.classList.toggle("dashmode", dashOn); e.classList.toggle("statusmode", sonarOn); });
+    dashButtons((dashOn || sonarOn) && PP.Render.dash ? PP.Render.dash.buttons || [] : []);
     if (dashOn && PP.Render.dash && PP.Render.dash.msg) msgWindow(PP.Render.dash.msg);
     corner(dashOn && PP.Render.dash && PP.Render.dash.L);
-    const stp = el.querySelector("#h-status");
-    if (statusOn) { const h = PP.Dash.statusHTML(S); if (stp.dataset.h !== h) { stp.dataset.h = h; stp.innerHTML = h; } stp.hidden = false; } else stp.hidden = true;
-    if (dashOn || statusOn) return;
+    if (dashOn || sonarOn) return;
     if (dmg) damage(S);
     if (side === "escorts") { drawEsc(S, ui, st); return; }
     set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.st === st)); });
@@ -307,49 +317,54 @@
     set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
     const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
     set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
-    /* the pack: the boat you are on first, then the rest, each with what she is doing */
+    /* the card at the lower left: the boat the mouse is over (in the map's list, or her name on the map), else the one
+     * you are aboard; her name and what she is to you at its head */
+    const b = HUD.hovered(S) || s;
+    set(el.querySelector(".hb-who"), "who", `${b.id}:${b === s}:${b.id === ui.sel}:${b.orders}:${b.lost}`, e => {
+      e.innerHTML = `<b>${esc(b.name)}</b> <span class="c">${esc(C.SUBS[b.cls].name)} · Captain ${esc(b.capt || "")}</span> <i>${b === s ? "aboard" : b.lost ? "lost" : PP.Orders.name(b.orders)}</i>`;
+    });
     const packKey = S.subs.map(q => `${q.id}${q === s ? "*" : ""}${q.lost ? "x" : Sub.surfaced(q) ? "s" : "d"}${q.orders || ""}`).join(",") + PP.Input.device + ":" + ui.sel;
     set(el.querySelector(".hb-pack"), "pack", packKey, e => {
-      e.hidden = S.subs.length < 2;
+      e.hidden = true;
       /* each boat a button: a click selects her (for her orders on the map), a second takes command */
       e.innerHTML = S.subs.map(q => `<button type="button" data-pick="${q.id}" class="pk${q === s ? " on" : ""}${q.lost ? " lost" : ""}${q.id === ui.sel && q !== s ? " sel" : ""}"${q.lost ? " disabled" : ""} title="${esc(q.name)}: ${q.lost ? "lost" : (Sub.surfaced(q) ? "surfaced" : "submerged") + (q === s ? ", in command" : ", " + PP.Orders.name(q.orders).toLowerCase() + ". Click to select her; again to take command")}">${esc(q.name)}${q !== s && !q.lost ? ` <i>${esc(PP.Orders.name(q.orders).toLowerCase())}</i>` : ""}</button>`).join("")
         + (S.subs.length > 1 ? `<span class="pk-key">${PP.Input.cap("N")} next</span>` : "");
     });
     /* the boat */
     const row = r => el.querySelector(`[data-r="${r}"]`);
-    const test = Sub.testDepth(s);
-    set(row("depth"), "depth", `${Math.round(s.depth)}:${s.ordDepth}:${s.depth > test ? 2 : s.depth > test * 0.85 ? 1 : 0}`, e => {
-      e.querySelector(".v").textContent = Sub.surfaced(s) ? "Surfaced" : Math.round(s.depth) + " ft";
-      e.querySelector(".ord").textContent = Math.abs(s.ordDepth - s.depth) > 3 ? (s.ordDepth === 0 ? "surface" : s.ordDepth + " ft") : "";
-      e.className = "hb-row" + (s.depth > test ? " crit" : s.depth > test * 0.85 ? " warn" : "");
+    const test = Sub.testDepth(b);
+    set(row("depth"), "depth", `${Math.round(b.depth)}:${b.ordDepth}:${b.depth > test ? 2 : b.depth > test * 0.85 ? 1 : 0}`, e => {
+      e.querySelector(".v").textContent = Sub.surfaced(b) ? "Surfaced" : Math.round(b.depth) + " ft";
+      e.querySelector(".ord").textContent = Math.abs(b.ordDepth - b.depth) > 3 ? (b.ordDepth === 0 ? "surface" : b.ordDepth + " ft") : "";
+      e.className = "hb-row" + (b.depth > test ? " crit" : b.depth > test * 0.85 ? " warn" : "");
     });
-    set(row("speed"), "speed", `${s.spd.toFixed(1)}:${s.bell}:${s.silent}`, e => { e.querySelector(".v").textContent = s.spd.toFixed(1) + " kn"; e.querySelector(".ord").textContent = s.silent ? C.BELLS[s.bell] + ", silent" : C.BELLS[s.bell]; });
-    set(row("course"), "course", `${PP.deg3(s.hdg)}:${PP.deg3(s.ordHdg)}`, e => { e.querySelector(".v").textContent = PP.deg3(s.hdg); e.querySelector(".ord").textContent = Math.abs(PP.angDiff(s.hdg, s.ordHdg)) > 0.02 ? PP.deg3(s.ordHdg) : ""; });
+    set(row("speed"), "speed", `${b.spd.toFixed(1)}:${b.bell}:${b.silent}`, e => { e.querySelector(".v").textContent = b.spd.toFixed(1) + " kn"; e.querySelector(".ord").textContent = b.silent ? C.BELLS[b.bell] + ", silent" : C.BELLS[b.bell]; });
+    set(row("course"), "course", `${PP.deg3(b.hdg)}:${PP.deg3(b.ordHdg)}`, e => { e.querySelector(".v").textContent = PP.deg3(b.hdg); e.querySelector(".ord").textContent = Math.abs(PP.angDiff(b.hdg, b.ordHdg)) > 0.02 ? PP.deg3(b.ordHdg) : ""; });
     const bar = (r, v, cap) => set(row(r), r, Math.round(v * 100) + ":" + Math.round(cap * 10), e => {
       const n = Math.ceil(v * 10), b = e.querySelector(".hb-bar");
       b.className = "hb-bar" + (v < 0.12 ? " crit" : v < 0.3 ? " warn" : "");
       [...b.children].forEach((i, k) => i.classList.toggle("on", k < n));
       e.querySelector(".pc").textContent = Math.round(v * 100) + "%";
     });
-    bar("bat", s.bat, Sub.batCap(s)); bar("fuel", s.fuel, 1);
+    bar("bat", b.bat, Sub.batCap(b)); bar("fuel", b.fuel, 1);
     /* under the battery, on the surface: charging (and when she will be full), or why not */
-    const ch = Sub.charge(s), cap = Sub.batCap(s), left = ch.rate > 0 ? (cap - s.bat) / ch.rate : 0;
+    const ch = Sub.charge(b), cap = Sub.batCap(b), left = ch.rate > 0 ? (cap - b.bat) / ch.rate : 0;
     /* a cap the crew's repairs lift a hair at a time reads as full, not as "full in 1 min" for good */
-    if (ch.rate > 0 && cap - s.bat < 0.005) ch.why = cap < 0.995 ? "cap" : "full";
+    if (ch.rate > 0 && cap - b.bat < 0.005) ch.why = cap < 0.995 ? "cap" : "full";
     const chg = ch.why === null ? ["green", "Charging · full in " + (left < 3600 ? Math.max(1, Math.ceil(left / 60)) + " min" : Math.round(left / 3600) + " h")]
       : { fast: ["amber", "Too fast to charge"], fuel: ["amber", "No fuel to charge"], engines: ["amber", "Diesels damaged: no charge"], full: ["", "Full"], cap: ["amber", `Damaged: holds ${Math.round(cap * 100)}%`] }[ch.why] || ["", ""];
     set(row("bat").querySelector(".chg"), "chg", chg.join(":"), e => { e.className = "chg " + chg[0]; e.textContent = chg[1]; });
-    const tubesKey = s.tubes.F.map(v => v > 0 ? Math.ceil(v / 60) : v).join(",") + "|" + s.tubes.A.map(v => v > 0 ? Math.ceil(v / 60) : v).join(",") + "|" + s.bank + s.store.F + "." + s.store.A + s.spread;
+    const tubesKey = b.tubes.F.map(v => v > 0 ? Math.ceil(v / 60) : v).join(",") + "|" + b.tubes.A.map(v => v > 0 ? Math.ceil(v / 60) : v).join(",") + "|" + b.bank + b.store.F + "." + b.store.A + b.spread;
     set(row("tubes"), "tubes", tubesKey, e => {
       const lamp = v => `<i class="${v === 0 ? "on" : v > 0 ? "load" : "out"}"${v > 0 ? ` style="--p:${Math.round((1 - v / C.TORP.reload) * 100)}%"` : ""}></i>`;
       /* each bank's lamps, and its spares after them, as the instruments show them */
-      e.querySelector(".hb-tubes").innerHTML = `<span class="bk${s.bank === "F" ? " sel" : ""}">F</span>${s.tubes.F.map(lamp).join("")}<span class="sp" title="spare torpedoes forward">${s.store.F}</span><span class="gap"></span><span class="bk${s.bank === "A" ? " sel" : ""}">A</span>${s.tubes.A.map(lamp).join("")}<span class="sp" title="spare torpedoes aft">${s.store.A}</span>`;
-      e.querySelector(".hb-tubes").setAttribute("aria-label", `${Sub.loaded(s, "F")} forward and ${Sub.loaded(s, "A")} after tubes loaded, ${s.store.F + s.store.A} reloads`);
+      e.querySelector(".hb-tubes").innerHTML = `<span class="bk${b.bank === "F" ? " sel" : ""}">F</span>${b.tubes.F.map(lamp).join("")}<span class="sp" title="spare torpedoes forward">${b.store.F}</span><span class="gap"></span><span class="bk${b.bank === "A" ? " sel" : ""}">A</span>${b.tubes.A.map(lamp).join("")}<span class="sp" title="spare torpedoes aft">${b.store.A}</span>`;
+      e.querySelector(".hb-tubes").setAttribute("aria-label", `${Sub.loaded(s, "F")} forward and ${Sub.loaded(s, "A")} after tubes loaded, ${b.store.F + b.store.A} reloads`);
     });
-    const hunted = S.ships.some(q => q.role === "escort" && !q.sinking && q.ai.contact && S.t - q.ai.contact < 60);
-    const flags = (hunted ? ['<span class="hunt">Hunted</span>'] : []).concat([[s.silent, "Silent"], [Sub.radarWorks(s), "Radar"], [s.gun.on, "Gun"], [s.scope.up, "Scope up"], [S.konami, "Code"]].filter(f => f[0]).map(f => `<span class="on">${f[1]}</span>`))
-      .concat([`<span title="Noisemakers: K drops one under the water">Decoys ${s.decoys || 0}</span>`]).concat(s.sys.radio >= 0.5 ? ['<span class="bad">Radio out</span>'] : [])
-      .concat(s.water > 0.2 ? ['<span class="bad">Flooding</span>'] : []).concat(s.bottomed ? ['<span class="on">On the bottom</span>'] : []).concat(s.spread > 1 ? [`<span title="Each press of fire sends the next torpedo of the fan">Spread of ${s.spread}</span>`] : []);
+    const hunted = S.ships.some(q => q.role === "escort" && !q.sinking && q.ai.contact && q.ai.tgt === b.id && S.t - q.ai.contact < 60);
+    const flags = (hunted ? ['<span class="hunt">Hunted</span>'] : []).concat([[b.silent, "Silent"], [Sub.radarWorks(b), "Radar"], [b.gun.on, "Gun"], [b.scope.up, "Scope up"], [b === s && S.konami, "Code"]].filter(f => f[0]).map(f => `<span class="on">${f[1]}</span>`))
+      .concat([`<span title="Noisemakers: K drops one under the water">Decoys ${b.decoys || 0}</span>`]).concat(b.sys.radio >= 0.5 ? ['<span class="bad">Radio out</span>'] : [])
+      .concat(b.water > 0.2 ? ['<span class="bad">Flooding</span>'] : []).concat(b.bottomed ? ['<span class="on">On the bottom</span>'] : []).concat(b.spread > 1 ? [`<span title="Each press of fire sends the next torpedo of the fan">Spread of ${b.spread}</span>`] : []);
     set(el.querySelector(".hb-flags"), "flags", flags.join(""), (e, v) => { e.innerHTML = v; });
     /* the TDC */
     const e = W.est(S), t = S.tdc.tgt !== null ? PP.Ships.byId(S, S.tdc.tgt) : null;
@@ -365,16 +380,11 @@
     /* nothing to aim at, nothing in sight: the TDC stands back */
     const idle = !e && !S.ships.some(q => PP.Detect.known(S, q) && PP.Ships.alive(q));
     set(el.querySelector("#h-tdc"), "tdcIdle", idle, (x, v) => x.classList.toggle("thin", v));
-    /* the map's orders panel: the boat selected there, her captain, her depth, her order, and the orders to give */
-    const onMap = st === "chart" && S.subs.length > 1, si = PP.game.selIdx ? PP.game.selIdx() : S.cmd, q = S.subs[si];
-    const ordKey = onMap ? `${q.id}:${q.orders}:${Math.round(q.depth / 10)}:${Sub.surfaced(q)}:${(q.wps || []).length}:${q === s}:${PP.Input.device}` : "";
-    set(el.querySelector("#h-orders"), "orders", ordKey, x => {
+    /* the map's panel: the pack, a row a boat (an order in it a click to change) */
+    const onMap = st === "chart", fleetP = onMap ? PP.Dash.fleetHTML(S) : "";
+    set(el.querySelector("#h-orders"), "orders", onMap ? fleetP + PP.Input.device : "", x => {
       x.hidden = !onMap; if (!onMap) return;
-      const k = C.SUBS[q.cls];
-      x.innerHTML = PP.Input.caps(`<div class="ht-name">${esc(q.name)}</div><div class="ht-cls">${esc(k.name)} class · Captain ${esc(q.capt || "")} · ${Sub.surfaced(q) ? "on the surface" : Math.round(q.depth) + " ft"}${q.wps && q.wps.length ? ` · ${q.wps.length} waypoint${q.wps.length > 1 ? "s" : ""}` : ""}</div>
-        <p class="ho-now">${q === s ? "You are aboard. Her order, once you leave:" : "Order:"} <b>${esc(PP.Orders.name(q.orders))}</b></p>
-        <div class="ho-list">${PP.Orders.LIST.map(([o, n, note]) => `<button data-order="${o}" title="${esc(note)}" aria-pressed="${q.orders === o}"${q.orders === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
-        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== s ? " · <kbd>Enter</kbd> or click it again: take command" : ""}</p>`);
+      x.innerHTML = PP.Input.caps(`<div class="ht-name">The pack</div>${fleetP}`);
     });
   };
 

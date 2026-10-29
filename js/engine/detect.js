@@ -29,6 +29,16 @@
   Det.eyeTo = (S, eyeH, k) => Math.min(Det.shipRange(S, k), C.horizon(eyeH, k.mast));
   Det.eyeH = s => Sub.surfaced(s) ? C.EYE.bridge : Sub.scopeReady(s) ? C.EYE.scope + Math.max(0, C.PD - s.depth) * 0.6 : null;
 
+  /* an escort's active sonar, the same beam as Det.step's below, for what the page plays (main.js sonarSounds):
+   * she pings while she hunts (or, yours, while it is switched on); a boat is in the beam ahead of her, past the
+   * blind gap under her bow and within its reach. No chance in it: what is in the beam echoes */
+  Det.pinging = sh => { const st = sh.ai && sh.ai.st; return st === "search" || st === "attack" || st === "hold" || (st === "user" && !!sh.ping); };
+  Det.sonarReach = (S, sh) => C.era(C.monthOf(S.t)).sonar * C.SHIPS[sh.cls].sonar * (1 + (S.real.expert ? 0.15 : 0));
+  Det.inBeam = (S, sh, x, y) => {
+    const d = PP.dist(sh.x, sh.y, x, y), Rs = Det.sonarReach(S, sh), rel = Math.abs(PP.angDiff(sh.hdg, PP.angTo(sh.x, sh.y, x, y)));
+    return d > D.sonarMin && d < Rs && rel < D.sonarCone ? { d, Rs } : null;
+  };
+
   Det.step = (S, dt, ev) => {
     const s = S.sub, e = C.era(C.monthOf(S.t)), eyeH = Det.eyeH(s), L = Det.light(S), expert = S.real.expert ? 1 : 0;
     const radar = Sub.radarWorks(s), sub = !Sub.surfaced(s), hydOk = sub && s.sys.sonar < 0.7;

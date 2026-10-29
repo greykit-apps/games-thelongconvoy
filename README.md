@@ -43,7 +43,7 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 
 | | |
 |---|---|
-| `1` / `2` / `3` / `4` / `5` | the dashboard / the map / damage / status / the log |
+| `1` / `2` / `3` / `4` / `5` | the dashboard / the map, with your whole side listed / the sonar / damage / the captain's log |
 | `J` / `I` | AUTO or USER CONTROL / the snorkel |
 | Click, `O`, right click | on the map: select a boat (her mark, her name tag, or her name in the panel), give her the next order, add her a waypoint |
 | Click a boat's order / wheel | on the map: her orders menu at the mouse / zoom about the mouse |
@@ -67,7 +67,7 @@ A gamepad works too; Help has its map.
 ```
 js/engine/   the war, DOM-free: the sea, the boats of the pack, the ships and convoys, seeing and being seen, the escorts,
              torpedoes and the fire control, the missions, a step of it all, the captain and the orders each boat sails under
-js/art/      the pixel art: the kit, the tracer, the ship models, the view out, the map, the damage report
+js/art/      the pixel art: the kit, the tracer, the ship models, the view out, the map, the sonar, the damage report
 js/          rendering, the HUD, input, sound, the screens, settings and the record, and the loop
 tools/       sim-check (the captain plays every mission headless, the whole pack at once), asset stamps and checks, icons, the share card
 ```

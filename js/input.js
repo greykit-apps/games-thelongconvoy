@@ -18,8 +18,8 @@
     KeyZ: "zoom", KeyT: "lock",
     Space: "fire", KeyF: "bank", KeyV: "spread", KeyG: "gun", KeyX: "silent", KeyY: "radar",
     Equal: "tcU", NumpadAdd: "tcU", Minus: "tcD", NumpadSubtract: "tcD", Backspace: "tc1",
-    Digit1: "st1", Digit2: "st2", Digit3: "st3", Digit4: "st4", Digit5: "st6",
-    F2: "st1", F3: "st2", F4: "st3", F5: "st4", F7: "st6", Tab: "stNext",
+    Digit1: "st1", Digit2: "st2", Digit3: "st7", Digit4: "st3", Digit5: "st6",
+    F2: "st1", F3: "st2", F4: "st7", F5: "st3", F6: "st6", Tab: "stNext",
     Escape: "pause", KeyL: "aids", KeyH: "onHer", KeyB: "ahead",
     KeyN: "boatNext", KeyO: "orders", Enter: "takeCmd", KeyK: "decoy", KeyJ: "auto", KeyI: "snorkel",
   };

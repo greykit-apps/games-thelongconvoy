@@ -325,7 +325,7 @@
           <li>Wait for the lamp to say <b>On target</b>, then <b>fire</b> (${kb("Space")}).</li>
           <li>Then go <b>deep</b> (${kb("E")}), <b>slow</b> (${kb("S")}) and <b>quiet</b> (${kb("X")}).</li>
         </ol><p class="tip">The best shot is from ahead of the ship, side-on to it, 1,000 to 3,000 yards off.</p></section>`,
-        card("The screens", [[kb("1"), "Dashboard: the view out and every control"], [kb("2"), "Map: the whole battle, and your other vessels"], [kb("3"), "Damage"], [kb("4"), "Status"], [kb("5"), "Captain's log"], [kb("Tab"), "The next screen"]],
+        card("The screens", [[kb("1"), "Dashboard: the view out and every control"], [kb("2"), "Map: the whole battle, and your other vessels"], [kb("3"), "Sonar: what you hear, as a waterfall"], [kb("4"), "Damage (a U-boat's)"], [kb("5"), "Captain's log, over the screen"], [kb("Tab"), "The next screen"]],
           "On the dashboard every control is a button. Point at one to see what it does and its key."),
         card("Any time", [[kb("Esc"), "Pause"], [kb("+", "−"), "Time faster, slower; " + kb("Backspace") + " back to 1x"], [kb("?"), "This help"], [kb("M"), "Sound on or off"], [kb("L"), "Field or Classic aids"]],
           "Time speeds up only while nothing is close; the clock says what is holding it back."))}`],
@@ -340,9 +340,11 @@
         "Hunted? Go deep, slow and quiet, and turn across the escort's line."),
       card("Battery and fuel", [["Surface", "The diesels drive and charge the battery"], ["Below", "The battery runs everything, faster at speed"], [kb("I"), "Snorkel: diesels at periscope depth, from Year IV. Loud"], [kb("Y"), "Radar, when fitted"]],
         "Charge stopped or at a slow bell; nothing charges above " + (C.BAT.chargeKn + 4) + " knots."),
-      card("The pack", [["Click a boat", "Select it, on the map"], [kb("O"), "Its next order"], ["Right click", "Add a waypoint"], [kb("Enter"), "Take command (or click it again)"], [kb("N"), "Command of the next boat"], [kb("J"), "AUTO: your boat follows its order"]],
+      card("The pack", [["The map", "Lists the pack, a row a boat: order, depth, battery, tubes, hull"], ["Click a boat", "Select it (a row, or on the map)"], [kb("O"), "Its next order"], ["Right click", "Add a waypoint"], [kb("Enter"), "Take command (or click it again)"], [kb("N"), "Command of the next boat"], [kb("J"), "AUTO: your boat follows its order"]],
         "Orders: " + PP.Orders.LIST.map(o => `<b>${o[1]}</b>`).join(", ") + "."),
-      card("Depth and damage", [["Test depth", "The hull groans below it"], ["Crush depth", "The hull fails below it. Damage brings it up"], [kb("3"), "Damage: amber hurt, red out"]],
+      card("Hydrophones", [[kb("3"), "The Sonar screen; the dashboard has a small one"], ["A band", "A ship's screws at that bearing: brighter is louder"], ["A bright point", "An escort's ping striking your hull"], ["A line across", "A depth charge going off"]],
+        "Newest at the top, a line a second. Slow down to hear: your own noise drowns it. Astern you hear little."),
+      card("Depth and damage", [["Test depth", "The hull groans below it"], ["Crush depth", "The hull fails below it. Damage brings it up"], [kb("4"), "Damage: amber hurt, red out"]],
         "The crew mend the worst first. A boat with her radio out takes no orders."))],
     ["Escort", grid(
       card("Find the boat", [["Hydrophones", "Hear a boat that runs fast"], ["Over 15 knots", "Your own noise drowns them"], [kb("X"), "Sonar: pings ahead, but the boat hears it"]],
@@ -350,15 +352,17 @@
       card("Depth charges", [["The lamp", "<b>Run in</b>, <b>Stand by</b>, then <b>Over the contact</b>"], [kb("Space"), "Lay the pattern"], [kb("V"), "Pick the pattern"], [kb("Q", "E"), "Charges' depth (" + kb("Shift") + ": 100 ft)"], [kb("F"), "Fire the hedgehog at once, later in the war"]]),
       card("Patterns", [["Diamond", "5 charges"], ["Double", "10: a diamond in two layers"], ["Wide", "14: when you are unsure where it is"], ["Hedgehog", "Bombs thrown ahead; they burst only on a hull"]],
         "Throwers reload in 6 seconds, rails in 3. Full racks hold a double or two diamonds."),
+      card("Sonar", [[kb("3"), "The Sonar screen; the dashboard has a small one"], ["A band", "Something heard at that bearing: brighter is louder"], ["A bright point", "An echo off a hull, when pinging"], ["A line across", "A depth charge going off"]],
+        "A U-boat's motors are faint; a noisemaker is loud. Over 15 knots the whole of it goes bright: you are deaf."),
       card("Guns", [[kb("G"), "Fire every gun that bears"], [kb("T"), "Next target (" + kb("Shift") + ": back), or click it"]],
         "Guns take a moment to swing round, and each has its arc. Run a boat down and you ram it."),
       card("Drive", [[kb("W", "S"), "Speed, a bell at a time"], [kb("A", "D"), "Rudder, while held"], ["Compass rim", "Click to steer for that heading"], [kb("J"), "AUTO: she follows her order"]]),
-      card("Your escort group", [["Click an escort", "Select it, on the map"], [kb("O"), "Its order: Screen, Hunt, Patrol, Hold"], ["Right click", "Add a waypoint"], [kb("Enter"), "Go aboard (or click it again)"], [kb("N"), "The next escort"]]))],
+      card("Your escort group", [["The map", "Lists the group, a row each: order, sonar, contact, charges, hull"], ["Click an escort", "Select it (a row, or on the map)"], [kb("O"), "Its order: Screen, Hunt, Patrol, Hold"], ["Right click", "Add a waypoint"], [kb("Enter"), "Go aboard (or click it again)"], [kb("N"), "The next escort"]]))],
     ["Keys", grid(
       card("Handling", [[kb("W", "S"), "Speed"], [kb("A", "D"), "Rudder"], [kb("Q", "E"), "Shallower, deeper (escort: charges' depth)"], [kb("P", "U", "C"), "Periscope depth, surface, crash dive"], [kb("J"), "AUTO or your control"]]),
       card("Weapons", [[kb("Space"), "Fire, or lay the pattern"], [kb("T"), "Pick a ship"], [kb("V"), "Spread or pattern"], [kb("F"), "Tubes, or the hedgehog"], [kb("G"), "Gun"], [kb("K"), "Noisemaker"]]),
       card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
-      card("Screens and time", [[kb("1") + "–" + kb("5"), "Dashboard, map, damage, status, log"], [kb("Tab"), "Next screen"], [kb("+", "−"), "Time faster, slower"], [kb("Backspace"), "Back to 1x"]]),
+      card("Screens and time", [[kb("1") + "–" + kb("5"), "Dashboard, map, sonar, damage; the log"], [kb("Tab"), "Next screen"], [kb("+", "−"), "Time faster, slower"], [kb("Backspace"), "Back to 1x"]]),
       card("Your side", [[kb("N"), "Next vessel (" + kb("Shift") + ": back)"], [kb("O"), "Next order"], [kb("Enter"), "Take command"]]),
       card("Systems", [[kb("X"), "Silent running, or sonar"], [kb("I"), "Snorkel"], [kb("Y"), "Radar"], [kb("L"), "Aids"], [kb("M"), "Sound"], [kb("Esc"), "Pause"]])) +
       `<p class="note">Keys are shown where they sit on a US keyboard; where the browser can tell, each shows your own keyboard's letter.</p>`],

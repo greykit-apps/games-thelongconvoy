@@ -54,6 +54,10 @@
     splashes: d => { for (let i = 0; i < 4; i++) hiss(260, 0.12, 900, d, 0.8, i * 0.18, "bandpass", 400); },
     ping: d => { tone(1480, 1470, 700, "sine", 0.09, d); tone(1480, 1470, 500, "sine", 0.03, d, 0.32); },
     pingNear: d => { tone(1480, 1470, 500, "sine", 0.14, d); tone(1480, 1470, 400, "sine", 0.1, d, 0.06); },
+    /* the escort's own ping going out, as heard in her sonar hut; and its echo off a hull, come back softer and
+     * a shade lower, hollow with the water it crossed */
+    sonarOut: d => { tone(1480, 1478, 620, "sine", 0.1, d); tone(1480, 1478, 420, "sine", 0.025, d, 0.26); },
+    echo: d => { tone(1452, 1436, 420, "sine", 0.08, d); tone(1460, 1446, 320, "sine", 0.03, d, 0.045); hiss(380, 0.025, 1450, d, 7, 0, "bandpass"); },
     creak: d => { tone(72, 52, 1600, "sawtooth", 0.06, d); tone(140, 96, 1100, "triangle", 0.03, d, 0.3); hiss(900, 0.08, 300, d, 3, 0.1, "bandpass"); },
     gun: d => { hiss(130, 0.6, 1800, d, 0.7, 0, "bandpass"); tone(140, 50, 260, "sine", 0.4, d); },
     shellNear: d => { tone(1900, 620, 380, "sine", 0.04, d); SOUNDS.splash(d); },
