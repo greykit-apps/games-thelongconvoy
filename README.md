@@ -14,7 +14,7 @@ No install required. Plain scripts, no build step, nothing fetched at play time:
 
 Pumacity's convoys carry its oil, its ore and its troops between the islands, and the PDF's escorts ring them round. The Wolf Empire has a pack.
 
-- **The dashboard**, as in 1990: the vessel you are aboard, every instrument at once. The view out in the big window, the map in a small one, the telegraph, compass and depth, battery and fuel, the tubes, the snorkel and the Metox radar warning; on an escort the sonar scope and its passive/active switch, the charges' depth and the racks. Every control is a button with a key. **AUTO / USER CONTROL** hands the vessel to her order while you watch.
+- **The dashboard**, as in 1990: the vessel you are aboard, every instrument at once. The view out in the big window, the map in a small one, the telegraph, compass and depth, battery and fuel, the tubes, the snorkel and the Metox radar warning; on an escort the sonar scope and its passive/active switch, the charges' depth and the racks. Every control is a button with a key. **AUTO / USER CONTROL** hands the vessel to its orders while you watch.
 - **The map runs the battle**, as in 1990: the depth in hard bands, every boat of the pack, the convoy as the pack has seen it. Click a boat to select her: her class, captain, depth and order, and the orders to give her.
 - **Every boat sails under her order:** Attack (her captain finds the convoy and goes in), Shadow, Patrol (her waypoints: a right click on the map), Evade, Drift, Charge, Periscope depth, Hold.
 - **Take command of one boat at a time** (`Enter`, a second click, or `N` for the next): then the view out of her is yours, the periscope at periscope depth and the bridge on the surface, with her helm, telegraph and tubes.
@@ -46,19 +46,19 @@ Every mission ends with the 1990 game's debrief: who won, a score and one of ele
 | `1` / `2` / `3` / `4` / `5` | the dashboard / the map / damage / status / the log |
 | `J` / `I` | AUTO or USER CONTROL / the snorkel |
 | Click, `O`, right click | on the map: select a boat (her mark, her name tag, or her name in the panel), give her the next order, add her a waypoint |
-| Click her order / wheel | on the map: her orders menu at the mouse / zoom about the mouse |
+| Click a boat's order / wheel | on the map: her orders menu at the mouse / zoom about the mouse |
 | `Enter` / `N` | take command of the boat selected / of the next boat |
 | `W` `S` | telegraph |
 | `A` `D` | helm |
 | `Q` `E` / `PgUp` `PgDn` | depth; `P` periscope depth, `U` surface, `C` crash dive |
 | Arrows | in the view: train and raise the periscope, look round; on the map: the helm and telegraph |
 | `T` | select the ship nearest the crosshair |
-| `Space` | fire at her, or the nearest in range; `F` forward or after tubes, `V` a spread |
+| `Space` | fire at the target, or the nearest in range; `F` forward or after tubes, `V` a spread |
 | `X` / `K` / `Y` / `G` | silent running / a noisemaker / radar / man the deck gun |
 | `+` `−` / `Backspace` | time compression / back to 1x |
 | `Esc` / `L` / `M` / `?` | pause / Classic or Field / sound / every key |
 
-On the PDF's side: `W` `S` and `A` `D` her speed and helm, `X` sonar, `Q` `E` the charges' depth (`Shift` for 100 feet), `V` the weapon (the diamond, double or wide pattern, or the hedgehog), `Space` lays it when the lamp says over her, `F` the hedgehog at once, `G` the guns, `T` the next boat up in sight for them (or click her in the view), `N` the next escort, and on the map `O` and a right click for the others' orders.
+On the PDF's side: `W` `S` and `A` `D` speed and helm, `X` sonar, `Q` `E` the charges' depth (`Shift` for 100 feet), `V` the weapon (the diamond, double or wide pattern, or the hedgehog), `Space` lays it when the lamp says over the contact, `F` the hedgehog at once, `G` the guns, `T` the next boat up in sight for them (or click her in the view), `N` the next escort, and on the map `O` and a right click for the others' orders.
 
 A gamepad works too; Help has its map.
 

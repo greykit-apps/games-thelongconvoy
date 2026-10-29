@@ -171,14 +171,24 @@
       if (!sh.boat) drawn.push({ id: sh.id, x, y: wl - spr.top * kk * 0.5, top: wl - spr.top * kk, wl, d: q.d, px, haze });
       else boatsDrawn.push({ id: +sh.id.slice(1), x, top: wl - spr.top * kk, wl, d: q.d, px, haze });
     }
-    /* ---- our torpedoes' wakes, by day ---- */
-    if (L > 0.35) for (const tp of S.torps) {
+    /* ---- the torpedoes' wakes, by day: a streak of bubbles astern of each, back to its tube at most, widening and
+     * fading behind it, churned white at its head; an electric one leaves none ---- */
+    if (L > 0.3) for (const tp of S.torps) {
       if (!tp.wake) continue;
-      for (let j = 0; j < 12; j++) {
-        const bx = tp.x - PP.hx(tp.hdg) * j * 18, by = tp.y - PP.hy(tp.hdg) * j * 18, d = PP.dist(o.x, o.y, bx, by), b = PP.angTo(o.x, o.y, bx, by);
-        if (d < 40 || d > dh || !inView(b)) continue;
-        const y = hz + f * (eyeYd / d + d / (2 * RE) - dip);
-        g.fillStyle = `rgba(236,244,248,${(0.7 - j * 0.05).toFixed(2)})`; g.fillRect(Math.round(toX(b)), Math.round(y), Math.max(1, Math.round(3 * f / d * 8)), 1);
+      const lk = PP.clamp((L - 0.3) / 0.3, 0, 1);
+      /* points down its track, each where it falls on the water and how wide the wake is there; joined into one strip */
+      let prev = null;
+      for (let j = 0; j < 30; j++) {
+        const back = Math.min(j * 14, tp.run), bx = tp.x - PP.hx(tp.hdg) * back, by = tp.y - PP.hy(tp.hdg) * back, d = PP.dist(o.x, o.y, bx, by), b = PP.angTo(o.x, o.y, bx, by);
+        const ok = d >= 30 && d <= dh && inView(b);
+        const pt = ok ? { x: toX(b), y: hz + f * (eyeYd / d + d / (2 * RE) - dip), w: Math.max(1, (1.1 + j * 0.09) * f / d), j } : null;
+        if (pt && prev) {
+          g.fillStyle = `rgba(236,244,248,${((0.62 - j * 0.019) * lk * (0.7 + 0.3 * K.hash(tp.id, j, 76))).toFixed(2)})`;
+          K.poly(g, [[prev.x - prev.w / 2, prev.y], [prev.x + prev.w / 2, prev.y], [pt.x + pt.w / 2, pt.y + 1], [pt.x - pt.w / 2, pt.y + 1]], g.fillStyle);
+        }
+        if (pt && j === 0) { g.fillStyle = `rgba(255,255,255,${(0.9 * lk).toFixed(2)})`; K.disc(g, pt.x, pt.y, Math.max(1, pt.w * 0.8), Math.max(1, pt.w * eyeYd / d)); }
+        prev = pt;
+        if (back >= tp.run) break;
       }
     }
     /* ---- what flies and splashes (o.late: what is in the air waits for the caller, over its own deck) ---- */
@@ -250,6 +260,19 @@
             g.fillStyle = K.dim(K.hash(sd, i, 77) < 0.5 ? "#5a4632" : "#8a8478", Math.max(L, 0.3));
             g.globalAlpha = fade; g.fillRect(Math.round(ex - w / 2), Math.round(ey - h + bob), w, h); g.globalAlpha = 1;
           }
+        }
+      } else if (p.k === "fizz") {
+        /* a noisemaker's bubbles reaching the surface: a pale slick, and pops of white in it coming and going, fewer
+         * as it runs down */
+        if (d > dh) continue;
+        const sd = p.seed || 0, k = Math.min(1, p.t / 3) * Math.max(0, 1 - p.t / p.life), tk = Math.floor(o.now / 140);
+        g.fillStyle = white(0.1 * k); K.disc(g, x, base, Math.max(1, p.r * f / d), Math.max(1, p.r * f / d * eyeYd / d * 0.8));
+        for (let i = 0; i < 18; i++) {
+          if (K.hash(sd + tk, i, 74) > 0.25 + 0.45 * k) continue;
+          const ox = (K.hash(sd, i, 71) - 0.5) * p.r * 2, oy = (K.hash(sd, i, 72) - 0.5) * p.r * 1.4, rr = p.r * 0.1 * (0.6 + K.hash(sd + tk, i, 73));
+          const dd = Math.max(3, d + oy), bs = dd < dh ? hz + f * (eyeYd / dd + dd / (2 * RE) - dip) : hz;
+          g.fillStyle = white((0.4 + 0.45 * K.hash(sd + tk, i, 75)) * k);
+          K.disc(g, x + ox * f / d, bs, Math.max(1, rr * f / d), Math.max(1, rr * f / dd * eyeYd / dd));
         }
       } else if (p.k === "boil") {
         /* white water welling up in patches, spreading and going grey as it settles */

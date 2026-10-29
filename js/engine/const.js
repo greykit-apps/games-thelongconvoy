@@ -190,8 +190,8 @@
   ];
   C.patCount = P => (P.rails + P.throws.length * 2) * (P.deep ? 2 : 1);
   /* the orders for an escort you are not aboard (the 1990 game's, for its side) */
-  C.ESC_ORDERS = [["screen", "Screen", "Keep her station on the convoy and hunt what comes near it"], ["hunt", "Hunt", "Go after the freshest contact any escort has"],
-    ["patrol", "Patrol", "Run her waypoints, hunting what she finds"], ["hold", "Hold", "Stop where she is and listen"]];
+  C.ESC_ORDERS = [["screen", "Screen", "Keep station on the convoy and hunt what comes near it"], ["hunt", "Hunt", "Go after the freshest contact any escort has"],
+    ["patrol", "Patrol", "Run the waypoints, hunting what turns up"], ["hold", "Hold", "Stop and listen"]];
   C.ESCORTS = ["destroyer", "frigate", "chaser"];
   /* Pumacity names its merchant ships for its high desert and mountains (ours) */
   C.SHIP_NAMES = ["Talus", "Scree", "Mesa", "Arroyo", "Juniper", "Tamarack", "Ridgeline", "Sagebrush", "Cliffrunner", "Ponderosa", "Granite", "Canyon",
@@ -235,7 +235,7 @@
     steam: { name: "Steam", kn: 46, range: 4500, wake: true },
     electric: { name: "Electric", kn: 29, range: 4000, wake: false },
   };
-  C.TORP = { arm: 450, turnR: 150, reach: 30, gyroMax: 95 * PP.DEG, runDepth: 10, reload: 600, hitSlop: 3 };
+  C.TORP = { arm: 450, turnR: 150, reach: 30, gyroMax: 95 * PP.DEG, runDepth: 10, reload: 600, hitSlop: 3, gap: 2 };   /* gap: seconds between the torpedoes of a spread (UNCERTAIN) */
   C.SPREAD = 2.5 * PP.DEG;
 
   /* ---- the deck gun ---- */

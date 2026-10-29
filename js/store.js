@@ -10,7 +10,7 @@
 
   /* ---- the aids: Classic is the instruments and your eyes, Field a modern helping hand. None of them changes the war: the reality does that ---- */
   PP.AID_LIST = [
-    ["solution", "Solution line", "Where the boat's fire control says the target will be when a torpedo meets her, on the map and in the periscope."],
+    ["solution", "Solution line", "Where the boat's fire control says the target will be when a torpedo meets it, on the map and in the periscope."],
     ["tracks", "Torpedo tracks", "Your torpedoes' runs, drawn on the chart."],
     ["labels", "Range labels", "Each ship's range beside it, through the periscope and on the chart."],
     ["autoSlow", "Slow for news", "Time compression drops back to one when a ship is sighted, a plane is seen or a torpedo hits."],

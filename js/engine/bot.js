@@ -63,8 +63,8 @@
       A({ a: "tc", v: C.TC_MAX_IDX });
       const th = threat(S), left = Sub.torpsLeft(s), test = Sub.testDepth(s), bot = Sea.depthAt(s.x, s.y);
       const out = left === 0;
-      /* ---- the hunt is on: deep, quiet, across their line ---- */
-      if (th.hunted || (m.st === "evade" && m.evadeT < 420)) {
+      /* ---- the hunt is on: deep, quiet, across their line (once a spread going out is all away) ---- */
+      if (!s.salvo && (th.hunted || (m.st === "evade" && m.evadeT < 420))) {
         /* hunted afresh: a noisemaker over the side as she goes deep */
         if (m.st !== "evade") { m.st = "evade"; m.evadeT = 0; if (th.hunted && s.decoys > 0 && !Sub.surfaced(s)) A({ a: "decoy" }); }
         if (th.hunted) m.evadeT = Math.min(m.evadeT, 120);
@@ -153,11 +153,15 @@
         let legLeft = 1e9;
         if (S.real.zig && cv) { const plan = C.CONVOY.zig[cv.zig.plan]; legLeft = (plan[cv.zig.leg % plan.length][1] - cv.zig.legT) / (cv.alert ? 1.5 : 1); }
         const sol = bank && W.solve(S, e, bank);
-        if (bank && errPos < 150 + d * 0.05 && best < 1.3 && sol && sol.run < 4000 && sol.time + 15 < legLeft) {
+        /* well inside the torpedo's reach (a target drawing away outruns one fired at its limit); a warship's zig-zags
+         * beat a long shot, so close her first */
+        const maxRun = t.role === "escort" ? 1500 : C.TORPS[s.mark].range * 0.85;
+        if (bank && errPos < 150 + d * 0.05 && best < 1.3 && sol && sol.run < maxRun && sol.time + 15 < legLeft) {
           if (s.bank !== bank) A({ a: "bank", v: bank });
-          if (s.spread !== 3) A({ a: "spread", v: 3 });
-          const n = Math.min(3, Sub.loaded(s, bank));
-          for (let i = 0; i < n; i++) A({ a: "fire" });
+          /* the fan no wider than she shows: three on a ship well across the line of fire, two on one nearer end-on */
+          const shows = C.SHIPS[t.cls].len * Math.abs(Math.sin(e.aob)), n = shows >= 2 * C.SPREAD * sol.run ? 3 : 2;
+          if (s.spread !== n) A({ a: "spread", v: n });
+          A({ a: "fire" });
           m.fireT = S.t;
         }
       }

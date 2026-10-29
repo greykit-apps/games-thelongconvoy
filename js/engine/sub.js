@@ -110,11 +110,18 @@
         ev.push({ t: "ordered", what: "depth" });
         break;
       }
-      case "setDepth": s.ordDepth = PP.clamp(Math.round(a.v / 5) * 5, 0, test + 100); s.crashing = false; break;
+      /* a depth set by hand may be past crush depth (the depth gauge's scale runs on past it): the captain's call */
+      case "setDepth": s.ordDepth = PP.clamp(Math.round(a.v / 5) * 5, 0, Math.max(test + 100, Math.ceil(C.SUBS[s.cls].crush * 1.1 / 5) * 5)); s.crashing = false; break;
       case "surface": s.ordDepth = 0; s.crashing = false; ev.push({ t: "ordered", what: "surface" }); break;
       /* a rate up or down (feet a second, down positive), held by hand wherever it takes her: past test depth, onto
        * the bottom. The captain's call */
-      case "rate": s.ordRate = PP.clamp(a.v, -C.DIVE.blow, C.DIVE.crash); s.crashing = false; if (s.ordRate > 0 && Sub.surfaced(s)) ev.push({ t: "diveAlarm" }); break;
+      /* ...but a rate held down levels her off short of crush depth, unless she is already there: going on past it
+       * takes a second order (or a depth set by hand) */
+      case "rate":
+        s.ordRate = PP.clamp(a.v, -C.DIVE.blow, C.DIVE.crash); s.crashing = false;
+        s.rateStop = s.ordRate > 0 && s.depth < Sub.crushDepth(s) - 25;
+        if (s.ordRate > 0 && Sub.surfaced(s)) ev.push({ t: "diveAlarm" });
+        break;
       /* the emergency blow: every tank blown, straight up; no diving again for a while, so she stays up and fights */
       case "eblow": {
         if (Sub.surfaced(s)) break;
@@ -170,9 +177,13 @@
      * heading and its training, follows her as she turns); a dive waiting on it goes when it is stowed */
     const G = s.gun;
     if (G.rel === undefined) { G.rel = 0; G.ordRel = 0; }
+    /* manned, its crew keep it laid on her (as far round as the tower lets them) */
+    if (G.on && Sub.surfaced(s)) { const q = PP.Weapons.gunTarget(S); if (q) G.ordRel = PP.Weapons.gunSight(S, q).lay; }
     G.rel += PP.clamp(G.ordRel - G.rel, -C.GUN.train * dt, C.GUN.train * dt);
     G.brg = PP.normAng(s.hdg + G.rel);
     if (s.pendDive && Sub.gunStowed(s)) { const a = s.pendDive; s.pendDive = null; Sub.order(S, a, ev); }
+    /* the rest of a spread going out */
+    if (s.salvo) PP.Weapons.salvoStep(S, ev);
     const surf = Sub.surfaced(s);
     /* the telegraph and the speed through the water */
     s.bell = Math.min(s.bell, Sub.bellMax(s));
@@ -196,6 +207,11 @@
     s.depth += s.vz * dt;
     if (s.depth <= 0) { s.depth = 0; s.vz = Math.max(0, s.vz); }
     if (s.crashing && s.depth >= s.ordDepth - 5) s.crashing = false;
+    /* a rate held down, coming to crush depth (less what she needs to check her way): levelled there, the order spent */
+    if (s.ordRate > 0 && s.rateStop) {
+      const stop = Math.floor((Sub.crushDepth(s) - 10) / 5) * 5;
+      if (s.depth + Math.max(0, s.vz) * 6 >= stop) { s.ordRate = null; s.rateStop = false; s.ordDepth = stop; s.atDepth = false; ev.push({ t: "rateStop", d: stop }); }
+    }
     /* a rate held: the ordered depth is where she is (so nothing else pulls her back), until she breaks surface */
     if (s.ordRate !== null && s.ordRate !== undefined) { s.ordDepth = Math.max(0, Math.round(s.depth)); s.atDepth = true; if (s.ordRate < 0 && s.depth <= 0) { s.ordRate = null; s.ordDepth = 0; } }
     if (s.eblow && s.depth <= 0) s.eblow = false;

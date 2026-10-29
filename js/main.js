@@ -228,7 +228,7 @@
       switch (e.t) {
         case "command": SFX.play("menu"); toast(`Aboard ${e.name}`, "", 2000); game.ui.track = []; break;
         case "ordered": if (e.what === "bell") SFX.play("bell"); break;
-        case "auto": toast(e.on ? `${e.name} on AUTO: she sails under her order. J, or the helm, takes her back` : `${e.name}: USER CONTROL`, "", 2400); break;
+        case "auto": toast(e.on ? `${e.name} on AUTO, following orders. J, or the helm, gives you control` : `${e.name}: USER CONTROL`, "", 2400); break;
         case "eorders": toast(`${e.name}: ${(C.ESC_ORDERS.find(o => o[0] === e.v) || C.ESC_ORDERS[0])[1].toLowerCase()}${f && e.id === f.id ? ", when you leave her" : ""}`, "", 2000); break;
         case "dcSet": break;
         case "ping": toast(e.on ? "Sonar pinging: it finds them ahead, and they hear it" : "Sonar off: listening", "", 2000); break;
@@ -238,7 +238,7 @@
         case "hedgehogAway": SFX.play("splashes", 0.5); toast("Hedgehog away", "amber", 1600); break;
         case "noHedgehog": toast(e.empty ? "The hedgehog is empty" : "No hedgehog fitted yet", "amber", 1800); break;
         case "noGunTarget": toast("No boat in sight on the surface", "amber", 1600); break;
-        case "gunHold": toast({ loading: "The guns are loading", training: "The guns are training round onto her", range: "Out of range of the guns that bear: turn to bring the main guns on her", arc: "None of her guns bear on her: turn toward her" }[e.why], e.why === "loading" ? "" : "amber", e.why === "loading" ? 900 : 1800); break;
+        case "gunHold": toast({ loading: "The guns are loading", training: "The guns are training round onto the target", range: "Out of range of the guns that bear: turn to bring the main guns on the target", arc: "None of the guns bear on the target: turn toward it" }[e.why], e.why === "loading" ? "" : "amber", e.why === "loading" ? 900 : 1800); break;
         case "eTarget": SFX.play("menu"); if (e.id !== null) toast(`Target: ${e.name}, ${PP.num(Math.round(e.d / 50) * 50)} yards${e.d >= C.ESC.gunRange ? ", out of the guns' range" : ""}`, "", 1600); break;
         /* her own gun loud; the others' by how far off they are */
         case "escortGun": {
@@ -247,12 +247,12 @@
           break;
         }
         /* her shell's fall, heard when it lands */
-        case "eGunHit": setTimeout(() => { SFX.play("shellHit", 0.7); toast("A hit on her!", "green", 1400); }, e.d / C.SHELL_YPS * 1000); break;
+        case "eGunHit": setTimeout(() => { SFX.play("shellHit", 0.7); toast("A hit!", "green", 1400); }, e.d / C.SHELL_YPS * 1000); break;
         case "eGunMiss": setTimeout(() => SFX.play("splash", 0.4), e.d / C.SHELL_YPS * 1000); break;
         case "dcBoom": { const d = f ? PP.dist(e.x, e.y, f.x, f.y) : 9999; SFX.play(e.hh ? "dcNear" : "dc", PP.clamp(1.2 - d / 3000, 0.15, 1)); if (e.hh) toast("A hedgehog has hit something!", "green", 2400); break; }
         case "escortContact": if (S.t - (game.warned.contact || -1e9) > 30) { game.warned.contact = S.t; const q = S.ships.find(o => o.id === e.id); SFX.play(e.how === "sonar" ? "pingNear" : "sighted"); toast(`${q ? q.name : "An escort"}: ${e.how === "sonar" ? "sonar contact" : e.how === "eye" ? "a boat sighted" : e.how === "radar" ? "radar contact" : "contact"}`, "amber", 2400); } break;
         case "subLost": SFX.play("sunk"); toast(`A boat is sunk${e.why === "crushed" ? ": crushed" : ": she flooded"}`, "green", 3600); break;
-        case "rammed": if (e.ours) { SFX.play("bigHit"); toast("Rammed her!", "green", 2400); } break;
+        case "rammed": if (e.ours) { SFX.play("bigHit"); toast("Rammed the boat!", "green", 2400); } break;
         case "fired": if (S.t - (game.warned.fired || -1e9) > 20) { game.warned.fired = S.t; } break;
         case "torpHit": SFX.play("bigHit", 0.7); toast(`Torpedo hit: the ${cls(e.ship)}`, "red", 2400); break;
         case "shipSinking": SFX.play("breakup", 0.5); break;
@@ -275,7 +275,7 @@
         case "command": SFX.play("menu"); toast(`In command of ${e.name}`, "", 2200); game.ui.track = []; break;
         case "orders": toast(e.why === "lastWp" ? `${e.name} is at her last waypoint, holding` : `${e.name}: ${PP.Orders.name(e.v).toLowerCase()}${e.id === s.id ? ", when you leave her" : ""}`, "", 2200); break;
         case "wp": break;
-        case "auto": toast(e.on ? `${e.name} on AUTO: she sails under her order. J, or the helm, takes her back` : `${e.name}: USER CONTROL`, "", 2400); break;
+        case "auto": toast(e.on ? `${e.name} on AUTO, following orders. J, or the helm, gives you control` : `${e.name}: USER CONTROL`, "", 2400); break;
         case "snorkel": toast(e.forced ? "Snorkel down: too deep for it" : e.on ? "Snorkel up: diesels running, charging" : "Snorkel down", e.forced ? "amber" : "", 2000); break;
         case "snorkelNo": toast({ none: "No snorkel fitted until Year IV", surfaced: "On the surface the diesels run anyway", deep: `Up to periscope depth first: ${C.PD} feet` }[e.why], "amber", 2200); break;
         case "metox": SFX.play("warn"); toast(`Metox! Radar on us, bearing ${PP.deg3(e.brg)}`, "red", 3000); slow(); break;
@@ -285,7 +285,7 @@
         case "ordered": if (e.what === "bell") SFX.play("bell"); break;
         case "diveAlarm": SFX.play(e.crash ? "crash" : "klaxon"); toast(e.crash ? "Crash dive! All ahead full" : "Dive, dive", e.crash ? "amber" : "", 1800); break;
         case "surfaced": SFX.play("blow"); toast("Surfaced", "", 1400); break;
-        case "eblow": SFX.play("blow"); SFX.play("klaxon", 0.6); toast(`Emergency blow! She's going up, and she can't dive for ${Math.round(e.lock / 60)} minutes`, "red", 3200); break;
+        case "eblow": SFX.play("blow"); SFX.play("klaxon", 0.6); toast(`Emergency blow! Going up, and no diving for ${Math.round(e.lock / 60)} minutes`, "red", 3200); break;
         case "cantDive": toast(`The tanks are blown: no diving for ${Math.floor(e.left / 60)}:${String(Math.floor(e.left % 60)).padStart(2, "0")}`, "amber", 1800); break;
         case "submerged": break;
         case "atDepth": toast(e.d === C.PD ? "At periscope depth" : `Level at ${e.d} feet`, "", 1600); break;
@@ -294,7 +294,7 @@
         case "scopeBroken": toast("The periscope is out of action", "red"); break;
         case "tooDeep": toast(`Too deep for the periscope: ${C.PD} feet. ${kc("P", "pad:R-click")} periscope depth`, "amber"); break;
         case "aground": toast("Aground!", "red", 2000); SFX.play("shellHit"); break;
-        case "bottomHit": toast("She hit the bottom", "amber"); break;
+        case "bottomHit": toast("The boat hit the bottom", "amber"); break;
         case "batLow": toast("Battery low", "amber", 3000); break;
         case "batFlat": toast("The battery is flat: surface to charge", "red", 3600); break;
         case "fuelLow": toast("Fuel low: time to head for a base", "amber", 3600); break;
@@ -309,20 +309,21 @@
         case "lostLock": toast("Lost the target", "amber"); break;
         case "noRange": toast("Nothing in sight to range on", "amber", 1600); break;
         case "ranged": toast(`Range ${PP.num(Math.round(e.rng / 50) * 50)} yards`, "", 1400); break;
-        case "fired": SFX.play("launch"); toast(`Tube ${e.tube.slice(1)} ${e.tube[0] === "F" ? "forward" : "aft"}: fired${e.solved ? `, ${Math.round(e.run)} yards` : ", no solution"}`, "", 1800); break;
+        case "fired": SFX.play("launch"); toast(`Tube ${e.tube.slice(1)} ${e.tube[0] === "F" ? "forward" : "aft"}: fired${e.n > 1 ? `, ${e.k + 1} of ${e.n}` : ""}${e.solved ? `, ${Math.round(e.run)} yards` : ", no solution"}`, "", 1800); break;
+        case "salvoOn": toast("The spread is still going out", "", 1200); break;
         case "cantFire": toast({ damaged: "Those tubes are damaged", deep: "Too deep to fire", none: "No tubes there", empty: (e.bank === "F" ? "Forward" : "After") + ` tubes empty: ${kc("F", "pad:dL")} switches`,
-          angle: `Wrong angle: fire the ${e.bank === "F" ? "after" : "forward"} tubes (${kc("F", "pad:dL")}), or turn toward her`, range: "Out of range: let her close" }[e.why] || "Can't fire", "amber"); break;
+          angle: `Wrong angle: fire the ${e.bank === "F" ? "after" : "forward"} tubes (${kc("F", "pad:dL")}), or turn toward the target`, range: "Out of range: let the target close" }[e.why] || "Can't fire", "amber"); break;
         case "noTarget": toast("No vessel in range", "amber", 1600); break;
         case "noSolution": break;
         case "reloaded": SFX.play("reloaded"); break;
         case "torpHit": SFX.play("hit"); toast(`Hit! The ${cls(e.ship)}`, "green", 2400); slow(); if (S.mode === "practice" && game.coach !== "done") { game.coach = "done"; PP.prefs.learned = true; PP.savePrefs(); toast("That's the attack. Escorts next: try a convoy action", "green", 4200); } break;
         case "torpDud": SFX.play("dud"); toast(e.why === "unarmed" ? "It hit before it armed" : "A dud: it hit, and did nothing", "amber", 2600); break;
         case "torpPremature": SFX.play("hit", 0.6); toast("A torpedo went off early", "amber", 2400); break;
-        case "torpUnder": toast("It ran under her: too deep", "amber", 2400); break;
+        case "torpUnder": toast("It ran under the target: too deep", "amber", 2400); break;
         case "torpMiss": toast("A miss: the torpedo ran out", "", 1600); break;
         case "torpHitUs": SFX.play("bigHit"); toast("Our own torpedo came round and hit us!", "red", 3600); break;
         case "wakeSeen": toast("They've seen a torpedo's wake", "amber", 2000); break;
-        case "shipExplodes": SFX.play("bigHit"); toast("She blew up!", "green", 2600); break;
+        case "shipExplodes": SFX.play("bigHit"); toast("The target blew up!", "green", 2600); break;
         case "shipSinking": SFX.play("breakup", 0.7); break;
         case "shipSunk": SFX.play("sunk"); toast(e.role === "escort" ? `${C.SHIPS[e.cls].name} ${e.name} sunk` : `${C.SHIPS[e.cls].name} ${e.name} sunk: ${PP.num(e.tons)} tons`, "green", 3200); break;
         case "convoyTurns": toast("The convoy is turning away", "", 2200); break;
@@ -346,11 +347,11 @@
         case "gunManned": toast("Gun crew on deck", "", 1400); break;
         case "gunSecured": toast("Gun secured", "", 1400); break;
         case "gunFire": SFX.play("gun"); R.shake = Math.max(R.shake, 3); break;
-        case "gunStowing": SFX.play("klaxon", 0.5); toast(`Securing the gun: she dives when it is fore and aft${e.secs > 1 ? `, ${e.secs} seconds` : ""}`, "amber", 2200); break;
-        case "gunArc": if (S.t - (game.warned.arc || -1e9) > 4) { game.warned.arc = S.t; toast("The tower: the gun bears no further aft. Turn her", "amber", 1800); } break;
+        case "rateStop": SFX.play("creak", 0.6); toast(`Levelling at ${e.d} feet: crush depth. Order a dive again to go deeper`, "red", 3000); break;
+        case "gunStowing": SFX.play("klaxon", 0.5); toast(`Securing the gun: the dive waits until it is fore and aft${e.secs > 1 ? `, ${e.secs} seconds` : ""}`, "amber", 2200); break;
         case "gunHit": SFX.play("shellHit", 0.7); toast("A hit", "green", 1000); break;
         case "gunSplash": SFX.play("splash", 0.5); break;
-        case "gunNo": toast({ submerged: "Surface to man the gun", damaged: "The gun is damaged", manning: "The gun is not manned yet", shells: "No shells left" }[e.why], "amber"); break;
+        case "gunNo": toast({ submerged: "Surface to man the gun", damaged: "The gun is damaged", manning: "The gun is not manned yet", shells: "No shells left", loading: "The gun is loading", target: "No ship in the gun's reach", arc: "The target is behind the gun's arc: the tower is in the way. Turn the boat", training: "The gun is training round onto the target" }[e.why], e.why === "loading" ? "" : "amber", e.why === "loading" ? 900 : 1800); break;
         case "radar": toast(e.on ? "Radar on" : "Radar off", "", 1200); break;
         case "noRadar": toast("This boat has no radar yet", "amber"); break;
         case "silent": toast(e.on ? `Silent running: pumps stopped, 1/3 at most. ${kc("X", "pad:Back+B")} to run normally` : "Silent running off: all speeds", "", 2600); break;
@@ -361,7 +362,7 @@
         case "weather": toast(`The weather: ${C.WX[e.k].name.toLowerCase()}`, "", 2400); break;
         case "atPort": toast(`${e.name} in reach: surface, slow, and ${kc("O", "pad:Y")} to tie up`, "green", 3600); break;
         case "warOver": toast("Word from command: the war is over. Come home.", "green", 5000); break;
-        case "subLost": SFX.play("over"); HUD.end(e.why === "crushed" ? "The hull gave way" : "She is flooding", S.subs.length > 1 ? "The last of the pack, lost" : "Lost with all hands", "danger"); break;
+        case "subLost": SFX.play("over"); HUD.end(e.why === "crushed" ? "The hull gave way" : "The boat is flooding", S.subs.length > 1 ? "The last of the pack, lost" : "Lost with all hands", "danger"); break;
         case "towed": toast("Out of fuel and battery: a tug is sent", "amber", 3000); break;
         case "actionOver": SFX.play(e.why === "allSunk" || e.why === "slipped" ? "won" : "over"); HUD.end(e.why === "allSunk" ? (S.goal === "escort" ? "The hunter is sunk" : "The convoy is destroyed") : e.why === "slipped" ? "The pack has slipped away" : "The convoy got away", `${PP.num(S.stats.tons)} tons`, e.why === "allSunk" || e.why === "slipped" ? "ok" : ""); break;
       }
@@ -396,16 +397,14 @@
     raise: KY(["up"], ["pad:B"], "raise the periscope"),
     power: KY(["Z"], ["pad:Y"], "power"),
     lock: KY(["T"], ["pad:X"], "select a ship"),
-    onHer: KY(["H"], ["pad:Back+R-click"], "swing onto her"),
+    onHer: KY(["H"], ["pad:Back+R-click"], "swing to the target"),
     ahead: KY(["B"], ["pad:Back+RT"], "bow, stern"),
     next: KY(["T"], ["pad:X"], "next ship"),
     fire: KY(["Space"], ["pad:A"], "fire"),
     look: KY(["left", "right"], ["pad:R-stick"], "look"),
     glasses: KY(["up", "down"], ["pad:Y"], "glasses"),
     gun: KY(["G"], ["pad:dR"], "man the gun"),
-    secure: KY(["G"], ["pad:dR"], "secure the gun"),
-    gunTrain: KY(["left", "right"], ["pad:R-stick"], "train the gun"),
-    gunRange: KY(["up", "down"], ["pad:dU", "pad:dD"], "range"),
+    gunFire: KY(["G"], ["pad:dR"], "fire the gun"),
     time: KY(["+", "−"], ["pad:LT", "pad:RT"], "time"),
     zoom: KY(["Z"], ["pad:Y"], "zoom"),
     silent: KY(["X"], ["pad:Back+B"], "silent running"),
@@ -413,7 +412,7 @@
     turn: KY(["A", "D"], ["pad:L-stick"], "turn across his line"),
     chart: KY(["1"], ["pad:Back"], "the map"),
     scope: KY(["2"], ["pad:LB", "pad:RB"], "the view", "to the view"),
-    click: KY([], null, "click a boat to select her"),
+    click: KY([], null, "click a boat to select it"),
     pan: KY([], null, "drag to look round"),
     keys: KY(["?"], ["pad:Back+Start"], "all keys"),
   };
@@ -425,7 +424,7 @@
     const s = S.sub, st = R.stationOf(S, game.ui);
     if (S.stats.hits) { game.coach = "done"; return null; }
     if (S.stats.fired && S.torps.length) return `Watch it run: ${chip("chart")}${SEP}${chip("scope")}`;
-    if (S.stats.fired) return `A miss. Shoot from ahead of her, 1,000 to 2,000 yards off her track, near 90° on the bow${SEP}${chip("lock")}${SEP}${chip("fire")}`;
+    if (S.stats.fired) return `A miss. Shoot from ahead of the target, 1,000 to 2,000 yards off its track, near 90° on the bow${SEP}${chip("lock")}${SEP}${chip("fire")}`;
     if (st !== "scope" && st !== "bridge") return `The attack is made at the periscope: ${chip("scope", " ")}`;
     if (st === "scope" && s.depth > C.PD + 4) return chip("pd");
     if (st === "scope" && !s.scope.up) return chip("raise");
@@ -433,19 +432,19 @@
       const L = R.last, seen = L && L.view && L.view.drawn.some(d => PP.Detect.known(S, PP.Ships.byId(S, d.id)) && d.haze < 0.9);
       if (seen) return s.scope.hi ? `${chip("lock", "locks the ship nearest the crosshair")}${SEP}${chip("power", "back to low power")}` : `${chip("power", "high power, for a closer look")}${SEP}${chip("lock", "locks the ship nearest the crosshair")}`;
       const near = S.ships.filter(q => PP.Detect.known(S, q) && PP.Ships.alive(q)).sort((a, b) => PP.dist(s.x, s.y, a.x, a.y) - PP.dist(s.x, s.y, b.x, b.y))[0];
-      return near ? `${chip("onHer")}, or ${chip(st === "scope" ? "train" : "look", st === "scope" ? "train the periscope onto her" : "look round to her")}: she bears ${PP.deg3(PP.angTo(s.x, s.y, near.x, near.y))}, the hollow mark on the ring` : "Watch for the targets";
+      return near ? `${chip("onHer")}, or ${chip(st === "scope" ? "train" : "look", st === "scope" ? "train the periscope onto it" : "look round to it")}: the nearest ship bears ${PP.deg3(PP.angTo(s.x, s.y, near.x, near.y))}, the hollow mark on the ring` : "Watch for the targets";
     }
-    const e = W.est(S), sol = e && W.solve(S, e, s.bank), eye = S.real.aob ? `${SEP}set her angle and speed: <kbd>[</kbd><kbd>]</kbd> <kbd>,</kbd><kbd>.</kbd>` : "";
+    const e = W.est(S), sol = e && W.solve(S, e, s.bank), eye = S.real.aob ? `${SEP}set the target's angle and speed: <kbd>[</kbd><kbd>]</kbd> <kbd>,</kbd><kbd>.</kbd>` : "";
     if (sol && sol.ok) return `On target: ${chip("fire", "fires")}${e.rng > 3000 ? `${SEP}closer is surer: under 3,000 yards` : ""}${eye}`;
-    if (sol && sol.why === "gyro") return `Wrong angle: ${chip("helm", "turn the boat toward her")}, or the other tubes${eye}`;
-    if (sol && sol.why === "range") return `Out of range: let her close${SEP}${chip("helm", "steer for her track")}${eye}`;
+    if (sol && sol.why === "gyro") return `Wrong angle: ${chip("helm", "turn the boat toward the target")}, or the other tubes${eye}`;
+    if (sol && sol.why === "range") return `Out of range: let the target close${SEP}${chip("helm", "steer for its track")}${eye}`;
     return `When the lamp says On target, ${chip("fire", "fires")}${eye}`;
   }
   function escStrip(S) {
     const st = R.stationOf(S, game.ui), m = PP.Escort.mine(S), fresh = m.some(q => q.ai.contact && S.t - q.ai.contact < 60);
     const C2 = (k, w) => k.map(I.cap).join("") + " " + w;
     if (fresh) return ["danger", "Contact", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["Q", "E"], "charges' depth"), C2(["Space"], "pattern"), C2(["F"], "hedgehog")]];
-    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "her orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
+    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
   }
   function strip(S) {
     const s = S.sub, st = R.stationOf(S, game.ui), surf = Sub.surfaced(s), locked = S.tdc.tgt !== null;
@@ -453,7 +452,7 @@
     if (S.charges.length || S.ships.some(q => q.role === "escort" && !q.sinking && q.ai.contact && S.t - q.ai.contact < 60)) return ["danger", "Hunted", surf ? ["crash", "tele", "helm"] : ["deeper", "silent", "slower", "turn"]];
     const by = {
       scope: s.depth > C.PD + 4 ? ["pd", "depth", "tele", "helm"] : !s.scope.up ? ["raise", "depth", "tele", "helm"] : locked ? ["train", "power", "fire", "next", "helm"] : ["train", "onHer", "power", "lock", "helm"],
-      bridge: s.gun.on ? ["gunTrain", "onHer", "gunRange", "fire", "secure"] : locked ? ["look", "glasses", "fire", "gun", "crash"] : ["look", "onHer", "glasses", "lock", "gun"],
+      bridge: s.gun.on ? ["look", "glasses", "lock", "gunFire", "fire"] : locked ? ["look", "glasses", "fire", "gun", "crash"] : ["look", "onHer", "glasses", "lock", "gun"],
       panel: surf ? ["tele", "helm", ["pd", "dive to periscope depth"], "crash", "time"] : ["tele", "helm", "depth", "pd", "surface"],
       chart: ["zoom", "tele", "helm", "time", "click", "pan"],
       damage: surf ? ["tele", "helm", "time", "pd"] : ["tele", "helm", "depth", "silent"],
@@ -504,7 +503,7 @@
     let st = R.stationOf(S, u);
     if (st !== "scope" && st !== "bridge") { game.setStation(Sub.surfaced(s) ? "bridge" : "scope"); st = u.station; }
     if (a === "ahead") {
-      const now = st === "scope" ? s.scope.brg : s.gun.on ? (s.gun.ordRel || 0) : PP.angDiff(s.hdg, u.look), rel = Math.abs(now) < 5 * PP.DEG ? Math.PI : 0;
+      const now = st === "scope" ? s.scope.brg : PP.angDiff(s.hdg, u.look), rel = Math.abs(now) < 5 * PP.DEG ? Math.PI : 0;
       I.swing(S => S.sub.hdg + rel);
       return;
     }
@@ -589,8 +588,8 @@
     switch (a) {
       case "tU": I.push({ a: "bell", d: 1 }); break;
       case "tD": I.push({ a: "bell", d: -1 }); break;
-      case "hL": case "hR": if (!ev || !ev.repeat) I.tapHelm(a === "hL" ? -1 : 1); break;
-      case "aL": case "aR": if (onMap && (!ev || !ev.repeat)) I.tapHelm(a === "aL" ? -1 : 1); break;
+      /* the helm: held, the rudder over (PP.Input.cmd); nothing to do on the key's press itself */
+      case "hL": case "hR": case "aL": case "aR": break;
       case "aU": case "aD": if (onMap) I.push({ a: "bell", d: a === "aU" ? 1 : -1 }); else u.bino = a === "aU"; break;
       case "shallower": I.push({ a: "dcSet", d: shift ? -100 : -25 }); break;
       case "deeper": I.push({ a: "dcSet", d: shift ? 100 : 25 }); break;
@@ -646,12 +645,13 @@
     switch (a) {
       case "tU": I.push({ a: "bell", d: 1 }); break;
       case "tD": I.push({ a: "bell", d: -1 }); break;
-      case "hL": case "hR": if (!ev || !ev.repeat) I.tapHelm(a === "hL" ? -1 : 1); break;
-      case "aL": case "aR": if (helmSt && (!ev || !ev.repeat)) I.tapHelm(a === "aL" ? -1 : 1); break;
+      /* the helm: held, the rudder over (PP.Input.cmd); nothing to do on the key's press itself */
+      case "hL": case "hR": break;
+      case "aL": case "aR": break;
       case "aU": case "aD":
         if (helmSt) I.push({ a: "bell", d: a === "aU" ? 1 : -1 });
         else if (st === "scope") I.push({ a: "scope", v: a === "aU" });
-        else if (st === "bridge") { if (s.gun.on) I.push({ a: "gunRange", d: (a === "aU" ? 1 : -1) * (shift ? 500 : 100) }); else { u.bino = a === "aU"; } }
+        else if (st === "bridge") u.bino = a === "aU";
         break;
       case "shallower": I.push({ a: "depth", d: -1 }); break;
       case "deeper": I.push({ a: "depth", d: 1 }); break;
@@ -659,15 +659,23 @@
       case "pd": I.push({ a: "pd" }); break;
       case "crash": I.push({ a: "crash" }); break;
       case "eblow": I.push({ a: "eblow" }); break;
+      /* the dashboard's Blow and Crash: the first click arms the button, a second while it asks orders it */
+      case "eblow?": case "crash?": {
+        const k = a.slice(0, -1), now = performance.now();
+        if (u.arm && u.arm.k === k && now - u.arm.t < PP.Dash.ARM_MS) { u.arm = null; act(k, ev); }
+        else { u.arm = { k, t: now }; SFX.play("menu"); toast(k === "crash" ? "Crash dive? Click Crash again" : "Emergency blow? Click Blow again", "amber", PP.Dash.ARM_MS); }
+        break;
+      }
       case "zoom": if (st === "chart") { u.chartZoom = (u.chartZoom + (shift ? PP.Chart.ZOOMS.length - 1 : 1)) % PP.Chart.ZOOMS.length; u.chartAt = null; SFX.play("menu"); } else if (st === "bridge") u.bino = !u.bino; else I.push({ a: "zoom" }); break;
       case "lock": lockNearest(); break;
       case "onHer": case "ahead": swing(a); break;
       case "aobL": case "aobR": I.push({ a: "dial", what: "aob", d: (a === "aobR" ? 1 : -1) * (shift ? 1 : 5) * PP.DEG }); break;
       case "spdD": case "spdU": I.push({ a: "dial", what: "spd", d: (a === "spdU" ? 1 : -1) * (shift ? 0.5 : 1) }); break;
-      case "fire": if (st === "bridge" && s.gun.on) I.push({ a: "gunFire" }); else I.push({ a: "fire" }); break;
+      case "fire": I.push({ a: "fire" }); break;
       case "bank": I.push({ a: "bank" }); break;
       case "spread": I.push({ a: "spread" }); break;
-      case "gun": if (st !== "bridge" && Sub.surfaced(s)) game.setStation("bridge"); I.push({ a: "gun" }); break;
+      /* G: man the gun, then fire it (it lays itself on the target); Shift+G secures it */
+      case "gun": if (st !== "bridge" && st !== "dash" && Sub.surfaced(s)) game.setStation("dash"); I.push({ a: s.gun.on && !shift ? "gunFire" : "gun" }); break;
       case "silent": I.push({ a: "silent" }); break;
       case "radar": I.push({ a: "radar" }); break;
       case "decoy": I.push({ a: "decoy" }); break;
@@ -733,7 +741,6 @@
   function padAct(a) {
     const S = game.S, st = R.stationOf(S, game.ui);
     if (a === "scope" && st !== "scope") return;
-    if ((a === "shallower" || a === "deeper") && st === "bridge" && S.sub.gun.on) a = a === "shallower" ? "aU" : "aD";
     act(a, null);
   }
   /* in a menu, a pad works it as the keys do: the d-pad (or a flick of the stick) moves, A chooses, B goes
@@ -837,7 +844,7 @@
     const cur = esc ? q.ord || "screen" : q.orders || "attack", aboard = esc ? q.id === S.flag : q === S.sub;
     const m = document.createElement("div");
     m.className = "hp omenu"; m.setAttribute("role", "menu");
-    m.innerHTML = `<div class="ht-name">${PP.esc(q.name)}</div>${aboard ? `<p class="om-note">Her order when you leave her</p>` : ""}` + list.map(([k, n, note]) => `<button role="menuitemradio" aria-checked="${k === cur}" data-ord="${k}" title="${PP.esc(note)}"${k === cur ? ' class="on"' : ""}>${PP.esc(n)}</button>`).join("")
+    m.innerHTML = `<div class="ht-name">${PP.esc(q.name)}</div>${aboard ? `<p class="om-note">Her order once you leave</p>` : ""}` + list.map(([k, n, note]) => `<button role="menuitemradio" aria-checked="${k === cur}" data-ord="${k}" title="${PP.esc(note)}"${k === cur ? ' class="on"' : ""}>${PP.esc(n)}</button>`).join("")
       + (aboard ? "" : `<button class="take" data-take="1">Take command</button>`);
     $("hud").appendChild(m);
     const hb = $("hud").getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;

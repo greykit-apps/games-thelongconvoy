@@ -59,7 +59,7 @@
 
   /* the continuous part of the orders, for one step of stepMs real milliseconds */
   I.cmd = (S, ui, stepMs) => {
-    const c = { dHdg: 0, dTrain: 0, dGun: 0, acts: I.queue.splice(0) };
+    const c = { dHdg: 0, dTrain: 0, acts: I.queue.splice(0) };
     /* the screen as drawn (the view is the periscope or the bridge), not as chosen */
     const sec = stepMs / 1000, fast = I.held.has("shift") ? 3 : 1, st0 = S ? PP.Render.stationOf(S, ui) : ui.station;
     /* on the dashboard the arrows are the view's: the periscope's or the bridge's (an escort's bridge as a boat's) */
@@ -70,8 +70,8 @@
     if (on("hL") || ((st === "chart" || st === "damage") && on("aL"))) h -= 1;
     if (on("hR") || ((st === "chart" || st === "damage") && on("aR"))) h += 1;
     if (I.stick && Math.abs(I.stick.x) > 0.3) h += I.stick.x;
-    const helmKey = ["hL", "hR", "aL", "aR"].find(k => on(k));
-    if (h && (!helmKey || heldFor(helmKey) > 220 || I.stick)) c.dHdg = h * 32 * PP.DEG * sec * fast;
+    /* held, the helm puts the rudder over that way (the stick as far as it is pushed); let go, she steadies */
+    if (h) c.rudder = PP.clamp(h, -1, 1);
     c.dHdg += I.tapD; I.tapD = 0;
     /* the periscope, or the bridge's glasses, or the gun: a held arrow gathers speed, to four times in a second */
     let tr = 0;
@@ -81,21 +81,18 @@
     if (I.rstick && Math.abs(I.rstick.x) > 0.25) tr += I.rstick.x;
     const hi = S && S.sub.scope.hi, view = st === "scope" || st === "bridge";
     const turn = d => {
-      if (st === "bridge" && S && S.sub.gun.on) c.dGun = d;
-      else if (st === "bridge") ui.look = PP.normAng(ui.look + d);
+      if (st === "bridge") ui.look = PP.normAng(ui.look + d);
       else c.dTrain = d;
     };
     if (tr) {
       I.slew = null;
-      /* the gun is laid, not swung: slow across its narrow sight, and held it only doubles (H puts it on her) */
-      const gun = st === "bridge" && S && S.sub.gun.on;
-      turn((st === "scope" ? (hi ? 6 : 20) : gun ? 7 : ui.bino ? 8 : 30) * PP.DEG * sec * Math.max(fast, gun ? Math.min(gather, 2) : gather) * tr);
+      turn((st === "scope" ? (hi ? 6 : 20) : ui.bino ? 8 : 30) * PP.DEG * sec * Math.max(fast, gather) * tr);
     } else if (I.slew && view && S) {
       /* a swing (H, B): fast, the shortest way round, and done when it is there */
       const s = S.sub, want = I.slew(S);
       if (want === null) I.slew = null;
       else {
-        const now = st === "scope" ? s.hdg + s.scope.brg : s.gun.on ? s.hdg + (s.gun.ordRel || 0) : ui.look, d = PP.angDiff(now, want), max = 400 * PP.DEG * sec;
+        const now = st === "scope" ? s.hdg + s.scope.brg : ui.look, d = PP.angDiff(now, want), max = 400 * PP.DEG * sec;
         turn(PP.clamp(d, -max, max));
         if (Math.abs(d) <= max) I.slew = null;
       }

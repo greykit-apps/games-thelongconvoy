@@ -518,11 +518,17 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-dash .db.tel { padding: 0; background: none; border-color: transparent; box-shadow: none; color: var(--ps-muted); }
 .h-dash .db.tel:hover { background: rgba(255,110,80,.14); border-color: transparent; color: var(--ps-text); }
 .h-dash .db.tel.on { color: var(--ps-yellow); border-color: transparent; }
-/* the snorkel and the radar on her plan: each one's name written down from the foot of its mast, no frame to break the tower */
-.h-dash .db.mast { writing-mode: vertical-rl; justify-content: flex-start; padding: 0; overflow: visible;
-  background: none; border-color: transparent; box-shadow: none; color: var(--ps-muted); font-weight: 600; letter-spacing: .04em; }
-.h-dash .db.mast:hover { background: rgba(255,110,80,.1); border-color: transparent; color: var(--ps-text); }
-.h-dash .db.mast.on { color: var(--ps-yellow); border-color: transparent; }
+/* a place on her plan to click (a bank of tubes): the drawing is the canvas's, a frame shows only when pointed at */
+.h-dash .db.bank { background: none; border-color: transparent; box-shadow: none; }
+.h-dash .db.bank:hover { background: rgba(255,198,90,.07); border-color: rgba(255,198,90,.3); }
+.h-dash .db.bank.on { border-color: transparent; }
+/* a button drawn inside her hull on her plan (the decoys, the snorkel, the radar): a quiet frame, its word in the
+ * middle; amber while what it works is on */
+.h-dash .db.inhull { padding: 0; background: rgba(11,5,4,.55); border-color: rgba(255,110,80,.28); box-shadow: none; color: var(--ps-muted); }
+.h-dash .db.inhull:hover { background: rgba(255,198,90,.08); border-color: rgba(255,198,90,.45); color: var(--ps-text); }
+.h-dash .db.inhull.on { color: var(--ps-yellow); border-color: var(--ps-yellow); }
+/* the snorkel's and the radar's: the word written down from the foot of the mast */
+.h-dash .db.inhull.vert { writing-mode: vertical-rl; justify-content: flex-start; padding: 2px 0; letter-spacing: .04em; }
 /* a dial's rim: clicked, it sets the dial there (hud.js); it shows only as a ring when pointed at */
 .h-dash .db.rim { padding: 0; background: none; border-color: transparent; box-shadow: none; border-radius: 50%; cursor: crosshair; }
 .h-dash .db.rim:hover { background: none; border-color: transparent; box-shadow: inset 0 0 0 2px rgba(255,198,90,.28); }
@@ -542,6 +548,10 @@ img.fig { display: inline-block; vertical-align: middle; }
 /* the depth slider: the canvas draws it, the button is where to hold it */
 /* the trigger when the lamp says over her: its words and edge in the readout amber */
 .h-dash .db.danger.ready { color: var(--ps-yellow); border-color: var(--ps-yellow); }
+/* Blow or Crash clicked once: it flashes, asking for the second click */
+.h-dash .db.danger.armed { color: #160807; background: var(--ps-yellow); border-color: var(--ps-yellow); animation: db-armed .5s steps(2) infinite; }
+@keyframes db-armed { 50% { background: #4a1208; color: var(--ps-yellow); } }
+@media (prefers-reduced-motion: reduce) { .h-dash .db.danger.armed { animation: none; } }
 /* the guns: a lamp on their face, lit while they bear; while they reload a bar fills along the foot */
 .h-dash .db.guns .lamp { width: .5em; height: .5em; border-radius: 50%; background: #3a1a14; box-shadow: inset 0 0 0 1px rgba(255,110,80,.4); flex: none; }
 .h-dash .db.guns.ready .lamp { background: var(--ps-yellow); box-shadow: 0 0 6px var(--ps-yellow); animation: gun-lamp 1.2s ease-in-out infinite; }

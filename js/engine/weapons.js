@@ -114,9 +114,12 @@
   };
   /* fire, as the 1990 game had it: at the ship selected, else the nearest the pack has in sight within a
    * torpedo's run; the fire control does the rest, and it will not waste a torpedo on a shot the tubes
-   * cannot make ("wrong angle: fire the opposite tubes") or one out of range */
+   * cannot make ("wrong angle: fire the opposite tubes") or one out of range. One order sends the whole
+   * spread: the first torpedo now, the rest a tube every C.TORP.gap seconds (W.salvoStep), each laid afresh
+   * from the fire control's estimate as it goes */
   W.fire = (S, ev) => {
     const s = S.sub, T = S.tdc, bank = s.bank, why = W.canFire(S, bank);
+    if (s.salvo) { ev.push({ t: "salvoOn" }); return; }
     if (why) { ev.push({ t: "cantFire", why, bank }); return; }
     if (!T.set || T.tgt === null) {
       const reach = C.TORPS[s.mark].range * 1.05;
@@ -126,11 +129,24 @@
     }
     {
       const e0 = W.est(S), sol0 = e0 && W.solve(S, e0, bank);
-      if (sol0 && !sol0.ok && S.t - T.salvoT > 12) { ev.push({ t: "cantFire", why: sol0.why === "gyro" ? "angle" : "range", bank }); return; }
+      if (sol0 && !sol0.ok) { ev.push({ t: "cantFire", why: sol0.why === "gyro" ? "angle" : "range", bank }); return; }
     }
-    if (S.t - T.salvoT > 12) T.salvo = 0;
-    const pat = SPREADS[s.spread] || [0], off = pat[T.salvo % pat.length] * C.SPREAD;
-    T.salvo++; T.salvoT = S.t;
+    s.salvo = { bank, n: Math.min(s.spread, Sub.loaded(s, bank)), k: 0, next: S.t };
+    W.salvoStep(S, ev);
+  };
+  /* the next torpedo of a spread under way, when its time comes; the spread ends when they are all away, or when
+   * the bank cannot fire (damaged, too deep, empty) */
+  W.salvoStep = (S, ev) => {
+    const s = S.sub, v = s.salvo;
+    if (!v || S.t < v.next) return;
+    if (W.canFire(S, v.bank)) { s.salvo = null; return; }
+    fireOne(S, ev, v.bank, v.k, v.n);
+    v.k++; v.next = S.t + C.TORP.gap;
+    if (v.k >= v.n) s.salvo = null;
+  };
+  /* one torpedo of a spread: the k-th of n, off the solution by its place in the spread's fan */
+  function fireOne(S, ev, bank, k, n) {
+    const s = S.sub, pat = SPREADS[s.spread] || [0], off = pat[k % pat.length] * C.SPREAD;
     const e = W.est(S);
     let hdg = PP.normAng(s.hdg + (bank === "A" ? Math.PI : 0) + off), sol = null;
     if (e) {
@@ -151,8 +167,8 @@
     }
     S.torps.push(tp);
     S.stats.fired++; s.fired = (s.fired || 0) + 1;
-    ev.push({ t: "fired", tube: tp.tube, id: tp.id, solved: !!(sol && sol.ok), run: sol && sol.ok ? sol.run : 0 });
-  };
+    ev.push({ t: "fired", tube: tp.tube, id: tp.id, solved: !!(sol && sol.ok), run: sol && sol.ok ? sol.run : 0, k, n });
+  }
 
   /* reloading, and the torpedoes running */
   W.step = (S, dt, ev) => {
@@ -226,14 +242,21 @@
   }
 
   /* ---- the deck gun: bearing, range, fire; shells take their time ---- */
-  /* the deck gun is ordered round no further aft than its arc either side of the bow (the tower is in the way), and
-   * trains toward that order the short way, never across the stern. True when the order was held at the stop */
-  W.gunClamp = s => {
-    const g = s.gun;
-    if (g.ordRel === undefined) { g.rel = 0; g.ordRel = 0; }
-    if (Math.abs(g.ordRel) <= C.GUN.arc) return false;
-    g.ordRel = Math.sign(g.ordRel) * C.GUN.arc;
-    return true;
+  /* the deck gun's target, as an escort's: the ship locked, while she is known, afloat and inside its reach; else
+   * the nearest that is */
+  W.gunTarget = S => {
+    const s = S.sub, ok = q => q && Sh.alive(q) && Det.known(S, q) && PP.dist(s.x, s.y, q.x, q.y) < C.GUN.range;
+    const L = S.tdc.tgt !== null ? Sh.byId(S, S.tdc.tgt) : null;
+    if (ok(L)) return L;
+    let best = null, bd = 1e9;
+    for (const q of S.ships) if (ok(q)) { const d = PP.dist(s.x, s.y, q.x, q.y); if (d < bd) { bd = d; best = q; } }
+    return best;
+  };
+  /* where she lies off the bow; whether that is in the gun's arc (the tower is in the way aft); whether the gun is on
+   * her (within a couple of degrees) */
+  W.gunSight = (S, q) => {
+    const s = S.sub, want = PP.angDiff(s.hdg, PP.angTo(s.x, s.y, q.x, q.y)), inArc = Math.abs(want) <= C.GUN.arc;
+    return { want, inArc, lay: PP.clamp(want, -C.GUN.arc, C.GUN.arc), on: inArc && Math.abs((s.gun.rel || 0) - want) < 2 * PP.DEG };
   };
   W.gunOrder = (S, a, ev) => {
     const s = S.sub, g = s.gun;
@@ -243,21 +266,23 @@
       g.on = !g.on; if (!g.on) g.man = 0; else s.pendDive = null;
       ev.push({ t: g.on ? "gunManned" : "gunSecured" });
     }
-    if (a.a === "gunTrain" || a.a === "gunSetBrg") {
-      W.gunClamp(s);
-      g.ordRel = a.a === "gunTrain" ? g.ordRel + a.d : PP.angDiff(s.hdg, a.v);
-      if (W.gunClamp(s)) ev.push({ t: "gunArc" });
-    }
-    if (a.a === "gunRange") g.rng = PP.clamp(g.rng + a.d, 300, C.GUN.range);
-    if (a.a === "gunSetRng") g.rng = PP.clamp(a.v, 300, C.GUN.range);
+    /* fire: at her, when the gun is manned, on her, loaded and has a shell; laid for where she will be when the shell
+     * comes down, and spread by the sea */
     if (a.a === "gunFire") {
       if (!g.on || g.man < 1) { ev.push({ t: "gunNo", why: "manning" }); return; }
-      if (g.reload > 0) return;
+      if (g.reload > 0) { ev.push({ t: "gunNo", why: "loading" }); return; }
       if (s.shells <= 0) { ev.push({ t: "gunNo", why: "shells" }); return; }
+      const q = W.gunTarget(S);
+      if (!q) { ev.push({ t: "gunNo", why: "target" }); return; }
+      const v = W.gunSight(S, q);
+      if (!v.inArc) { ev.push({ t: "gunNo", why: "arc" }); return; }
+      if (!v.on) { ev.push({ t: "gunNo", why: "training" }); return; }
       s.shells--; g.reload = C.GUN.reload; S.stats.shells = (S.stats.shells || 0) + 1;
-      const sp = C.GUN.spread * (1 + S.wx.sea / 3), b = PP.normAng(g.brg + PP.gauss(() => R(S)) * sp * 0.6), r = g.rng * (1 + PP.gauss(() => R(S)) * sp);
+      const fl = 1 + PP.dist(s.x, s.y, q.x, q.y) / 750, ax = q.x + PP.hx(q.hdg) * q.spd * PP.KN * fl, ay = q.y + PP.hy(q.hdg) * q.spd * PP.KN * fl;
+      const sp = C.GUN.spread * (1 + S.wx.sea / 3), b = PP.normAng(PP.angTo(s.x, s.y, ax, ay) + PP.gauss(() => R(S)) * sp * 0.6), r = PP.dist(s.x, s.y, ax, ay) * (1 + PP.gauss(() => R(S)) * sp);
+      g.rng = Math.round(r);
       S.shells.push({ id: S.nextId++, x: s.x + PP.hx(b) * r, y: s.y + PP.hy(b) * r, t: 1 + r / 750, by: s.id });
-      ev.push({ t: "gunFire", brg: g.brg });
+      ev.push({ t: "gunFire", brg: g.brg, id: q.id });
     }
   };
   W.gunStep = (S, dt, ev) => {

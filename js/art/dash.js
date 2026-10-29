@@ -54,6 +54,8 @@
    * the needle */
   const depthTop = D.depthTop = s => Math.max(Sub.crushDepth(s), 100) * 1.1;
   D.PD_SNAP = 0.07;
+  /* how long the emergency blow's and the crash dive's buttons wait for their second click */
+  const ARM_MS = D.ARM_MS = 3000;
   function depthGauge(g, cx, cy, r, s) {
     dial(g, cx, cy, r);
     const top = depthTop(s), test = Sub.testDepth(s), crush = Sub.crushDepth(s), pd = C.PD / top;
@@ -121,20 +123,28 @@
        * in reach and loaded; reloading, the bar along the foot filling as the next round goes in; the tip says which
        * bear, or why none do */
       const f = PP.Escort.flag(S), tg = f && PP.Escort.target(S, f), G = tg ? PP.Escort.guns(S, f, tg) : [], bear = G.filter(o => o.bears), ready = bear.some(o => o.load <= 0);
-      const why = !tg ? "" : ready ? "fire (G)" : bear.length ? "loading" : G.some(o => o.inArc && o.inRange) ? "training round" : G.some(o => o.inArc) ? "out of range of those that bear" : "none bear on her";
+      const why = !tg ? "" : ready ? "fire (G)" : bear.length ? "loading" : G.some(o => o.inArc && o.inRange) ? "training round" : G.some(o => o.inArc) ? "out of range of those that bear" : "none bear on the target";
       const names = bear.map(o => o.g.k === "pom" ? "the pom-pom" : o.g.k).join(", ");
       btn("guns", "<i class=\"lamp\"></i>Guns <kbd>G</kbd>", st.x + bw + 68, st.y + 2, 50, st.h - 4, { act: "gun", dim: !tg,
         cls: "guns" + (tg ? " danger" + (ready ? " ready" : bear.length ? " loading" : "") : ""),
         fill: bear.length && !ready ? Math.max(...bear.map(o => 1 - o.load / o.g.reload)) : undefined,
         label: !tg ? "Guns, nothing in sight" : `Guns, ${ready ? "ready" : why}`,
-        title: tg ? `Guns: ${tg.b.name}, ${Math.round(tg.d).toLocaleString()} yd; ${bear.length ? `${names} bear${bear.length === 1 ? "s" : ""}; ` : ""}${why}` : "Her guns: nothing up in sight (G)" });
+        title: tg ? `Guns: ${tg.b.name}, ${Math.round(tg.d).toLocaleString()} yd; ${bear.length ? `${names} bear${bear.length === 1 ? "s" : ""}; ` : ""}${why}` : "Guns: no target in sight (G)" });
       btn("next", "Next escort <kbd>N</kbd>", st.x + bw + 122, st.y + 2, 78, st.h - 4, { act: "boatNext", dim: PP.Escort.mine(S).length < 2, title: "Take command of the next escort (N)" });
     }
     if (!esc) {
       const s0 = S.sub;
-      btn("gun", "Gun", st.x + bw + (inner === "scope" ? 128 : 68), st.y + 2, 44, st.h - 4, { act: "gun", on: s0.gun.on, dim: !Sub.surfaced(s0), title: Sub.surfaced(s0) ? "Man the deck gun (G)" : "The deck gun: on the surface only" });
+      /* the deck gun, as an escort's: Man gun, then a lamp lit when it is laid on its target and loaded, a bar
+       * filling while it reloads; the tip says at what, or why not */
+      const g0 = s0.gun, gq = g0.on && PP.Weapons.gunTarget(S), gv = gq && PP.Weapons.gunSight(S, gq), gl = g0.reload > 0;
+      const gReady = gv && gv.on && g0.man >= 1 && !gl && s0.shells > 0;
+      const gWhy = !g0.on ? "" : g0.man < 1 ? "manning" : !gq ? "nothing in reach" : !gv.inArc ? "abaft its arc" : !gv.on ? "training round" : gl ? "loading" : s0.shells <= 0 ? "no shells" : "fire (G)";
+      btn("gun", g0.on ? "<i class=\"lamp\"></i>Gun <kbd>G</kbd>" : "Man gun", st.x + bw + (inner === "scope" ? 128 : 68), st.y + 2, 50, st.h - 4, { act: "gun", dim: !Sub.surfaced(s0),
+        cls: "guns" + (gq ? " danger" + (gReady ? " ready" : gl ? " loading" : "") : ""), fill: gq && gl ? 1 - g0.reload / C.GUN.reload : undefined,
+        label: g0.on ? `Deck gun, ${gReady ? "ready" : gWhy}` : "Man the deck gun",
+        title: !Sub.surfaced(s0) ? "The deck gun: on the surface only" : !g0.on ? "Man the deck gun: its crew lay it on the target themselves (G)" : `Deck gun${gq ? `: ${gq.name}, ${PP.num(Math.round(PP.dist(s0.x, s0.y, gq.x, gq.y) / 50) * 50)} yd` : ""}; ${gWhy}. ${s0.shells} shells. Shift+G secures it` });
       btn("select", "Select <kbd>T</kbd>", st.x + st.w - bw - 70, st.y + 2, 64, st.h - 4, { act: "lock" });
-      btn("swing", "On her <kbd>H</kbd>", st.x + st.w - bw - 138, st.y + 2, 64, st.h - 4, { act: "onHer" });
+      btn("swing", "On target <kbd>H</kbd>", st.x + st.w - bw - 138, st.y + 2, 64, st.h - 4, { act: "onHer" });
     }
     /* the small map */
     const m = L.map;
@@ -155,7 +165,7 @@
     y += 18;
     lab("clock", `${C.timeStr(S.t)} <span class="c">${C.dateStr(S.t)}</span>`, lf.x + 6, y + 6, "dl", "lm");
     y += 16;
-    btn("auto", auto ? "AUTO" : "USER CONTROL", lf.x + 4, y, lf.w - 8, 16, { act: "auto", on: !auto, cls: auto ? "auto" : "user", title: auto ? "She sails under her order: J, or a touch of the helm, takes her back" : "You are sailing her: J hands her to her order" });
+    btn("auto", auto ? "AUTO" : "USER CONTROL", lf.x + 4, y, lf.w - 8, 16, { act: "auto", on: !auto, cls: auto ? "auto" : "user", title: auto ? "On AUTO, following orders: J, or a touch of the helm, gives you control" : "You have control: J hands over to AUTO, following orders" });
     y += 20;
     const scr = esc ? [["Map", "st2"], ["Status", "st4"], ["Log", "st6"]] : [["Map", "st2"], ["Damage", "st3"], ["Status", "st4"], ["Log", "st6"]];
     const sw = Math.floor((lf.w - 8 - (scr.length - 1) * 3) / scr.length);
@@ -204,37 +214,40 @@
     if (wide) subAttack(g, S, s, dialsEnd + 12, top, Math.min(cpw, 170), oy + 7 - top);
     else subAttack(g, S, s, bt.x + bt.w - 94, top, 88, bt.y + bt.h - 16 - top);
     /* the torpedoes' box */
-    const px = bt.x + 6, py = oy + 10, pw = bt.w - (wide ? 12 : 104), ph = Math.max(PH, bt.y + bt.h - 16 - py);
+    const px = bt.x + 6, py = oy + 10, ph = Math.max(PH, bt.y + bt.h - 16 - py), ch = ph - 6, y0 = py + 3;
+    /* laid out as she is, bow to the right: her battery and fuel at the stern end, her plan, and the spreads fanning
+     * out of her bow. No wider than keeps her plan to a boat's length for her height: on a wide screen the box
+     * stops there */
+    const room = bt.w - (wide ? 12 : 104), MW = PP.clamp(Math.round(room * 0.15), 60, 84), SPW = PP.clamp(Math.round(room * 0.2), 56, 100);
+    const pw = Math.min(room, MW + SPW + 16 + Math.round((ch - 18) * 4.2)), rh = Math.floor((ch - 6) / 4);
     well(g, px, py, pw, ph);
-    const ch = ph - 6, y0 = py + 3;
-    const SPW = PP.clamp(Math.round(pw * 0.2), 56, 100), DW = PP.clamp(Math.round(pw * 0.22), 76, 108), rh = Math.floor((ch - 6) / 4);
+    const spx = px + pw - 3 - SPW;
     for (let n = 1; n <= 4; n++) {
       const y = y0 + (n - 1) * (rh + 2);
-      spreadRow(g, px + 3, y, rh, n, n === s.spread);
-      btn("spr" + n, SPW >= 60 ? `Spread ${n}` : String(n), px + 3, y, SPW, rh, { act: "spr" + n, cls: "pick row", on: n === s.spread,
+      spreadRow(g, spx, y, rh, n, n === s.spread);
+      btn("spr" + n, SPW >= 60 ? `Spread ${n}` : String(n), spx, y, SPW, rh, { act: "spr" + n, cls: "pick row", on: n === s.spread,
         label: `Spread of ${n}`, title: n === 1 ? "One torpedo at a time (V)" : `A spread of ${n}, fanned ${(C.SPREAD / PP.DEG).toFixed(1)} degrees apart (V)` });
     }
-    const sx = px + 3 + SPW + 5, dx = px + pw - 3 - DW, sw = dx - 5 - sx;
+    const mx = px + 3, sx = mx + MW + 5, sw = spx - 5 - sx;
     boat(g, S, s, sx, y0, sw, ch - 18, now, btn);
     /* the one trigger: the gun when it is manned, else the bank's tubes; lit when the lamp says on target */
-    const loaded = Sub.loaded(s, s.bank), gunOn = s.gun.on && Sub.surfaced(s), est = W.est(S), sol = est && W.solve(S, est, s.bank);
-    const word = gunOn ? "Fire the gun" : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"}`;
-    btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "danger" + (!gunOn && loaded && sol && sol.ok ? " ready" : ""), dim: !gunOn && !loaded,
-      title: gunOn ? "Fire the deck gun (Space)" : `Fire the ${s.bank === "F" ? "forward" : "after"} tubes, a spread of ${s.spread} (Space)` });
-    /* her power and her depth: the battery and the fuel, the radar warning and silent running, and the planes */
-    const ch0 = Sub.charge(s), dwr = dx + DW;
-    lab("batC", ch0.rate > 0 ? "Charging" : "Battery", dx + 3, y0 + 5, "dl sm" + (ch0.rate > 0 ? " green" : ""), "lm");
-    odo("bat", s.bat * 100, 3, 0, dwr - 20, y0 + 5, "%", 0, s.bat < 0.2 ? "red" : "");
-    hbar(g, dx + 2, y0 + 11, DW - 4, s.bat, s.bat < 0.2 ? HOT : GREEN);
-    lab("fuelC", "Fuel", dx + 3, y0 + 21, "dl sm", "lm");
-    odo("fuel", s.fuel * 100, 3, 0, dwr - 20, y0 + 21, "%", 0, s.fuel < 0.15 ? "red" : "");
-    hbar(g, dx + 2, y0 + 27, DW - 4, s.fuel, s.fuel < 0.15 ? HOT : AMBER);
-    const metox = e.metox && s.metoxT !== undefined && S.t - s.metoxT < 6, hw = Math.floor((DW - 2) / 2);
-    btn("metox", metox ? "RADAR!" : "Metox", dx, y0 + 34, hw, 12, { cls: metox ? "alarm" : "", dim: !e.metox, title: e.metox ? "The radar warning: it lights when an escort's radar sweeps her" : "Not fitted until Year III" });
-    btn("silent", "Silent", dx + hw + 2, y0 + 34, hw, 12, { act: "silent", on: s.silent, title: "Silent running: quiet, a third at most" });
-    const locked = s.noDive > S.t, pdY = y0 + 49, pdH = Math.max(13, y0 + ch - 16 - 3 - pdY);
-    btn("pd", DW >= 90 ? "Periscope depth" : "Scope depth", dx, pdY, DW, pdH, { act: "pd", on: s.ordDepth === C.PD && !s.ordRate, dim: locked, title: locked ? "The tanks are blown: no diving yet" : `Periscope depth, ${C.PD} feet (P)` });
-    btn("surf", "Surface", dx, y0 + ch - 16, DW, 16, { act: "surface", on: s.ordDepth === 0 && !s.ordRate, title: "Surface (U)" });
+    const loaded = Sub.loaded(s, s.bank), est = W.est(S), sol = est && W.solve(S, est, s.bank), sv = s.salvo;
+    const word = sv ? `Firing&hellip; ${sv.k} of ${sv.n} away` : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"}`;
+    btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "danger" + (sv ? " on" : loaded && sol && sol.ok ? " ready" : ""), dim: !loaded && !sv,
+      title: `Fire the ${s.bank === "F" ? "forward" : "after"} tubes, a spread of ${s.spread} (Space)` });
+    /* her battery and her fuel, side by side: each a bar filling from the foot, its name over it, its reading on
+     * drums under it */
+    const ch0 = Sub.charge(s), cw = Math.floor(MW / 2);
+    for (const [i, id, word, v, col, low] of [[0, "bat", ch0.rate > 0 ? "Charging" : "Battery", s.bat, GREEN, 0.2], [1, "fuel", "Fuel", s.fuel, AMBER, 0.15]]) {
+      const cxm = mx + i * cw + Math.round(cw / 2), lowNow = v < low;
+      lab(id + "C", word, cxm, y0 + 4, "dl sm" + (id === "bat" && ch0.rate > 0 ? " green" : ""), "cm");
+      vmeter(g, cxm - 4, y0 + 10, 8, ch - 27, v, lowNow ? HOT : col);
+      odo(id, v * 100, 3, 0, cxm, y0 + ch - 8, "%", 0, lowNow ? "red" : "");
+    }
+    /* the radar warning and silent running, along the foot */
+    const metox = e.metox && s.metoxT !== undefined && S.t - s.metoxT < 6, fy = bt.y + bt.h - 13;
+    btn("metox", metox ? "RADAR!" : "Metox", bt.x + bt.w - 226, fy, 46, 12, { cls: metox ? "alarm" : "", dim: !e.metox, title: e.metox ? "The radar warning: it lights when an escort's radar sweeps your boat" : "Not fitted until Year III" });
+    btn("silent", "Silent", bt.x + bt.w - 178, fy, 46, 12, { act: "silent", on: s.silent, title: "Silent running: quiet, a third at most" });
     /* her name, and her hull, along the foot */
     lab("name", `<b>${PP.esc(s.name)}</b> <span class="c">${PP.esc(k.name)} · ${PP.esc(s.capt || "")}</span>`, bt.x + 8, bt.y + bt.h - 7, "dl", "lm");
     lab("hull", `<span class="c">Hull</span><b>${Math.round(s.hull * 100)}%</b>`, bt.x + bt.w - 8, bt.y + bt.h - 7, "dl" + (s.hull < 0.5 ? " red" : ""), "rm");
@@ -242,7 +255,7 @@
   }
 
   /* a reading as a bar, filled from the left */
-  function hbar(g, x, y, w, v, col) { well(g, x, y, w, 3); K.rect(g, x, y, Math.round(w * PP.clamp(v, 0, 1)), 3, col); for (let i = 1; i < 10; i++) K.rect(g, x + Math.round(w * i / 10), y, 1, 3, INK); }
+  function vmeter(g, x, y, w, h, v, col) { well(g, x, y, w, h); const n = Math.round(PP.clamp(v, 0, 1) * h); K.rect(g, x, y + h - n, w, n, col); for (let i = 1; i < 10; i++) K.rect(g, x, y + Math.round(h * i / 10), w, 1, INK); }
 
   /* the dive bubble: her rate up or down, the bubble riding in a tube, the middle level; the rate ordered by hand an
    * amber mark. A click (or a drag) on the tube orders that rate and holds it, wherever it takes her: past test
@@ -250,10 +263,12 @@
    * every tank blown, straight up and no diving for minutes after; under it the crash dive, down to a safe depth */
   function bubble(g, S, s, x, y, w, h, btn) {
     const R = C.DIVE, locked = s.noDive > S.t, surf = Sub.surfaced(s);
-    btn("eblow", "Blow", x, y, w, 13, { act: "eblow", cls: "danger" + (s.eblow ? " on" : ""), dim: surf, label: "Emergency blow",
-      title: surf ? "Emergency blow: she is on the surface" : `Emergency blow: every tank blown, straight up. She cannot dive again for ${Math.round(R.lock / 60)} minutes: a surface fight` });
-    btn("crash", "Crash", x, y + h - 13, w, 13, { act: "crash", cls: "danger", dim: locked, label: "Crash dive",
-      title: locked ? "The tanks are blown: no diving yet" : "Crash dive: down fast, to a safe depth (C)" });
+    /* each takes a second click to order (main.js): the first arms it, and it asks until the moment passes */
+    const arm = PP.game.ui.arm, armed = k => !!arm && arm.k === k && performance.now() - arm.t < ARM_MS;
+    btn("eblow", armed("eblow") ? "Blow?" : "Blow", x, y, w, 13, { act: "eblow?", cls: "danger" + (s.eblow ? " on" : "") + (armed("eblow") ? " armed" : ""), dim: surf, label: "Emergency blow",
+      title: surf ? "Emergency blow: already on the surface" : `Emergency blow: every tank blown, straight up. You cannot dive again for ${Math.round(R.lock / 60)} minutes: a surface fight. Click twice to order it` });
+    btn("crash", armed("crash") ? "Crash?" : "Crash", x, y + h - 13, w, 13, { act: "crash?", cls: "danger" + (armed("crash") ? " armed" : ""), dim: locked, label: "Crash dive",
+      title: locked ? "The tanks are blown: no diving yet" : "Crash dive: down fast, to a safe depth. Click twice to order it (C at once)" });
     const t0 = y + 17, t1 = y + h - 17, mid = Math.round((t0 + t1) / 2), half = (t1 - t0) / 2 - 3, cx = x + Math.round(w / 2);
     const Y = v => Math.round(mid + PP.clamp(v / (v < 0 ? R.blow : R.crash), -1, 1) * half);
     well(g, cx - 5, t0, 10, t1 - t0);
@@ -266,7 +281,7 @@
     const pv = s.ordRate === null || s.ordRate === undefined ? 50 : Math.round(50 + (s.ordRate < 0 ? s.ordRate / R.blow : s.ordRate / R.crash) * 50);
     const fps = v => `${Math.abs(v).toFixed(1)} feet a second ${v < 0 ? "up" : "down"}`;
     btn("rate", "", x, t0 - 2, w, t1 - t0 + 4, { cls: "slide", slide: { y0: t0, y1: t1, lo: 0, max: 100, step: 1, act: "rate", v: pv, text: s.ordRate ? fps(s.ordRate) : "holding depth" }, label: "Dive rate",
-      title: `Her rate: ${Math.abs(s.vz) < 0.1 ? "level" : fps(s.vz)}. Click or drag the tube to order a rate and hold it; she will not stop at test depth. The middle holds her depth` });
+      title: `Rate of climb or dive: ${Math.abs(s.vz) < 0.1 ? "level" : fps(s.vz)}. Click or drag the tube to order a rate and hold it, past test depth; going down the boat levels off short of crush depth, and a second order takes it deeper. The middle holds the depth` });
   }
 
   /* a dial's rim, as a button: a click on it sets the dial to where it was clicked (hud.js works out the angle); the
@@ -284,9 +299,9 @@
   }
 
   /* her plan, bow to the right: the forward tubes in her bow and the after ones in her stern, two rows of them, a
-   * torpedo in each one loaded (it blinks out as it goes, and comes up as the crew reload it), the reloads racked
-   * in the rooms behind them. On her deck the gun forward of the tower; the snorkel's and the radar's masts on the
-   * tower, each with its name written up it for its button; the decoys' button aft; under her the two banks, the one picked lit */
+   * tube green when it is ready to fire (it blinks out as it goes), flashing yellow while the crew reload it, empty
+   * when it is; the reloads racked in the rooms behind them, set off from the tubes. On her deck the gun forward of the tower; the snorkel's and the radar's masts on the
+   * tower, each with its name written down it for its button; the decoys' button aft; under her the two banks, the one picked lit */
   const tBlinks = new Map();
   let lastTubes = null;
   function boat(g, S, s, x, y, w, h, now, btn) {
@@ -305,15 +320,18 @@
     const snk = !!s.snork, tm = Math.round((tx0 + tx1) / 2), mx = Math.round((tx0 + tm) / 2), rx = Math.round((tm + tx1) / 2);
     if (e.snorkel) K.rect(g, mx, tt - (snk ? 8 : 3), 1, snk ? 8 : 3, snk ? AMBER : TICK);
     if (s.radar) { K.rect(g, rx, tt - 4, 1, 4, Sub.radarWorks(s) ? AMBER : TICK); K.rect(g, rx - 2, tt - 5, 5, 1, Sub.radarWorks(s) ? AMBER : TICK); }
-    const gxp = X(0.28);
-    K.rect(g, gxp - 1, t - 2, 3, 2, s.gun.on ? AMBER : TICK); K.rect(g, gxp + 2, t - 2, 6, 1, s.gun.on ? AMBER : TICK);
+    /* the deck gun forward of the tower: its pedestal, breech and barrel, run out toward the bow; amber when manned */
+    const gxp = Math.max(X(0.6), tx1 + 6), gc = s.gun.on ? AMBER : TICK;
+    K.rect(g, gxp, t - 3, 2, 3, gc); K.rect(g, gxp - 2, t - 5, 5, 2, gc); K.rect(g, gxp + 3, t - 5, 8, 1, gc);
     /* the tubes: two rows at each end, the forward ones' mouths at her bow, the after ones' at her stern */
     const slot = (bank, i, sx, sy) => {
       const v = s.tubes[bank][i], bl = tBlinks.get(bank + i), sel = bank === s.bank;
       if (bl !== undefined && now - bl < 700) { if (Math.floor((now - bl) / 110) % 2 === 0) K.rect(g, sx - 1, sy - 1, 6, 5, "#fff6e8"); return; }
       if (bl !== undefined) tBlinks.delete(bank + i);
-      K.rect(g, sx, sy, 4, 3, v === 0 ? (sel ? AMBER : "#c98a3c") : "#2a1410");
-      if (v > 0) K.rect(g, sx, sy, Math.max(1, Math.round(4 * (1 - v / RL))), 3, `rgba(255,198,90,${sel ? 0.7 : 0.45})`);
+      /* ready, green (brighter in the bank picked); being loaded, the whole tube flashing yellow, after it has stood
+       * empty a few seconds while the crew ready the next torpedo (the reload's time is the same); empty, nothing */
+      if (v === 0) K.rect(g, sx, sy, 4, 3, sel ? GREEN : "#4f8a5c");
+      else if (v > 0 && RL - v > 3 && Math.floor(now / 380) % 2 === 0) K.rect(g, sx, sy, 4, 3, sel ? AMBER : "#c98a3c");
     };
     const tubes = (bank, xEdge, dir) => {
       const n = s.tubes[bank].length, cols = Math.ceil(n / 2);
@@ -322,19 +340,31 @@
     };
     const fIn = tubes("F", X(0.84), 1), aIn = s.tubes.A.length ? tubes("A", X(0.04), -1) : X(0.04);
     /* the reloads, racked in the rooms behind the tubes */
-    const rack = (n, x0, dir) => { for (let i = 0; i < n; i++) K.rect(g, x0 + dir * (3 + Math.floor(i / 2) * 3), i % 2 ? yc + 2 : yc - 3, 2, 2, "#c98a3c"); };
+    const rack = (n, x0, dir) => { for (let i = 0; i < n; i++) K.rect(g, x0 + dir * (8 + Math.floor(i / 2) * 3), i % 2 ? yc + 2 : yc - 3, 2, 2, "#c98a3c"); };
     rack(s.store.F, fIn, -1); rack(s.store.A, aIn, 1);
-    /* the buttons: her deck's above her, set where each thing is (moved along to clear the one before), the banks under her */
-    /* the decoys, released from her stern: their button on the deck over it */
-    btn("decoy", `Decoy ${s.decoys || 0}`, Math.max(x, X(0.08) - 22), t - 13, 44, 11, { act: "decoy", cls: "pick", dim: !(s.decoys > 0), title: "Release a decoy: a cloud of bubbles their sonar takes for her (K)" });
-    /* the snorkel and the radar: each its name written down from the foot of its mast, through the tower, the button a
-     * strip under the mast */
-    const mastBtn = (id, word, mxx, o) => btn(id, word, mxx - 6, tt + 1, 12, Math.min(32, y + h - tt - 1), Object.assign({ cls: "mast" }, o));
-    mastBtn("snorkel", "Snorkel", mx, { act: "snorkel", on: snk, dim: !e.snorkel, title: e.snorkel ? "The snorkel: her diesels at periscope depth, to charge and run, loud" : "Not fitted until Year IV" });
-    mastBtn("radar", "Radar", rx, { act: "radar", on: Sub.radarWorks(s), dim: !s.radar, title: s.radar ? "Her radar: it sees them, and their warning gear hears it" : "No radar fitted" });
-    const fl = Sub.loaded(s, "F"), al = Sub.loaded(s, "A");
-    btn("bankF", `Fwd ${fl}/${k.tubesF}`, X(0.86) - 46, b + 3, 46, 11, { act: "bankF", cls: "pick", on: s.bank === "F", title: `Forward tubes: ${fl} of ${k.tubesF} loaded, ${s.store.F} reloads` });
-    if (k.tubesA) btn("bankA", `Aft ${al}/${k.tubesA}`, X(0.02), b + 3, 46, 11, { act: "bankA", cls: "pick", on: s.bank === "A", title: `After tubes: ${al} of ${k.tubesA} loaded, ${s.store.A} reloads` });
+    /* the decoys, released from her stern: their canisters racked on the deck over it, gone as each is let go */
+    const dLeft = s.decoys || 0, dx0 = X(0.1);
+    for (let i = 0; i < dLeft; i++) { const cx0 = dx0 + i * 5; K.rect(g, cx0, t - 6, 3, 6, "#c98a3c"); K.rect(g, cx0, t - 6, 3, 1, AMBER); }
+    /* three buttons on her, all alike and none past her keel: the decoys' inside her forward of the after tubes; the
+     * snorkel's and the radar's each its name written down from the foot of its mast, through the tower into her hull */
+    const fl = Sub.loaded(s, "F"), al = Sub.loaded(s, "A"), rk = n => 8 + Math.ceil(Math.max(n, 1) / 2) * 3;
+    const aEnd = s.tubes.A.length ? aIn + rk(s.store.A) + 1 : X(0.04), bh = Math.min(b - t - 2, 12);
+    btn("decoy", `Decoy ${dLeft}`, aEnd + 5, yc - Math.floor(bh / 2), Math.min(40, tx0 - aEnd - 9), bh, { act: "decoy", cls: "inhull", dim: !(dLeft > 0), label: `Release a decoy, ${dLeft} left`,
+      title: dLeft > 0 ? `Release a decoy: a cloud of bubbles their sonar takes for your boat; ${dLeft} left (K)` : "No decoys left" });
+    const mastBtn = (id, word, mxx, o) => btn(id, word, mxx - 6, tt + 1, 12, b - tt - 3, Object.assign({ cls: "inhull vert" }, o));
+    mastBtn("snorkel", "Snorkel", mx, { act: "snorkel", on: snk, dim: !e.snorkel, title: e.snorkel ? "Snorkel: runs the diesels at periscope depth, to charge and run, but loud" : "Not fitted until Year IV" });
+    mastBtn("radar", "Radar", rx, { act: "radar", on: Sub.radarWorks(s), dim: !s.radar, title: s.radar ? "Radar: it sees them, and their warning gear hears it" : "No radar fitted" });
+    /* the two banks: each end of her, its tubes and the reloads racked behind them, is the place to click to fire from
+     * it; the bank picked in amber corners, its name and its loaded tubes under her */
+    const bank = (id, word, x0, x1, n, tot, store) => {
+      const on = s.bank === id[4], y0b = yc - 6, y1b = yc + 6, col = on ? AMBER : "rgba(255,190,170,.22)";
+      for (const [px, py, dx, dy] of [[x0, y0b, 1, 1], [x1, y0b, -1, 1], [x0, y1b, 1, -1], [x1, y1b, -1, -1]]) { K.rect(g, Math.min(px, px + dx * 3), py, 4, 1, col); K.rect(g, px, Math.min(py, py + dy * 3), 1, 4, col); }
+      lab(id + "C", `<span class="c">${word}</span><b>${n}/${tot}</b>`, Math.round((x0 + x1) / 2), b + 7, "dl sm" + (on ? " read" : ""), "cm");
+      btn(id, "", x0 - 1, y0b - 1, x1 - x0 + 3, y1b - y0b + 3, { act: id, cls: "bank", on, label: `${word} tubes, ${n} of ${tot} loaded`,
+        title: `${word === "Fwd" ? "Forward" : "After"} tubes: ${n} of ${tot} loaded, ${store} reloads. Click to fire from them` });
+    };
+    bank("bankF", "Fwd", fIn - rk(s.store.F) - 2, X(0.84) + 1, fl, k.tubesF, s.store.F);
+    if (k.tubesA) bank("bankA", "Aft", X(0.04) - 1, aIn + rk(s.store.A) + 1, al, k.tubesA, s.store.A);
   }
 
   /* her target, beside the dials: who and where, and a lamp that says when to fire. NO TARGET, then OUT OF RANGE or
@@ -345,7 +375,7 @@
     if (!e) {
       lab("ct", `<span class="c">Target</span><b>none</b>`, x + 4, y + 7, "dl", "lm");
       lab("ct0", "T: the nearest ship", x + 4, y + 17, "dl sm", "lm");
-      lab("ct1", "H: the view on her", x + 4, y + 25, "dl sm", "lm");
+      lab("ct1", "H: swing to the target", x + 4, y + 25, "dl sm", "lm");
     } else {
       lab("ct", `<span class="c">Target</span><b>${q ? PP.esc(q.name) : "set"}</b>`, x + 4, y + 7, "dl", "lm");
       const rows = [["Bearing", PP.deg3(e.brg)], ["Range", PP.num(Math.round(e.rng / 50) * 50) + " yd"], ["Speed", Math.round(e.s) + " kn"], ["Angle", `${Math.round(Math.abs(e.aob) / PP.DEG)}° ${e.aob >= 0 ? "stbd" : "port"}`]];
@@ -581,17 +611,17 @@
     if (S.side === "escorts") {
       const f = PP.Escort.flag(S); if (!f) return "";
       const k = C.SHIPS[f.cls], hull = Math.max(0, 1 - f.dmg / k.hp);
-      return `<div class="ht-name">${esc(f.name)}</div><div class="ht-cls">${esc(k.name)} of the Pumacity Defense Fleet · ${f.auto ? "AUTO: under her order" : "USER CONTROL"}</div>
+      return `<div class="ht-name">${esc(f.name)}</div><div class="ht-cls">${esc(k.name)} of the Pumacity Defense Fleet · ${f.auto ? "AUTO, following orders" : "USER CONTROL"}</div>
         <table class="aids">${[["Speed", `${f.spd.toFixed(1)} kn, ${C.ESC_BELLS[f.bell]}`], ["Course", PP.deg3(f.hdg)], ["Hull", Math.round(hull * 100) + "%" + (f.fire > 0.1 ? ", on fire" : "")],
           ["Sonar", f.ping ? "Active: pinging" : "Passive: listening"], ["Depth charges", `${f.dcLeft} left, set for ${f.dcSet} ft`], ["Hedgehog", C.monthOf(S.t) >= C.ESC_SIDE.hedgehogFrom ? `${f.hhLeft} salvoes` : "not fitted"],
-          ["Her order", (C.ESC_ORDERS.find(o => o[0] === f.ord) || C.ESC_ORDERS[0])[1]]].map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</table>`;
+          ["Order", (C.ESC_ORDERS.find(o => o[0] === f.ord) || C.ESC_ORDERS[0])[1]]].map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</table>`;
     }
     const s = S.sub, k = C.SUBS[s.cls], e = C.era(C.monthOf(S.t)), hurt = Sub.SYS.filter(([q]) => s.sys[q] > 0.001).map(([q, n]) => `${n} ${s.sys[q] >= 0.5 ? "out" : "damaged"}`);
-    return `<div class="ht-name">${esc(s.name)}</div><div class="ht-cls">${esc(k.name)} class of the Wolf Empire · Captain ${esc(s.capt || "")} · ${s.auto ? "AUTO: under her order" : "USER CONTROL"}</div>
+    return `<div class="ht-name">${esc(s.name)}</div><div class="ht-cls">${esc(k.name)} class of the Wolf Empire · Captain ${esc(s.capt || "")} · ${s.auto ? "AUTO, following orders" : "USER CONTROL"}</div>
       <table class="aids">${[["Depth", Sub.surfaced(s) ? "on the surface" : Math.round(s.depth) + " ft" + (Sub.snorkeling(s) ? ", snorkelling" : "")], ["Speed", `${s.spd.toFixed(1)} kn, ${C.BELLS[s.bell]}`], ["Course", PP.deg3(s.hdg)],
         ["Battery", Math.round(s.bat * 100) + "%"], ["Fuel", Math.round(s.fuel * 100) + "%"], ["Torpedoes", `${Sub.torpsLeft(s)} (forward ${Sub.loaded(s, "F")} loaded, aft ${Sub.loaded(s, "A")})`], ["Noisemakers", s.decoys || 0],
         ["Hull", Math.round(s.hull * 100) + "%" + (s.water > 0.05 ? `, ${Math.round(s.water * 100)}% water` : "")], ["Damage", hurt.length ? hurt.join(", ") : "none"],
-        ["Snorkel", e.snorkel ? (s.snork ? "up" : "down") : "not fitted"], ["Radar warning", e.metox ? (s.metoxT !== undefined && S.t - s.metoxT < 6 ? "an escort's radar on her" : "quiet") : "not fitted"],
-        ["Her order", PP.Orders.name(s.orders)]].map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</table>`;
+        ["Snorkel", e.snorkel ? (s.snork ? "up" : "down") : "not fitted"], ["Radar warning", e.metox ? (s.metoxT !== undefined && S.t - s.metoxT < 6 ? "an escort's radar on the boat" : "quiet") : "not fitted"],
+        ["Order", PP.Orders.name(s.orders)]].map(([a, b]) => `<tr><td><b>${a}</b></td><td>${b}</td></tr>`).join("")}</table>`;
   };
 })();

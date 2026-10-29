@@ -200,7 +200,7 @@
       const sol = PP.Escort.solution(S, f), c = sol.contact, P = C.ESC_PATTERNS[f.patK || 0];
       const t = `Aboard ${f.name}: ${Math.abs(f.spd).toFixed(0)} knots, heading ${PP.deg3(f.hdg)}, ${C.ESC_BELLS[f.bell]}. ` +
         `${sol.hh ? `Hedgehog chosen, ${f.hhLeft || 0} left` : `${P.name} pattern, ${sol.ready} of ${sol.need} loaded, ${f.dcLeft} charges aboard`}, set ${f.dcSet} feet. ` +
-        (c ? `Contact bearing ${PP.deg3(c.brg)}, ${Math.round(c.rng / 50) * 50} yards, ${c.surf ? "on the surface" : "about " + Math.round(c.dz / 25) * 25 + " feet"}: ${c.over ? (sol.hh ? "in range" : "over her") : c.near ? "stand by" : "run in"}.` : "No contact.");
+        (c ? `Contact bearing ${PP.deg3(c.brg)}, ${Math.round(c.rng / 50) * 50} yards, ${c.surf ? "on the surface" : "about " + Math.round(c.dz / 25) * 25 + " feet"}: ${c.over ? (sol.hh ? "in range" : "over the contact") : c.near ? "stand by" : "run in"}.` : "No contact.");
       if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "PumaPack: " + t); }
       return;
     }
@@ -232,16 +232,16 @@
         <div class="hb-row"><span class="lbl">Charges</span><b class="v">${f.dcLeft}</b><span class="ord">${f.pat ? "laying" : "set " + f.dcSet + " ft"}</span></div>
         ${hh ? `<div class="hb-row"><span class="lbl">Hedgehog</span><b class="v">${f.hhLeft}</b><span></span></div>` : ""}
         <div class="hb-row${hull < 0.5 ? " crit" : hull < 0.8 ? " warn" : ""}"><span class="lbl">Hull</span><b class="v">${Math.round(hull * 100)}%</b><span></span></div>
-        <div class="hb-flags">${f.ping ? '<span class="on">Sonar pinging</span>' : '<span>Sonar listening</span>'}${f.spd > C.DET.hydFastKn ? '<span title="Above 15 knots her own noise deafens her hydrophones">Too fast to hear</span>' : ""}</div>`);
+        <div class="hb-flags">${f.ping ? '<span class="on">Sonar pinging</span>' : '<span>Sonar listening</span>'}${f.spd > C.DET.hydFastKn ? '<span title="Above 15 knots the ship&rsquo;s own noise deafens its hydrophones">Too fast to hear</span>' : ""}</div>`);
     });
     /* the freshest contact any escort has, from her */
     const sol = PP.Escort.solution(S, f), c = sol.contact;
     let ct = `<div class="ht-name">Contacts</div><p class="ht-none">None. Sprint, then slow under 15 knots and listen; <kbd>X</kbd> pings with the sonar, which they hear too.</p>`;
     if (c) {
-      ct = `<div class="ht-name">${c.how === "sonar" ? "Sonar contact" : c.how === "ear" ? "Heard" : "Sighted"}</div><div class="ht-cls">${c.by === f ? "Her own" : "From " + esc(c.by.name)}, ${c.age < 60 ? "now" : Math.round(c.age / 60) + " min ago"}</div>
+      ct = `<div class="ht-name">${c.how === "sonar" ? "Sonar contact" : c.how === "ear" ? "Heard" : "Sighted"}</div><div class="ht-cls">${c.by === f ? "Yours" : "From " + esc(c.by.name)}, ${c.age < 60 ? "now" : Math.round(c.age / 60) + " min ago"}</div>
         <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(c.brg)}</b><span class="lbl">Range</span><b>${PP.num(Math.round(c.rng / 50) * 50)}</b>
         <span class="lbl">Depth, about</span><b>${c.surf ? "surface" : Math.round(c.dz / 25) * 25 + " ft"}</b><span class="lbl">Charges</span><b>${f.dcSet} ft</b></div>
-        <div class="ht-sol ${c.over ? "ok" : "no"}"><span class="ht-lamp"></span><span>${c.over ? `Over her: <kbd>Space</kbd> ${sol.hh ? "the hedgehog" : "a pattern"}` : c.near ? "Stand by: hold her steady" : "Run in to her"}</span></div>`;
+        <div class="ht-sol ${c.over ? "ok" : "no"}"><span class="ht-lamp"></span><span>${c.over ? `Over the contact: <kbd>Space</kbd> ${sol.hh ? "the hedgehog" : "a pattern"}` : c.near ? "Stand by: hold steady" : "Run in on the contact"}</span></div>`;
     }
     set(el.querySelector("#h-tdc"), "tdc", ct + PP.Input.device, x => { x.innerHTML = PP.Input.caps(ct); });
     /* the map's orders for the escort selected there */
@@ -249,9 +249,9 @@
     set(el.querySelector("#h-orders"), "orders", onMap ? `${q.id}:${q.ord}:${q === f}:${(q.wps || []).length}` : "", x => {
       x.hidden = !onMap; if (!onMap) return;
       x.innerHTML = PP.Input.caps(`<div class="ht-name">${esc(q.name)}</div><div class="ht-cls">${esc(C.SHIPS[q.cls].name)}</div>
-        <p class="ho-now">${q === f ? "You are aboard her. Her order, when you leave her:" : "Her order:"} <b>${esc((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1])}</b></p>
+        <p class="ho-now">${q === f ? "You are aboard. Her order, once you leave:" : "Order:"} <b>${esc((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1])}</b></p>
         <div class="ho-list">${C.ESC_ORDERS.map(([o, n, note]) => `<button data-eorder="${o}" title="${esc(note)}" aria-pressed="${q.ord === o}"${q.ord === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
-        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== f ? " · <kbd>Enter</kbd> or click her again: take command" : ""}</p>`);
+        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== f ? " · <kbd>Enter</kbd> or click it again: take command" : ""}</p>`);
     });
     el.querySelector("#h-hull").hidden = true; el.querySelector("#h-dmg").hidden = true; el.querySelector("#h-port").hidden = true;
   }
@@ -358,7 +358,7 @@
       const sol = W.solve(S, e, s.bank), ok = sol && sol.ok;
       tdc = `<div class="ht-name">${t ? esc(t.name) : "Last known"}</div><div class="ht-cls">${t ? esc(C.SHIPS[t.cls].name) + (PP.Detect.known(S, t) ? "" : ", not in sight") : "the target is lost"}</div>
         <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(e.brg)}</b><span class="lbl">Range</span><b>${PP.num(Math.round(e.rng / 10) * 10)}</b>
-        <span class="lbl">Her speed</span><b>${e.s.toFixed(1)} kn</b><span class="lbl" title="How far the torpedo runs to meet her, in yards">Run</span><b>${ok ? PP.num(Math.round(sol.run / 10) * 10) : "--"}</b></div>
+        <span class="lbl">Target speed</span><b>${e.s.toFixed(1)} kn</b><span class="lbl" title="How far the torpedo runs to meet the target, in yards">Run</span><b>${ok ? PP.num(Math.round(sol.run / 10) * 10) : "--"}</b></div>
         <div class="ht-sol ${ok ? "ok" : "no"}"><span class="ht-lamp"></span><span>${ok ? "On target: fire " + (s.bank === "F" ? "forward" : "aft") : sol ? { gyro: `Wrong angle: fire the ${s.bank === "F" ? "after" : "forward"} tubes`, range: "Out of range", speed: "No shot" }[sol.why] || "No shot" : "No shot"}</span></div>`;
     } else tdc = `<div class="ht-name">Target</div><p class="ht-none">None selected. ${PP.Input.device === "pad" ? "<kbd>pad:X</kbd>" : "<kbd>T</kbd>"} selects the nearest ship in sight; ${PP.Input.device === "pad" ? "<kbd>pad:A</kbd>" : "<kbd>Space</kbd>"} fires at the nearest in range.</p>`;
     set(el.querySelector("#h-tdc"), "tdc", tdc, (x, v) => { x.innerHTML = PP.Input.caps(v); });
@@ -372,9 +372,9 @@
       x.hidden = !onMap; if (!onMap) return;
       const k = C.SUBS[q.cls];
       x.innerHTML = PP.Input.caps(`<div class="ht-name">${esc(q.name)}</div><div class="ht-cls">${esc(k.name)} class · Captain ${esc(q.capt || "")} · ${Sub.surfaced(q) ? "on the surface" : Math.round(q.depth) + " ft"}${q.wps && q.wps.length ? ` · ${q.wps.length} waypoint${q.wps.length > 1 ? "s" : ""}` : ""}</div>
-        <p class="ho-now">${q === s ? "You are aboard her. Her order, when you leave her:" : "Her order:"} <b>${esc(PP.Orders.name(q.orders))}</b></p>
+        <p class="ho-now">${q === s ? "You are aboard. Her order, once you leave:" : "Order:"} <b>${esc(PP.Orders.name(q.orders))}</b></p>
         <div class="ho-list">${PP.Orders.LIST.map(([o, n, note]) => `<button data-order="${o}" title="${esc(note)}" aria-pressed="${q.orders === o}"${q.orders === o ? ' class="on"' : ""}>${esc(n)}</button>`).join("")}</div>
-        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== s ? " · <kbd>Enter</kbd> or click her again: take command" : ""}</p>`);
+        <p class="ho-keys"><kbd>O</kbd> next order · right click a waypoint${q !== s ? " · <kbd>Enter</kbd> or click it again: take command" : ""}</p>`);
     });
   };
 

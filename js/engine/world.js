@@ -23,21 +23,29 @@
   function escOrders(S, cmd, ev) {
     const f = Esc.flag(S);
     /* the helm or the telegraph by hand takes her back from AUTO */
-    if (f && f.auto && (cmd.dHdg || (cmd.acts || []).some(a => a.a === "bell" || a.a === "setBell" || a.a === "hdg"))) Esc.order(S, { a: "auto", v: false }, ev);
+    if (f && f.auto && (cmd.dHdg || cmd.rudder || (cmd.acts || []).some(a => a.a === "bell" || a.a === "setBell" || a.a === "hdg"))) Esc.order(S, { a: "auto", v: false }, ev);
     if (f && cmd.dHdg) f.ordHdg = PP.normAng(f.ordHdg + cmd.dHdg);
+    if (f) rudder(f, cmd.rudder);
     for (const a of cmd.acts || []) {
       if (a.a === "tc") S.tcReq = PP.clamp(a.v !== undefined ? a.v : S.tcReq + a.d, 0, C.TC_MAX_IDX);
       else if (ESC_ACTS.has(a.a)) Esc.order(S, a, ev);
     }
   }
+  /* the rudder, held over by hand (cmd.rudder, -1 hard to port to 1 hard to starboard): she is ordered round well past
+   * her head, so she turns as fast as she can; let go, and she steadies on the heading she has */
+  function rudder(q, r) {
+    if (r) q.ordHdg = PP.normAng(q.hdg + PP.clamp(r, -1, 1) * 0.7);
+    else if (q.rudder) q.ordHdg = q.hdg;
+    q.rudder = r || 0;
+  }
   /* the player's own orders (by hand) take the boat back from AUTO */
   const BY_HAND = new Set(["bell", "setBell", "hdg", "depth", "setDepth", "surface", "pd", "dive", "crash", "rate", "eblow"]);
   function orders(S, cmd, ev, aids, byHand = false) {
     const s = S.sub;
-    if (byHand && s.auto && (cmd.dHdg || (cmd.acts || []).some(a => BY_HAND.has(a.a)))) { s.auto = false; ev.push({ t: "auto", on: false, name: s.name }); }
+    if (byHand && s.auto && (cmd.dHdg || cmd.rudder || (cmd.acts || []).some(a => BY_HAND.has(a.a)))) { s.auto = false; ev.push({ t: "auto", on: false, name: s.name }); }
     if (cmd.dHdg) s.ordHdg = PP.normAng(s.ordHdg + cmd.dHdg);
+    if (byHand) rudder(s, cmd.rudder);
     if (cmd.dTrain) s.scope.brg = PP.normAng(s.scope.brg + cmd.dTrain);
-    if (cmd.dGun) { W.gunClamp(s); s.gun.ordRel += cmd.dGun; if (W.gunClamp(s)) ev.push({ t: "gunArc" }); }
     for (const a of cmd.acts || []) {
       switch (a.a) {
         case "tc": S.tcReq = PP.clamp(a.v !== undefined ? a.v : S.tcReq + a.d, 0, C.TC_MAX_IDX); break;
@@ -46,7 +54,7 @@
         case "unlock": W.unlock(S); break;
         case "dial": W.dial(S, a, ev); break;
         case "stadimeter": W.stadimeter(S, ev); break;
-        case "gun": case "gunTrain": case "gunSetBrg": case "gunRange": case "gunSetRng": case "gunFire": W.gunOrder(S, a, ev); break;
+        case "gun": case "gunFire": W.gunOrder(S, a, ev); break;
         /* the pack: take command of another boat; tell one to hunt on her own or hold the orders she has */
         case "command": E.command(S, a.i, ev); break;
         /* AUTO / USER CONTROL: on AUTO the boat you are aboard sails under her order while you watch */

@@ -20,14 +20,14 @@
   const C = PP.C, Sub = PP.Sub, Sh = PP.Ships, Det = PP.Detect, Sea = PP.Sea, O = PP.Orders = {};
 
   O.LIST = [
-    ["attack", "Attack", "Find the convoy and attack it, her captain's own way", "A"],
+    ["attack", "Attack", "Find the convoy and attack it, the captain's own way", "A"],
     ["shadow", "Shadow", "Keep the convoy in reach, out of its sight; never fire", "S"],
-    ["patrol", "Patrol", "Run her waypoints (a right click on the map adds one), then hold", "P"],
+    ["patrol", "Patrol", "Run the waypoints (a right click on the map adds one), then hold", "P"],
     ["evade", "Evade", "Deep, slow and quiet, away from the nearest escort", "E"],
-    ["drift", "Drift", "Stopped and silent where she is: listen", "D"],
+    ["drift", "Drift", "Stopped and silent: listen", "D"],
     ["charge", "Charge", "On the surface, slow, charging the battery", "C"],
-    ["periscope", "Periscope depth", "Up to periscope depth, holding her course", "U"],
-    ["hold", "Hold", "The course, speed and depth you last gave her", "H"],
+    ["periscope", "Periscope depth", "Up to periscope depth, holding course", "U"],
+    ["hold", "Hold", "The course, speed and depth you last ordered", "H"],
   ];
   O.name = k => (O.LIST.find(o => o[0] === k) || O.LIST[0])[1];
   O.DEFAULT = "attack";
