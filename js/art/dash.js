@@ -391,12 +391,13 @@
       const rows = [["Bearing", PP.deg3(e.brg)], ["Range", PP.num(Math.round(e.rng / 50) * 50) + " yd"], ["Speed", Math.round(e.s) + " kn"], ["Angle", `${Math.round(Math.abs(e.aob) / PP.DEG)}° ${e.aob >= 0 ? "stbd" : "port"}`]];
       rows.forEach(([l, v], i) => lab("ct" + i, `<span class="c">${l}</span><b>${v}</b>`, x + 4, y + 18 + i * 9, "dl", "lm"));
     }
-    const st = !e ? -1 : sol && sol.ok ? 2 : 1, ly = y + h - 9, lx = x + 9;
+    /* the lamp at the foot; where the panel is too short for it under the four rows, up beside the target's name */
+    const low = h >= 18 + 4 * 9 + 8, st = !e ? -1 : sol && sol.ok ? 2 : 1, ly = low ? y + h - 9 : y + 7, lx = low ? x + 9 : x + w - 72;
     K.ring(g, lx, ly, 4, st >= 0 ? AMBER : DIM);
     if (st === 1) K.disc(g, lx, ly, 1.5, 1.5, AMBER);
     if (st === 2) K.disc(g, lx, ly, 4, 4, AMBER);
     const word = st === 2 ? "ON TARGET" : st < 0 ? "NO TARGET" : sol && sol.why === "gyro" ? "WRONG ANGLE" : sol && sol.why === "range" ? "OUT OF RANGE" : "NO SOLUTION";
-    lab("lamp", word, x + 17, ly, "dl lamp" + (st === 2 ? " lit" : st >= 0 ? " read" : ""), "lm");
+    lab("lamp", word, lx + 8, ly, "dl lamp" + (st === 2 ? " lit" : st >= 0 ? " read" : ""), "lm");
   }
 
   /* an odometer under a dial: figures on drums, each rolling up to the next as the one to its right turns over

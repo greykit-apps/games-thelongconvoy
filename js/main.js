@@ -844,8 +844,9 @@
     act(a, ev);
   });
   document.addEventListener("keyup", ev => { if (ev.key === "Shift") I.held.delete("shift"); I.up(ev); });
-  addEventListener("blur", () => { I.clear(); if (game.mode === "play") game.pause(); });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { checkpoint(); if (game.mode === "play") game.pause(); } });
+  /* (?awake=1, for pictures taken headless: the page never has the focus, and play goes on regardless) */
+  addEventListener("blur", () => { I.clear(); if (game.mode === "play" && !game.awake) game.pause(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { checkpoint(); if (game.mode === "play" && !game.awake) game.pause(); } });
   addEventListener("pagehide", () => checkpoint());
   document.addEventListener("pointerdown", () => { SFX.unlock(); if (game.mode === "title" && !SFX.tune && !SMALL.matches) SFX.startTune(); }, true);
   document.addEventListener("pointerover", ev => {
@@ -1066,7 +1067,8 @@
       HUD.build();
       for (const cls of ["freighter", "destroyer", "liner"]) for (const b of [4, 8, 12]) PP.ShipArt.sprite(cls, b, 46, "dusk");
       if (q.has("play")) {
-        /* debug: ?play=<action id>|practice&seed=<n>&side=<pack|escorts>&run=<steps>&station=<view|chart|damage>&hour=<h>&wx=<k>&pause=1 */
+        /* debug: ?play=<action id>|practice&seed=<n>&side=<pack|escorts>&run=<steps>&station=<chart|sonar|damage>&hour=<h>&wx=<k>&pause=1&awake=1 */
+        game.awake = q.has("awake");
         const p = q.get("play"), sd = +(q.get("seed") || 1);
         const S = p === "practice" ? E.newPractice({ seed: sd, real: PP.prefs.real }) : E.newAction(E.ACTIONS.some(a => a.id === p) ? p : "easy", { seed: sd, real: PP.prefs.real, side: q.get("side") || "pack" });
         /* &run=<steps>: the test pilot plays that many steps first, so the picture is mid-battle */

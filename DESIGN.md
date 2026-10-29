@@ -81,7 +81,8 @@ Two sides share one look. As the Wolf Empire's wolfpack you are aboard a submari
 
 **Key Characteristics:**
 - Red light inside, the world's own colours outside.
-- The map first: a plot under red light, the depth in ten hard bands as the 1990 sea maps had them.
+- The map first: a plot under red light, the depth in ten hard bands as the 1990 sea maps had them, and your whole side listed on it.
+- The title outside the hull: a 16-bit painting of a destroyer at dusk over a U-boat in a dark red sea, the menu an engine-room telegraph.
 - Colour as role: amber = a reading, chosen, ready; green = a good lamp; orange = a warning; hot red = danger. Nothing is told by colour alone: on the map merchants are diamonds, escorts and boats triangles, a sinking ship a cross.
 - Barlow Semi Condensed for every printed word and reading, tabular figures for numbers; Courier Prime for what is typed on a board; Pixelify Sans for the wordmark and the clock.
 - Pixel art drawn in code: five-step ramps, a 4x4 ordered dither, a dark outline; ships traced from 3D models at their true angle on the bow.
@@ -95,7 +96,7 @@ A near-black ground warmed toward red, one family of red-orange light for every 
 - **text** for readings, **muted** for labels, **faint** for the least of them. Measured against the panel: text 14.3:1, muted 8.6:1, faint 5.8:1, amber 12.8:1, danger text 7.8:1, green 13.0:1.
 
 ### The boards (every screen of words)
-The title's menu (the pack board), the pause, the sheets, the questions and the debrief are **boards**: a dark ground (**board**), its printed labels in **board-print**, what is typed in **board-ink** (Courier Prime), the focus in **board-pencil** amber.
+The pause, the sheets, the questions and the debrief are **boards**: a dark ground (**board**), its printed labels in **board-print**, what is typed in **board-ink** (Courier Prime), the focus in **board-pencil** amber.
 
 ### The map
 - Ten depth bands from **map-shoal** to **map-deep**; land **map-land** with a bright **map-coast** line.
@@ -111,11 +112,11 @@ The title's menu (the pack board), the pause, the sheets, the questions and the 
 - **Wordmark:** Pixelify Sans 700, block letters with a stepped shadow in four darkening reds, after the 1990 title. The title only, and the share card.
 - **Readings:** Barlow Semi Condensed 600 at 19px, tabular figures.
 - **Labels:** Barlow Semi Condensed 600 at 12px, tracked 0.14em, upper case.
-- **Typed:** Courier Prime on the boards: the boats, the date-time group, the contact.
+- **Typed:** Courier Prime on the boards: the pause's slip (the position, the date-time group, what is sunk).
 
 ## Layout
 
-The play screen is the **dashboard** of the vessel you are aboard, as the 1990 game had one per kind of vessel, drawn on one canvas at about 640 by 360 and scaled up whole (`js/art/dash.js`): the view out in the big window top right, the strip of its controls under it; the small map top left, then timing, AUTO / USER CONTROL, the screens and the message window down the left; the gauges along the foot, the vessel's own (a submarine's telegraph, compass, depth, battery and fuel, tubes, snorkel and Metox; an escort's telegraph, compass, sonar scope and P / A switch, charges and racks, hedgehog). Every reading is a HUD label and every control a real button over the canvas, each with its key. The Map, Damage and Status screens are full screens, with the old panels and a way back.
+The play screen is the **dashboard** of the vessel you are aboard, as the 1990 game had one per kind of vessel, drawn on one canvas at about 640 by 360 and scaled up whole (`js/art/dash.js`): the view out in the big window top right, the strip of its controls under it; the small map top left, then timing, AUTO / USER CONTROL, the screens, the sonar's waterfall and the message window down the left; the gauges along the foot, the vessel's own (a submarine's telegraph, compass, depth, battery and fuel, tubes, snorkel and Metox; an escort's telegraph, compass, sonar scope and P / A switch, charges and racks, hedgehog). Every reading is a HUD label and every control a real button over the canvas, each with its key. The Map, Sonar and Damage screens (`2`, `3`, `4`) are full screens, each with a way back; the Captain's log (`5`) is a sheet over the screen.
 
 ## Elevation & Depth
 
@@ -126,8 +127,14 @@ Flat. A panel is set apart by its edge and a soft shadow, never by a gradient or
 ### HUD panels
 Square-ish (6px), **hud-panel** ground, hairline edge. A row is a label, a reading and an order beside it in amber when the order differs from the reading.
 
-### The pack row and the orders panel
-Each boat (or escort) a small square-cornered tag; the one you are aboard edged in amber. On the map the orders panel shows the selected vessel's class, captain, depth and order, and a grid of the orders, the current one edged in amber.
+### The ship list and the preview card
+On the map, top left, your whole side in a table, a row a vessel, in fixed columns with tabular figures so nothing moves as the numbers change: the one you are aboard in amber, the one selected marked with an amber bar. Her order is a framed button the width of its column (a click gives the next). Her lamps are words in small boxes, lit only when they apply: red for danger (hunted, flooding, radio out, deaf), amber for a state (silent, snorkel, radar, active), green for good (charging). At the lower left a HUD panel shows whichever vessel the mouse is over, in the list or on the plot, else the one you are aboard: her name, class and order at its head, her readings and bars under it.
+
+### The telegraph (the title's menu)
+A brass engine-room telegraph drawn in SVG: a brass rim and bolts round a red-lit face, the choices set round it where the bells go, from lower left to lower right as the dashboard's telegraph has them. A brass arm swings to the choice pointed at or keyed, with a little overshoot; the window under the hub says it in full, in the wordmark's face. The bell rings a choice.
+
+### The sonar's waterfall
+What the vessel hears, across by bearing from the bow (astern at both ends, hatched), down by time, the newest line at the top, a line a second. A ramp of nine steps from the dark of the sea through the red light to cream; each thing heard a band, brighter the louder; the sea a speckle that rises with your own noise. Small in the dashboard's left column; full on the Sonar screen, with what is heard listed beside it.
 
 ### Boards
 Dark ground, 2px corners, a red cast inside, the print and the typed entries as above. The focus is the amber pencil tick and an underline, not a ring.
@@ -136,7 +143,7 @@ Dark ground, 2px corners, a red cast inside, the print and the typed entries as 
 A board: the winner in green (your side) or red (theirs), the score and the rating, the two sides at the start and lost, every vessel of the pack, every weapon of both sides.
 
 ### Pixel-art stations (js/art/)
-The view out (bridge, glasses, periscope) and the damage report are drawn from the world's own ramps; the map is drawn in the red light's.
+The view out (bridge, glasses, periscope) and the damage report are drawn from the world's own ramps; the map and the sonar's waterfall in the red light's. The title's painting (`js/art/intro.js`) is the world outside: a blue sky going to dusk over a dark red sea, a few colours to a ramp, dithered in a 4x4 Bayer pattern, the destroyer and the U-boat painted a pixel at a time.
 
 ## Do's and Don'ts
 
