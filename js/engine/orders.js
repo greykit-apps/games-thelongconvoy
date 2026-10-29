@@ -1,4 +1,4 @@
-/* PumaPack -- the orders a boat of the pack sails under while you are not
+/* The Long Convoy -- the orders a boat of the pack sails under while you are not
  * aboard her, as the 1990 game gave them (tools/ORIGINAL.md): every boat
  * runs her own order, and her own waypoints, until you change it or take
  * command of her.

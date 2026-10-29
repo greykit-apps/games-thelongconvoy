@@ -1,4 +1,4 @@
-/* PumaPack -- sound, all of it synthesised: no audio files.
+/* The Long Convoy -- sound, all of it synthesised: no audio files.
  *
  * On the surface the diesels chug and the sea washes along the casing;
  * under it, only the motors' whine and, when a ship is near, its screws

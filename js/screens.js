@@ -1,5 +1,5 @@
-/* PumaPack -- the screens with words on them, boards in the boat's red
- * light (css/pumapack.css): the missions and a custom one, target practice,
+/* The Long Convoy -- the screens with words on them, boards in the boat's red
+ * light (css/thelongconvoy.css): the missions and a custom one, target practice,
  * the service record, the pause, the debrief, the captain's log, and
  * Settings, Help and About from the title. */
 "use strict";
@@ -156,13 +156,6 @@
     });
   };
   /* ---- target practice ---- */
-  UI.practice = () => UI.open("Target practice", { back: () => PP.game.toTitle(),
-    html: () => `<p class="lede">Unescorted targets on a steady course, calm water, good torpedoes. Nothing counts.</p>
-      <div class="diffs two"><button data-k="torpedo" autofocus><b><kbd>1</kbd>Torpedoes</b><span>Three ships crossing ahead of you at periscope depth. Select one with <kbd>T</kbd> and fire: the boat aims the shot.</span></button>
-      <button data-k="gun"><b><kbd>2</kbd>The deck gun</b><span>An old coaster, a few thousand yards off, and you on the surface. <kbd>G</kbd> mans the gun.</span></button></div>`,
-    onKey: ev => { if (ev.key === "1" || ev.key === "2") { ev.preventDefault(); UI.close(true); PP.game.startPractice(ev.key === "1" ? "torpedo" : "gun"); return true; } return false; },
-    onClick: b => { if (b.dataset.k) { UI.close(true); PP.game.startPractice(b.dataset.k); } },
-  });
 
   /* ---- the service record ---- */
   UI.record = after => {
@@ -251,14 +244,14 @@
         <p class="meta">${esc(why)} ${esc(S.scnName || "")}</p>
         ${!lost && S.stats.charges ? `<p class="honour">Survived ${S.stats.charges} depth charge${S.stats.charges > 1 ? "s" : ""}</p>` : ""}
         ${S.mode === "action" && !lost && !S.stats.tons ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of the target, 1,000 to 2,000 yards off its track, near 90° on the bow.") : "No torpedoes away. Get ahead of the convoy on the surface, then dive across its track."} The convoy is still out there.</p>` : ""}
-        ${S.mode === "practice" ? `<p class="lesson">${S.scn === "gun" ? (S.stats.tons ? "That's the gun. Torpedoes next: the other practice." : "Man the gun with <kbd>G</kbd>; its crew lay it on the target, and <kbd>G</kbd> fires it.") : S.stats.hits ? "That's the attack. Escorts next: a convoy action, where they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of the target and off its track, under 3,000 yards." : "Select a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the lamp says On target."}</p>` : ""}
+        ${S.mode === "practice" ? `<p class="lesson">${S.stats.hits ? "That's the attack. Escorts next: a convoy action, where they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of the target and off its track, under 3,000 yards." : "Select a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the lamp says On target."}</p>` : ""}
         ${S.mode === "practice" ? "" : `<p class="note">Reality ${pct}%.</p>`}</div>
         <div>${S.stats.sunk.length ? `<h3>Sunk</h3>${sunkTable(S.stats.sunk)}` : ""}<h3>The engagement</h3>${tally(S)}</div></div>
-        <div class="row end"><button data-act="again" class="primary">${S.mode === "practice" ? "Again" : "Fight it again"}</button><button data-act="actions">${S.mode === "practice" ? "Practice" : "Convoy actions"}</button><button data-act="title">Main menu</button></div>`,
+        <div class="row end"><button data-act="again" class="primary">${S.mode === "practice" ? "Again" : "Fight it again"}</button><button data-act="actions">${S.mode === "practice" ? "Missions" : "Convoy actions"}</button><button data-act="title">Main menu</button></div>`,
       onClick: b => {
         const a = b.dataset.act;
-        if (a === "again") { UI.close(true); S.mode === "practice" ? PP.game.startPractice(S.scn) : PP.game.startAction(S.scn, S.real, PP.game.lastCustom); }
-        if (a === "actions") { UI.close(true); S.mode === "practice" ? UI.practice() : UI.actions(); }
+        if (a === "again") { UI.close(true); S.mode === "practice" ? PP.game.startPractice() : PP.game.startAction(S.scn, S.real, PP.game.lastCustom); }
+        if (a === "actions") { UI.close(true); UI.actions(); }
         if (a === "title") { UI.close(true); PP.game.toTitle(); }
       },
     });
@@ -288,11 +281,11 @@
         <h3>This browser</h3>
         <table class="aids">${line("Resume a game", "Leave a mission in the middle and come back to it.", toggle("resume", PP.prefs.resume, "Resume a game"))}</table>
         <div class="row"><button data-set="forget" class="danger">Forget everything</button></div>
-        <p class="note">Clears everything PumaPack keeps in this browser: the career, the service record, a game in progress, and these settings.</p>`; },
+        <p class="note">Clears everything The Long Convoy keeps in this browser: the career, the service record, a game in progress, and these settings.</p>`; },
       onClick: async (b, api) => {
         const v = b.dataset.set; if (!v) return;
         if (v === "forget") {
-          if (await UI.ask("Forget everything PumaPack has saved in this browser: the career, the service record, a game in progress, and your settings? This cannot be undone.", "Forget everything")) PP.forgetEverything();
+          if (await UI.ask("Forget everything The Long Convoy has saved in this browser: the career, the service record, a game in progress, and your settings? This cannot be undone.", "Forget everything")) PP.forgetEverything();
           return;
         }
         const [k, a] = v.split(":");
@@ -314,59 +307,72 @@
   UI.settings = after => { UI.settingsAfter = after; showSettings(); };
 
   /* ---- Help and About ---- */
-  /* the angle on the bow, drawn: the target's course, the line of sight to you, the angle between */
+  /* Help: short cards, not paragraphs. Each card a few rows, the keys (or the thing to click) first and a few
+   * words after; a line of advice under some. Start here is the whole game in a minute */
   const keys = rows => `<table class="keys">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</table>`;
+  const kb = (...ks) => ks.map(k => `<kbd>${k}</kbd>`).join(" ");
+  const card = (title, rows, tip) => `<section class="hcard"><h3>${title}</h3><dl class="hk">${rows.map(([k, d]) => `<dt>${k}</dt><dd>${d}</dd>`).join("")}</dl>${tip ? `<p class="tip">${tip}</p>` : ""}</section>`;
+  const grid = (...cards) => `<div class="hgrid">${cards.join("")}</div>`;
+  const HELP_TABS = ["Start here", "U-boat", "Escort", "Keys", "Gamepad"];
+  UI.helpTab = name => Math.max(0, HELP_TABS.indexOf(name));
   UI.helpTabs = () => [
-    ["The pack", `<div class="cols"><p><b>The dashboard</b> (<kbd>1</kbd>) is the boat you are aboard, every instrument at once, as the 1990 game had it: the view out in the big window (the periscope at periscope depth, the bridge on the surface), the map in the small one, the telegraph, the compass and the depth, each with its reading on drums under it, her target and its lamp (<b>on target</b> when a spread would hit), and her torpedoes laid out as she is, bow to the right: the spreads, her tubes at each end (they blink out as they fire and fill as they reload) with the reloads behind them, the gun, snorkel, radar and decoys on her deck, the battery, the fuel and the depth's buttons. Click a dial's rim to set it there: a bell, a heading, a depth (anywhere on the green band is periscope depth). Beside the depth, the <b>dive bubble</b> shows her rate up or down: click or drag its tube to order a rate and hold it, wherever it takes her (past test depth, onto the bottom: the captain's call), or its middle to hold her depth. Held down, it levels her off just short of crush depth; to go on past it takes a second order, or a depth set on the gauge. Over it, the <b>emergency blow</b> blows every tank and takes her straight up, and then she cannot dive again for four minutes: it commits her to a fight on the surface. Under it, the <b>crash dive</b> (<kbd>C</kbd>) takes her down fast to a safe depth. Every control is a button, and every button has its key. <b>AUTO</b> hands her to her order while you watch (<kbd>J</kbd>); a touch of the helm or the telegraph takes her back to <b>USER CONTROL</b>.</p>
-      <p><b>You lead the Wolf Empire's wolfpack against Pumacity's convoys, from the map</b> (<kbd>2</kbd>). The map (<kbd>1</kbd>) is where the battle is run: every boat of the pack, the convoy as the pack has seen it, the escorts. A click on a boat <b>selects</b> her: the panel on the left shows her class, her captain, her depth and her order, and gives her another.</p>
-      <p>Every boat you are not aboard sails under <b>her order</b>: <b>Attack</b> (her captain finds the convoy and goes in), <b>Shadow</b> (keep it in reach, out of its sight, and never fire), <b>Patrol</b> (run her waypoints, then hold), <b>Evade</b>, <b>Drift</b>, <b>Charge</b>, <b>Periscope depth</b> and <b>Hold</b>. <kbd>O</kbd> gives the boat selected the next order; a right click on the map adds a waypoint for her.</p>
-      <p><b>Take command</b> of the boat selected with <kbd>Enter</kbd>, or a second click on her; <kbd>N</kbd> takes you straight to the next boat afloat. Aboard her, everything is yours: the helm, the telegraph, the periscope, the torpedoes. Her order waits for you to leave her.</p>
-      <p>The pack shares what it sees, and its news comes in its boats' names: who is firing, who is hunted, who is lost. When the boat you are on is lost, command passes to the next; the mission ends when the convoy is gone or the last boat is.</p></div>`],
-    ["The PDF", `<div class="cols"><p><b>The other side: the Pumacity Defense Fleet.</b> Choose <b>The PDF</b> on the Missions page and you are aboard one of the escorts bringing Pumacity's shipping through; the Wolf Empire's pack is against you, every boat under her own captain. Keep the convoy, and sink what comes for it.</p>
-      <p>Her dashboard has the telegraph (<kbd>W</kbd> <kbd>S</kbd>), the compass and helm (<kbd>A</kbd> <kbd>D</kbd>), the sonar scope with its <b>P / A</b> switch (<kbd>X</kbd>), the charges' depth, the racks and the hedgehog; <kbd>J</kbd> puts her on AUTO, under her order. Her hydrophones hear a boat that runs fast, but not over her own noise above 15 knots: <b>sprint, then slow and listen</b>. <kbd>X</kbd> turns her sonar on: it finds a boat ahead of her, and the boat hears it. Every escort's contact is on the map, a ring where she has it, fading as it ages; the panel gives the freshest, its bearing, range and depth.</p>
-      <p>The panel beside the dials gives the contact's bearing, range and depth, and its lamp says when: <b>run in</b>, <b>stand by</b>, then <b>over the contact</b>. Then <kbd>Space</kbd> (<b>Lay charges</b>) lays a <b>pattern</b>, the one picked on the dashboard or with <kbd>V</kbd>: the <b>diamond</b> (5 charges, three off the rails along her track and one off each thrower over the middle), the <b>double</b> (the same diamond in two layers, 10) or the <b>wide</b> one (14, for a boat whose place you do not know well), set to the depth on the slider (drag it, or <kbd>Q</kbd> <kbd>E</kbd> shallower and deeper, with <kbd>Shift</kbd> 100 feet at a time). Each charge comes from a launcher, four throwers a side and the racks down to her two stern rails, drawn on the dashboard: they blink out as they go, and once the pattern is away the crews load them again from the reserve below, a thrower in six seconds and a rail in three: full, they hold one double or two diamonds; after a wide pattern a diamond is ready again in six seconds, a double in twelve, and every launcher in under half a minute. Click a word on the telegraph to ring it, or a dial's rim to set it there. Later in the war the <b>hedgehog</b> throws a ring of bombs ahead of her that go off only on a hull: pick it beside the patterns and <kbd>Space</kbd> fires it, or <kbd>F</kbd> fires it at once. <kbd>G</kbd> fires her guns at a boat up in sight, every one that is trained on her, in reach and loaded. The guns forward bear from right ahead to well abaft the beam, a destroyer's X gun and the pom-pom (short-ranged) from the bow round to right astern; each takes a moment to train round, and the Guns button lights when one is on. The target is the one bracketed in amber: click another in the view, or <kbd>T</kbd> (<kbd>Shift</kbd>+<kbd>T</kbd> back) for the next; she will ram one she runs down.</p>
-      <p>On the map a click on another escort selects her, and <kbd>O</kbd> gives her an order: <b>Screen</b> (her station on the convoy), <b>Hunt</b> (the freshest contact anywhere), <b>Patrol</b> (her waypoints, a right click) or <b>Hold</b>. <kbd>Enter</kbd>, a second click, or <kbd>N</kbd> for the next, takes you aboard her.</p></div>`],
-    ["The boat", `<div class="cols"><p><b>Sink Pumacity's merchant ships, and live.</b> On the surface the diesels drive her and charge the battery; under the water the battery does everything, and runs down the faster you go.</p>
-      <p>The <b>telegraph</b> (<kbd>W</kbd> <kbd>S</kbd>) orders her speed a bell at a time: Back, Stop, 1/3, 2/3, Standard, Full, Flank. The <b>helm</b> (<kbd>A</kbd> <kbd>D</kbd>) is her rudder: hold it and she turns that way as hard as she can; let go and she steadies on the heading she has. To steer for a heading, click it on the compass's rim.</p>
-      <p>From Year IV her <b>snorkel</b> (<kbd>I</kbd>) runs the diesels at periscope depth: she charges and makes half her surface speed under the water, but she is loud, and the mast can be seen and found by radar. From Year III her <b>Metox</b> lights when an escort's radar sweeps her: dive.</p>
-      <p>Periscope depth is ${C.PD} feet (<kbd>P</kbd>); <kbd>Q</kbd> <kbd>E</kbd> take her up and down; <kbd>U</kbd> surfaces; <kbd>C</kbd> crash dives, at full speed. Below the <b>test depth</b> the hull groans; below the <b>crush depth</b> it fails. Damage lowers the crush depth.</p>
-      <p>Time compression (<kbd>+</kbd> <kbd>−</kbd>) is held back when ships are near; the clock says why.</p>
-      <p>The <b>battery</b> charges only on the surface, and slowly: fastest stopped or at a slow bell, slower as she speeds up, and not at all above ${C.BAT.chargeKn + 4} knots (Full or Flank in a fleet boat). A charge from flat takes most of a night stopped, so charge under time compression. Under the battery bar the boat's panel says when she is charging, or why not.</p></div>`],
-    ["The attack", `<div class="cols"><p><b>From the view</b> (<kbd>2</kbd>): the periscope at periscope depth, the bridge and its glasses on the surface. <kbd>T</kbd> selects the ship nearest the crosshair (again, the next); a click on a ship selects her too.</p>
-      <p><kbd>Space</kbd> fires at the ship selected, or, with none, at the nearest the pack has in sight within a torpedo's run. The boat's fire control aims it: the panel says <b>On target</b> when the shot will run, <b>Wrong angle</b> when the other tubes must take it (<kbd>F</kbd> forward or after), and <b>Out of range</b> when she must close. It will not waste a torpedo on a shot it cannot make.</p>
-      <p>The best shot is from ahead of the target and off its track, under 3,000 yards. A spread (<kbd>V</kbd>) fans up to four torpedoes across the target, fired one after another by a single press of <kbd>Space</kbd>.</p>
-      <p>Bearings are true, as the crew report them: the ring above the periscope glass reads true. A brass mark on the ring is the ship selected, a hollow amber one the crew's last report; an arrow at the ring's end means it is off to that side.</p></div>`],
-    ["Escorts and the war", `<div class="cols"><p><b>Escorts</b> hear you when you are fast and see you when you show. When one has you, go deep (<kbd>E</kbd>), slow (<kbd>S</kbd>) and quiet (<kbd>X</kbd> runs silent), and turn across its line. They give up, in time.</p>
-      <p>A <b>noisemaker</b> (<kbd>K</kbd>, under the water) sounds like a boat for five minutes: an escort that hears or pings you near it may take it for you. Each boat carries four.</p>
-      <p>Orders go to the other boats by <b>radio</b>. A boat with her radio damaged cannot take a new one, and you will hear nothing from her, until her crew mend it. While they hunt you the key strip turns red, with the keys to get away.</p>
-      <p><b>Aircraft</b> come by day near the Empire's islands. When the lookouts call one, dive (<kbd>C</kbd>).</p>
-      <p>On the <b>damage report</b> (<kbd>3</kbd>) the boat is cut away: a hatched compartment has a system hurt, amber damaged, red out. Under her, the depth she is at against her test and crush depths; damage to the hull brings the crush depth up. The crew mend one thing at a time, the worst first.</p></div>`],
-    ["Keys", keys([["Telegraph", "<kbd>W</kbd> <kbd>S</kbd>, a bell at a time"], ["Helm", "<kbd>A</kbd> <kbd>D</kbd>, the rudder over while held; let go to steady"], ["Depth", "<kbd>Q</kbd> <kbd>E</kbd> or <kbd>PgUp</kbd> <kbd>PgDn</kbd>; <kbd>P</kbd> periscope depth, <kbd>U</kbd> surface, <kbd>C</kbd> crash dive"],
-      ["Screens", "<kbd>1</kbd> the dashboard, <kbd>2</kbd> the map, <kbd>3</kbd> damage, <kbd>4</kbd> status, <kbd>5</kbd> the captain's log; <kbd>Tab</kbd> the next"],
-      ["Control", "<kbd>J</kbd> AUTO or USER CONTROL, <kbd>I</kbd> the snorkel"],
-      ["Periscope", "<kbd>←</kbd> <kbd>→</kbd> train (held, it gathers speed), <kbd>↑</kbd> <kbd>↓</kbd> raise and lower, <kbd>Z</kbd> high or low power"],
-      ["Swing", "<kbd>H</kbd> the periscope, the glasses or the gun onto the target: the one locked, else the nearest in sight; <kbd>B</kbd> round to the bow, again to the stern. From another station they take you to the periscope, or the bridge on the surface"],
-      ["Bridge", "<kbd>←</kbd> <kbd>→</kbd> look, <kbd>↑</kbd> <kbd>↓</kbd> the glasses, <kbd>G</kbd> man the gun; manned, its crew lay it on the target (the ship locked, else the nearest in its reach, never round past the tower) and <kbd>G</kbd> fires it; <kbd>Shift</kbd>+<kbd>G</kbd> secures it. Before she dives they train it back fore and aft, and the dive waits for them"],
-      ["Map", "the arrows are the helm and the telegraph; <kbd>Z</kbd> zooms out, the last step the whole sea; a click on a boat selects her, <kbd>O</kbd> her next order, a right click a waypoint for her (<kbd>Shift</kbd>: her first, clearing the rest), <kbd>Enter</kbd> takes command of her"],
-      ["Target", "<kbd>T</kbd> selects the ship nearest the crosshair (again: the next ship)"],
-      ["Fire", "<kbd>Space</kbd>, a torpedo a press; <kbd>F</kbd> forward or after tubes, <kbd>V</kbd> a spread of one to four"],
-      ["Time", "<kbd>+</kbd> <kbd>−</kbd> faster and slower, <kbd>Backspace</kbd> back to 1x"],
-      ["Shift", "held: a faster helm and periscope, the gun's range by 500; <kbd>Shift</kbd> <kbd>Z</kbd> zooms the map in"],
-      ["Mouse", "a click on a ship selects her, in the view or on the map. On the map: a click on a boat (or her name, or her name in the panel at the bottom left) selects her, again takes command; a click on her order opens her orders; a right click adds her a waypoint; the wheel zooms about the mouse; drag to look round. On the dashboard every control is a button, and the wheel zooms the small map"],
-      ["The pack", "<kbd>N</kbd> command of the next boat, <kbd>Shift</kbd> <kbd>N</kbd> the one before"],
-      ["Other", "<kbd>X</kbd> silent running, <kbd>K</kbd> a noisemaker, <kbd>Y</kbd> radar, <kbd>L</kbd> Classic or Field aids, <kbd>M</kbd> sound, <kbd>?</kbd> these keys, <kbd>Esc</kbd> pause"]]) +
-      `<p class="note">The keys are where they sit on a US keyboard; where the browser can tell, each shows the letter on your own.</p>`],
-    ["Gamepad", keys([["Sticks", "<kbd>pad:L-stick</kbd> the helm, flicked up or down the telegraph; <kbd>pad:R-stick</kbd> trains the periscope, looks round, lays the gun"],
-      ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> select a ship, <kbd>pad:Y</kbd> power, the glasses, the chart's zoom, and at a base tie up"],
-      ["D-pad", "<kbd>pad:dU</kbd> <kbd>pad:dD</kbd> depth (the gun's range, when it is manned), <kbd>pad:dL</kbd> the tubes, <kbd>pad:dR</kbd> man the gun"],
+    ["Start here", `<p class="lede">Sink the convoy as the Wolf Empire's U-boats, or bring it home as the Pumacity Defense Fleet's escorts. Pick a side on the <b>Missions</b> page.</p>
+      ${grid(
+        `<section class="hcard"><h3>Your first attack, in a U-boat</h3><ol class="steps">
+          <li>Open the <b>map</b> (${kb("2")}) and get ahead of the convoy. On the surface you are fastest.</li>
+          <li>Dive to <b>periscope depth</b> (${kb("P")}) as it comes on.</li>
+          <li><b>Pick a ship</b>: ${kb("T")}, or click it.</li>
+          <li>Wait for the lamp to say <b>On target</b>, then <b>fire</b> (${kb("Space")}).</li>
+          <li>Then go <b>deep</b> (${kb("E")}), <b>slow</b> (${kb("S")}) and <b>quiet</b> (${kb("X")}).</li>
+        </ol><p class="tip">The best shot is from ahead of the ship, side-on to it, 1,000 to 3,000 yards off.</p></section>`,
+        card("The screens", [[kb("1"), "Dashboard: the view out and every control"], [kb("2"), "Map: the whole battle, and your other vessels"], [kb("3"), "Damage"], [kb("4"), "Status"], [kb("5"), "Captain's log"], [kb("Tab"), "The next screen"]],
+          "On the dashboard every control is a button. Point at one to see what it does and its key."),
+        card("Any time", [[kb("Esc"), "Pause"], [kb("+", "−"), "Time faster, slower; " + kb("Backspace") + " back to 1x"], [kb("?"), "This help"], [kb("M"), "Sound on or off"], [kb("L"), "Field or Classic aids"]],
+          "Time speeds up only while nothing is close; the clock says what is holding it back."))}`],
+    ["U-boat", grid(
+      card("Drive", [[kb("W", "S"), "Speed, a bell at a time"], [kb("A", "D"), "Rudder, while held"], ["Compass rim", "Click to steer for that heading"], [kb("Q", "E"), "Shallower, deeper"],
+        [kb("P") + " " + kb("U"), "Periscope depth, surface"], [kb("C"), "Crash dive"]]),
+      card("The dive bubble", [["Tube", "Click a rate to hold it. Going down, she stops short of crush depth"], ["Blow", "Straight to the surface. No diving for 4 minutes. Click twice"], ["Crash", "Down fast to a safe depth. Click twice"]]),
+      card("Attack", [[kb("T"), "Pick a ship (again: the next)"], [kb("Space"), "Fire the spread"], [kb("V"), "Spread: one to four torpedoes"], [kb("F"), "Forward or after tubes"], [kb("H"), "Swing the view onto the target"]],
+        "The lamp says <b>On target</b>, <b>Wrong angle</b> (try the other tubes) or <b>Out of range</b>."),
+      card("Deck gun", [[kb("G"), "Man the gun, on the surface"], [kb("G"), "Fire: the crew aim it"], [kb("Shift", "G"), "Secure it"]], "It cannot fire past the tower. A dive waits while the crew stow it."),
+      card("Stay alive", [[kb("X"), "Silent running"], [kb("K"), "Noisemaker: escorts may chase it (four aboard)"], ["Metox", "Lights when radar sweeps you: dive"], ["Aircraft", "Crash dive"]],
+        "Hunted? Go deep, slow and quiet, and turn across the escort's line."),
+      card("Battery and fuel", [["Surface", "The diesels drive and charge the battery"], ["Below", "The battery runs everything, faster at speed"], [kb("I"), "Snorkel: diesels at periscope depth, from Year IV. Loud"], [kb("Y"), "Radar, when fitted"]],
+        "Charge stopped or at a slow bell; nothing charges above " + (C.BAT.chargeKn + 4) + " knots."),
+      card("The pack", [["Click a boat", "Select it, on the map"], [kb("O"), "Its next order"], ["Right click", "Add a waypoint"], [kb("Enter"), "Take command (or click it again)"], [kb("N"), "Command of the next boat"], [kb("J"), "AUTO: your boat follows its order"]],
+        "Orders: " + PP.Orders.LIST.map(o => `<b>${o[1]}</b>`).join(", ") + "."),
+      card("Depth and damage", [["Test depth", "The hull groans below it"], ["Crush depth", "The hull fails below it. Damage brings it up"], [kb("3"), "Damage: amber hurt, red out"]],
+        "The crew mend the worst first. A boat with her radio out takes no orders."))],
+    ["Escort", grid(
+      card("Find the boat", [["Hydrophones", "Hear a boat that runs fast"], ["Over 15 knots", "Your own noise drowns them"], [kb("X"), "Sonar: pings ahead, but the boat hears it"]],
+        "Sprint, then slow down and listen. Every escort's contacts are on the map, fading as they age."),
+      card("Depth charges", [["The lamp", "<b>Run in</b>, <b>Stand by</b>, then <b>Over the contact</b>"], [kb("Space"), "Lay the pattern"], [kb("V"), "Pick the pattern"], [kb("Q", "E"), "Charges' depth (" + kb("Shift") + ": 100 ft)"], [kb("F"), "Fire the hedgehog at once, later in the war"]]),
+      card("Patterns", [["Diamond", "5 charges"], ["Double", "10: a diamond in two layers"], ["Wide", "14: when you are unsure where it is"], ["Hedgehog", "Bombs thrown ahead; they burst only on a hull"]],
+        "Throwers reload in 6 seconds, rails in 3. Full racks hold a double or two diamonds."),
+      card("Guns", [[kb("G"), "Fire every gun that bears"], [kb("T"), "Next target (" + kb("Shift") + ": back), or click it"]],
+        "Guns take a moment to swing round, and each has its arc. Run a boat down and you ram it."),
+      card("Drive", [[kb("W", "S"), "Speed, a bell at a time"], [kb("A", "D"), "Rudder, while held"], ["Compass rim", "Click to steer for that heading"], [kb("J"), "AUTO: she follows her order"]]),
+      card("Your escort group", [["Click an escort", "Select it, on the map"], [kb("O"), "Its order: Screen, Hunt, Patrol, Hold"], ["Right click", "Add a waypoint"], [kb("Enter"), "Go aboard (or click it again)"], [kb("N"), "The next escort"]]))],
+    ["Keys", grid(
+      card("Handling", [[kb("W", "S"), "Speed"], [kb("A", "D"), "Rudder"], [kb("Q", "E"), "Shallower, deeper (escort: charges' depth)"], [kb("P", "U", "C"), "Periscope depth, surface, crash dive"], [kb("J"), "AUTO or your control"]]),
+      card("Weapons", [[kb("Space"), "Fire, or lay the pattern"], [kb("T"), "Pick a ship"], [kb("V"), "Spread or pattern"], [kb("F"), "Tubes, or the hedgehog"], [kb("G"), "Gun"], [kb("K"), "Noisemaker"]]),
+      card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
+      card("Screens and time", [[kb("1") + "–" + kb("5"), "Dashboard, map, damage, status, log"], [kb("Tab"), "Next screen"], [kb("+", "−"), "Time faster, slower"], [kb("Backspace"), "Back to 1x"]]),
+      card("Your side", [[kb("N"), "Next vessel (" + kb("Shift") + ": back)"], [kb("O"), "Next order"], [kb("Enter"), "Take command"]]),
+      card("Systems", [[kb("X"), "Silent running, or sonar"], [kb("I"), "Snorkel"], [kb("Y"), "Radar"], [kb("L"), "Aids"], [kb("M"), "Sound"], [kb("Esc"), "Pause"]])) +
+      `<p class="note">Keys are shown where they sit on a US keyboard; where the browser can tell, each shows your own keyboard's letter.</p>`],
+    ["Gamepad", keys([["Sticks", "<kbd>pad:L-stick</kbd> the helm, flicked up or down the telegraph; <kbd>pad:R-stick</kbd> trains the periscope, looks round"],
+      ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> pick a ship, <kbd>pad:Y</kbd> power, the glasses, the map's zoom"],
+      ["D-pad", "<kbd>pad:dU</kbd> <kbd>pad:dD</kbd> depth, <kbd>pad:dL</kbd> the tubes, <kbd>pad:dR</kbd> the gun"],
       ["Stick clicks", "<kbd>pad:L-click</kbd> crash dive, <kbd>pad:R-click</kbd> up a level: periscope depth, then the surface"],
       ["Shoulders", "<kbd>pad:LB</kbd> <kbd>pad:RB</kbd> screens, <kbd>pad:LT</kbd> <kbd>pad:RT</kbd> time"],
-      ["Back, Start", "<kbd>pad:Back</kbd> alone the map, <kbd>pad:Start</kbd> pause and resume"],
-      ["Back held", "<kbd>pad:A</kbd> spread, <kbd>pad:B</kbd> silent running, <kbd>pad:X</kbd> the selected boat's next order, <kbd>pad:dU</kbd> the next boat, <kbd>pad:dD</kbd> take command of the selected boat, <kbd>pad:Y</kbd> radar, <kbd>pad:LB</kbd> log, <kbd>pad:RB</kbd> aids, <kbd>pad:LT</kbd> back to 1x, <kbd>pad:R-click</kbd> swing to the target, <kbd>pad:RT</kbd> swing to the bow, again the stern, <kbd>pad:Start</kbd> this help"],
+      ["Back, Start", "<kbd>pad:Back</kbd> the map, <kbd>pad:Start</kbd> pause"],
+      ["Back held", "<kbd>pad:A</kbd> spread, <kbd>pad:B</kbd> silent running, <kbd>pad:X</kbd> next order, <kbd>pad:dU</kbd> next boat, <kbd>pad:dD</kbd> take command, <kbd>pad:Y</kbd> radar, <kbd>pad:LB</kbd> log, <kbd>pad:RB</kbd> aids, <kbd>pad:LT</kbd> 1x, <kbd>pad:R-click</kbd> onto the target, <kbd>pad:RT</kbd> bow or stern, <kbd>pad:Start</kbd> this help"],
       ["Menus", "the d-pad moves, <kbd>pad:A</kbd> chooses, <kbd>pad:B</kbd> goes back, <kbd>pad:LB</kbd> <kbd>pad:RB</kbd> turn these pages"]]) + `<p class="gk-credit">${CREDIT}</p>`],
   ];
   UI.help = (tab = 0, after) => UI.open("Help", { wide: true, tab, tabs: UI.helpTabs(), onClose: after });
-  UI.aboutHTML = () => `<p>Lead the Wolf Empire's wolfpack against Pumacity's convoys, or sail with the Pumacity Defense Fleet and bring them through, in this homage to NovaLogic's <i>Wolfpack</i> (1990). Command any vessel of your side, give the others their orders, and fight it out from the map. With original graphics and modern conveniences.</p>
+  UI.aboutHTML = () => `<p>Lead the Wolf Empire's wolfpack against Pumacity's convoys, or sail with the Pumacity Defense Fleet and bring them through, in this homage to NovaLogic's <i>Wolfpack</i> (1990). Command any vessel of your side, give the others their orders, and fight it out from the map.</p>
     <p class="gk-credit">${CREDIT}</p>`;
   UI.about = after => UI.open("About", { html: UI.aboutHTML, onClose: after });
 })();

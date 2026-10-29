@@ -1,12 +1,23 @@
-/* PumaPack -- the settings, a game left to come back to, the service
- * record of each mission's best, and nothing else. Every key begins pumapack_
+/* The Long Convoy -- the settings, a game left to come back to, the service
+ * record of each mission's best, and nothing else. Every key begins thelongconvoy_
  * (greykit.games STANDARD.md §5), so Settings can forget them by that
  * prefix and leave the rest of greykit.com alone (§2). */
 "use strict";
 (() => {
-  const KEY_PREFS = "pumapack_prefs_v1", KEY_GAME = "pumapack_game_v1", KEY_FAME = "pumapack_fame_v1", KEY_NAME = "pumapack_name_v1";
-  PP.KEY_MUTED = "pumapack_muted_v1";
-  PP.KEY_LAST = "pumapack_last_v1";
+  const KEY_PREFS = "thelongconvoy_prefs_v1", KEY_GAME = "thelongconvoy_game_v1", KEY_FAME = "thelongconvoy_fame_v1", KEY_NAME = "thelongconvoy_name_v1";
+  PP.KEY_MUTED = "thelongconvoy_muted_v1";
+  PP.KEY_LAST = "thelongconvoy_last_v1";
+  /* the game was The Long Convoy until 2026-10-29: what it kept under that name is moved, once, to the new name's keys
+   * (one already there wins), so a game in progress, the record and the settings carry over */
+  try {
+    const s = globalThis.localStorage, old = "pumapack_", now = KEY_PREFS.slice(0, KEY_PREFS.indexOf("_") + 1);
+    for (let i = s.length - 1; i >= 0; i--) {
+      const k = s.key(i);
+      if (!k || !k.startsWith(old)) continue;
+      if (s.getItem(now + k.slice(old.length)) === null) s.setItem(now + k.slice(old.length), s.getItem(k));
+      s.removeItem(k);
+    }
+  } catch (e) { /* no storage */ }
 
   /* ---- the aids: Classic is the instruments and your eyes, Field a modern helping hand. None of them changes the war: the reality does that ---- */
   PP.AID_LIST = [
@@ -57,7 +68,7 @@
     for (const area of ["localStorage", "sessionStorage"]) {
       try {
         const s = globalThis[area];
-        for (let i = s.length - 1; i >= 0; i--) { const k = s.key(i); if (k && k.startsWith("pumapack")) s.removeItem(k); }
+        for (let i = s.length - 1; i >= 0; i--) { const k = s.key(i); if (k && k.startsWith("thelongconvoy")) s.removeItem(k); }
       } catch (e) { /* no storage */ }
     }
     location.reload();

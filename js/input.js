@@ -1,4 +1,4 @@
-/* PumaPack -- keys and pads, turned into orders for the next step.
+/* The Long Convoy -- keys and pads, turned into orders for the next step.
  *
  * W and S are the telegraph, A and D the helm, wherever you are. The arrows
  * mean what the station in front of you needs, as a 1985 joystick did: at

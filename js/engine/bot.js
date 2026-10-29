@@ -1,4 +1,4 @@
-/* PumaPack -- a captain who sails the boat by himself: every boat of the
+/* The Long Convoy -- a captain who sails the boat by himself: every boat of the
  * pack you are not aboard under the order Attack (PP.Orders), the title's
  * plot, and tools/sim-check.js.
  *

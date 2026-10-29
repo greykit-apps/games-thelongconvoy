@@ -1,4 +1,4 @@
-/* PumaPack -- the play screen: whichever station you are at.
+/* The Long Convoy -- the play screen: whichever station you are at.
  *
  * The periscope (round, the reticle and its stadimeter ticks, the bearing
  * ring along the top, the sea washing over the glass in a swell), the

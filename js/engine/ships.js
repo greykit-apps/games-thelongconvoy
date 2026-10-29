@@ -1,4 +1,4 @@
-/* PumaPack -- the Wolf Empire's ships: convoys on their lanes, the
+/* The Long Convoy -- the Wolf Empire's ships: convoys on their lanes, the
  * formation, the zig-zag, the turn away and the scatter, and sinking.
  *
  * A convoy far off is only a point on its lane and a list of ships: it is

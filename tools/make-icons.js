@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * PumaPack's icons, from one pixel drawing: the plot under the boat's red
+ * The Long Convoy's icons, from one pixel drawing: the plot under the boat's red
  * light, the pack's three boats closing in a wedge on a convoy.
  *
  *   node tools/make-icons.js
@@ -64,8 +64,8 @@ ART.forEach((row, y) => {
     x = e;
   }
 });
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges" role="img" aria-label="PumaPack">
-<title>PumaPack</title>
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges" role="img" aria-label="The Long Convoy">
+<title>The Long Convoy</title>
 <!-- The pack closing on a convoy, on the plot under red light. Written by tools/make-icons.js; edit the drawing there, not this file. -->
 <clipPath id="p"><rect width="${N}" height="${N}" rx="${R}"/></clipPath>
 <g clip-path="url(#p)">

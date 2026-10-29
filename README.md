@@ -1,10 +1,10 @@
-# PumaPack
+# The Long Convoy
 
 **The Wolf Empire's wolfpack against Pumacity's convoys, and the fleet that escorts them.** A remake of *Wolfpack* (NovaLogic, 1990, DOS): command the wolfpack's boats one at a time while the rest sail under their orders, or sail with the Pumacity Defense Fleet (the PDF) and bring the city's shipping through, in modern hi-bit pixel art, in a boat rigged for red light.
 
 ## Play
 
-[greykit.com/games/pumapack](https://greykit.com/games/pumapack/)
+[greykit.com/games/thelongconvoy](https://greykit.com/games/thelongconvoy/)
 
 No install required. Plain scripts, no build step, nothing fetched at play time: every picture is drawn and every sound synthesised in the page; the two typefaces ship with it.
 
@@ -74,7 +74,7 @@ tools/       sim-check (the captain plays every mission headless, the whole pack
 
 `node tools/sim-check.js` plays every mission headless: the fire control's solution hits, the pack sinks ships, the boats you are not on fire on their own, the escorts hunt, and a mission replays step for step and survives being saved and loaded half way. `node tools/stamp-assets.js` stamps every script and stylesheet with its hash after an edit. `tools/ORIGINAL.md` is what the 1990 game's files hold, in our own words.
 
-PumaPack began as a copy of [Puma Service](https://greykit.com/games/pumaservice/) and shares its sea, its boats and its view out; the screens, the controls and the code are its own.
+The Long Convoy began as a copy of [Puma Service](https://greykit.com/games/pumaservice/) and shares its sea, its boats and its view out; the screens, the controls and the code are its own.
 
 ## Credits
 

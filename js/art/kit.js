@@ -1,4 +1,4 @@
-/* PumaPack -- the art kit: what every picture on the play screen
+/* The Long Convoy -- the art kit: what every picture on the play screen
  * shares. The play screen is about 360 pixels high, scaled up by whole
  * numbers, as wide as the window lets it be; every station is drawn about
  * its middle and reaches out to the edges.

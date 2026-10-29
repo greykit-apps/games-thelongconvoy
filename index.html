@@ -4,24 +4,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>PumaPack</title>
+<title>The Long Convoy</title>
 <meta name="description" content="Lead the Wolf Empire's wolfpack against Pumacity's convoys, or bring them home with the Pumacity Defense Fleet: command any vessel of your side and fight it out from the map. A remake of Wolfpack, NovaLogic's 1990 classic.">
 <meta name="theme-color" content="#05070f">
 <meta name="color-scheme" content="dark">
 <meta name="referrer" content="no-referrer">
-<meta property="og:title" content="PumaPack">
+<meta property="og:title" content="The Long Convoy">
 <meta property="og:description" content="Lead the Wolf Empire's wolfpack against Pumacity's convoys, or bring them home with the Pumacity Defense Fleet: command any vessel of your side and fight it out from the map. A remake of Wolfpack, NovaLogic's 1990 classic.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://greykit.com/games/pumapack/og.png">
+<meta property="og:image" content="https://greykit.com/games/thelongconvoy/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="PumaPack: the Wolf Empire's wolfpack closing on a Pumacity convoy at night.">
-<meta property="og:url" content="https://greykit.com/games/pumapack/">
+<meta property="og:image:alt" content="The Long Convoy: a destroyer on the surface at dusk, and a submarine running under her in a dark red sea.">
+<meta property="og:url" content="https://greykit.com/games/thelongconvoy/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="PumaPack">
+<meta name="twitter:title" content="The Long Convoy">
 <meta name="twitter:description" content="The Wolf Empire's wolfpack against Pumacity's convoys and the fleet that escorts them: a remake of Wolfpack, NovaLogic's 1990 classic.">
-<meta name="twitter:image" content="https://greykit.com/games/pumapack/og.png">
-<meta name="twitter:image:alt" content="PumaPack: the Wolf Empire's wolfpack closing on a Pumacity convoy at night.">
+<meta name="twitter:image" content="https://greykit.com/games/thelongconvoy/og.png">
+<meta name="twitter:image:alt" content="The Long Convoy: a destroyer on the surface at dusk, and a submarine running under her in a dark red sea.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -29,11 +29,11 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="stylesheet" href="css/gk-tokens.css?v=7c37e1f9">
-<link rel="stylesheet" href="css/pumapack.css?v=3f890130">
+<link rel="stylesheet" href="css/thelongconvoy.css?v=9e5f562a">
 </head>
 <body>
 <div id="game" hidden>
-  <div id="stage"><canvas id="screen" width="640" height="360" aria-label="PumaPack: the station in front of you"></canvas></div>
+  <div id="stage"><canvas id="screen" width="640" height="360" aria-label="The Long Convoy: the station in front of you"></canvas></div>
   <div id="hud"></div>
   <div id="corner">
     <button id="pausebtn" aria-label="Pause" title="Pause (Esc)"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="4" y="3" width="3" height="10" fill="currentColor"/><rect x="9" y="3" width="3" height="10" fill="currentColor"/></svg></button>
@@ -45,38 +45,39 @@
 <div id="title" hidden></div>
 <div id="small" role="dialog" aria-labelledby="small-h">
   <img class="px" src="icon.svg" width="96" height="96" alt="">
-  <h1 id="small-h">PumaPack is built for a desktop</h1>
+  <h1 id="small-h">The Long Convoy is built for a desktop</h1>
   <p>A pack of submarines, a periscope and a convoy to hunt need a keyboard, or a gamepad, and a bigger screen than this. Come back on a computer.</p>
   <p class="gk-credit">Built by <a href="https://greykit.com/" target="_blank" rel="noopener">greykit.com</a></p>
 </div>
 <script src="js/gk-title.js?v=6080c669"></script>
-<script src="js/util.js?v=b0814409"></script>
-<script src="js/engine/const.js?v=c231141a"></script>
-<script src="js/engine/sea.js?v=044c337d"></script>
-<script src="js/engine/sub.js?v=d3840995"></script>
-<script src="js/engine/ships.js?v=e3d83575"></script>
-<script src="js/engine/detect.js?v=e85aa2ad"></script>
-<script src="js/engine/escort.js?v=32ba892b"></script>
-<script src="js/engine/weapons.js?v=0dde4429"></script>
-<script src="js/engine/scenarios.js?v=fbbf20b6"></script>
-<script src="js/engine/world.js?v=a25e7f3b"></script>
-<script src="js/engine/bot.js?v=74c9a209"></script>
-<script src="js/engine/orders.js?v=97d924ca"></script>
-<script src="js/art/kit.js?v=d006d0cb"></script>
-<script src="js/art/model.js?v=ab5aebc0"></script>
-<script src="js/art/ships.js?v=40e930ed"></script>
-<script src="js/art/fx.js?v=3b29a593"></script>
-<script src="js/art/view.js?v=22d5ac5b"></script>
-<script src="js/art/chart.js?v=6e53268e"></script>
-<script src="js/art/panel.js?v=b5ccd6a9"></script>
-<script src="js/art/damage.js?v=36540ff1"></script>
-<script src="js/store.js?v=2cec5e82"></script>
-<script src="js/input.js?v=f459e827"></script>
-<script src="js/sfx.js?v=5e73555c"></script>
-<script src="js/render.js?v=61ee06ba"></script>
-<script src="js/art/dash.js?v=ce7bc84f"></script>
-<script src="js/hud.js?v=1d6104dc"></script>
-<script src="js/screens.js?v=22cec6c6"></script>
-<script src="js/main.js?v=022e54de"></script>
+<script src="js/util.js?v=797346cd"></script>
+<script src="js/engine/const.js?v=b25b620a"></script>
+<script src="js/engine/sea.js?v=95483507"></script>
+<script src="js/engine/sub.js?v=b6595201"></script>
+<script src="js/engine/ships.js?v=9e93d756"></script>
+<script src="js/engine/detect.js?v=d919b4bf"></script>
+<script src="js/engine/escort.js?v=ac4df7f2"></script>
+<script src="js/engine/weapons.js?v=2ccccc4a"></script>
+<script src="js/engine/scenarios.js?v=51d1e7a8"></script>
+<script src="js/engine/world.js?v=aaedf58e"></script>
+<script src="js/engine/bot.js?v=3bfa9502"></script>
+<script src="js/engine/orders.js?v=fbd588e6"></script>
+<script src="js/art/kit.js?v=e5f3b9dd"></script>
+<script src="js/art/model.js?v=83f48613"></script>
+<script src="js/art/ships.js?v=f8c303a7"></script>
+<script src="js/art/fx.js?v=80ef624b"></script>
+<script src="js/art/view.js?v=95a858d3"></script>
+<script src="js/art/chart.js?v=839e74fd"></script>
+<script src="js/art/panel.js?v=59ddbe4c"></script>
+<script src="js/art/damage.js?v=1124e9d9"></script>
+<script src="js/store.js?v=6f360882"></script>
+<script src="js/input.js?v=76bb3a5b"></script>
+<script src="js/sfx.js?v=f3d307fe"></script>
+<script src="js/art/intro.js?v=29d6349f"></script>
+<script src="js/render.js?v=a1c27541"></script>
+<script src="js/art/dash.js?v=b4b13f23"></script>
+<script src="js/hud.js?v=0816a86f"></script>
+<script src="js/screens.js?v=e2f6b55e"></script>
+<script src="js/main.js?v=3fa3ede4"></script>
 </body>
 </html>

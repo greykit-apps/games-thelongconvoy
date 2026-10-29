@@ -1,4 +1,4 @@
-/* PumaPack -- the namespace and the small helpers everything shares.
+/* The Long Convoy -- the namespace and the small helpers everything shares.
  *
  * DOM-free: tools/sim-check.js loads this file, and the engine, under node.
  * Nothing here may read the clock or Math.random: the engine's dice are

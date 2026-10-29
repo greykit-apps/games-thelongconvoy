@@ -1,4 +1,4 @@
-/* PumaPack -- what happens for a moment: the column of water a torpedo
+/* The Long Convoy -- what happens for a moment: the column of water a torpedo
  * throws up, the flash, smoke from a burning ship, a depth charge in the
  * air and its splash, the fountain and the white boil where it went off,
  * a shell's splash; and what a hurt boat sends up, oil and wreckage.

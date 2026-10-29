@@ -1,4 +1,4 @@
-/* PumaPack -- looking out: the sea from a periscope, the bridge, or
+/* The Long Convoy -- looking out: the sea from a periscope, the bridge, or
  * the title's lookout.
  *
  * The sky by the sun's height and the weather, the sun or the moon on the

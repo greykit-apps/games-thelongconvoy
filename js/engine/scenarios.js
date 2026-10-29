@@ -1,4 +1,4 @@
-/* PumaPack -- what there is to play: target practice, the convoy
+/* The Long Convoy -- what there is to play: target practice, the convoy
  * actions (single engagements, each its own night or day of the war), a
  * custom action. (Puma Service's war patrols and career are gone: the 1990
  * game had missions, and so does this one.) */
@@ -151,26 +151,25 @@
     return S;
   };
 
-  E.newPractice = ({ seed, real, kind = "torpedo" }) => {
+  /* target practice: three ships on a steady course, crossing ahead of a boat at periscope depth */
+  E.newPractice = ({ seed, real }) => {
     const r = Object.assign({}, real, { duds: false, expert: false });
     const S = E.base({ seed, mode: "practice", mi: 26, hour: 10, day: 12, real: r, cls: "caracal", name: "Training" });
-    S.scn = kind; S.scnName = kind === "gun" ? "Gunnery practice" : "Torpedo practice";
+    S.scn = "torpedo"; S.scnName = "Torpedo practice";
     E.setWx(S, "clear"); S.wx.sea = 1;
     const x = 1000 * NM, y = 260 * NM, hdg = 270 * PP.DEG;
-    const comp = kind === "gun" ? [{ cls: "coaster", name: "Hulk", dmg: 0 }] : [{ cls: "freighter", name: "Able", dmg: 0 }, { cls: "liner", name: "Baker", dmg: 0 }, { cls: "coaster", name: "Charlie", dmg: 0 }];
-    const cv = Sh.makeConvoy(S, { x, y, hdg, comp, spd: kind === "gun" ? 5 : 8 });
+    const comp = [{ cls: "freighter", name: "Able", dmg: 0 }, { cls: "liner", name: "Baker", dmg: 0 }, { cls: "coaster", name: "Charlie", dmg: 0 }];
+    const cv = Sh.makeConvoy(S, { x, y, hdg, comp, spd: 8 });
     S.real.zig = false;
     /* close enough that the first look through the glass shows ships, not specks: about 2,500 yards */
-    const [sx, sy] = offset(x, y, hdg, kind === "gun" ? 2500 : 2200, kind === "gun" ? 1800 : 1500);
-    Object.assign(S.sub, { x: sx, y: sy, hdg: hdg + Math.PI, ordHdg: hdg + Math.PI, bell: kind === "gun" ? 2 : 2, spd: 4, depth: kind === "gun" ? 0 : C.PD, ordDepth: kind === "gun" ? 0 : C.PD });
-    if (kind !== "gun") { S.sub.scope.up = true; S.sub.scope.h = 1; }
+    const [sx, sy] = offset(x, y, hdg, 2200, 1500);
+    Object.assign(S.sub, { x: sx, y: sy, hdg: hdg + Math.PI, ordHdg: hdg + Math.PI, bell: 2, spd: 4, depth: C.PD, ordDepth: C.PD });
+    S.sub.scope.up = true; S.sub.scope.h = 1;
     S.potential = comp.reduce((s, c) => s + C.SHIPS[c.cls].tons, 0);
     Sh.spawn(S, cv);
     /* the periscope trained on the nearest target: the first thing a newcomer sees is a ship to lock */
-    if (kind !== "gun") {
-      const sub = S.sub, near = S.ships.slice().sort((a, b) => PP.dist(sub.x, sub.y, a.x, a.y) - PP.dist(sub.x, sub.y, b.x, b.y))[0];
-      if (near) sub.scope.brg = PP.angDiff(sub.hdg, PP.angTo(sub.x, sub.y, near.x, near.y));
-    }
+    const sub = S.sub, near = S.ships.slice().sort((a, b) => PP.dist(sub.x, sub.y, a.x, a.y) - PP.dist(sub.x, sub.y, b.x, b.y))[0];
+    if (near) sub.scope.brg = PP.angDiff(sub.hdg, PP.angTo(sub.x, sub.y, near.x, near.y));
     E.log(S, `${S.scnName}. Targets on a steady course, no escorts.`);
     return S;
   };

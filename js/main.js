@@ -1,4 +1,4 @@
-/* PumaPack -- boot, title, the loop, and everything between.
+/* The Long Convoy -- boot, title, the loop, and everything between.
  *
  * The greykit.games boot (the canon @gk-title block, STANDARD.md §3) while
  * the sea is charted and the first ships are traced, then the game's own
@@ -18,7 +18,7 @@
   game.toggleMute = () => {
     SFX.unlock();
     SFX.setMuted(!SFX.muted);
-    try { globalThis.localStorage.setItem("pumapack_muted_v1", SFX.muted ? "1" : "0"); } catch (e) { /* no storage */ }
+    try { globalThis.localStorage.setItem(PP.KEY_MUTED, SFX.muted ? "1" : "0"); } catch (e) { /* no storage */ }
     syncSound();
     if (!SFX.muted) { SFX.play("menu"); if (game.mode === "title" && !SMALL.matches) SFX.startTune(); }
     if (game.mode === "play") HUD.toast(SFX.muted ? "Sound off" : "Sound on", "", 1200);
@@ -33,42 +33,67 @@
   function titleCfg() {
     const saved = PP.loadGame(), f = PP.fame(), fresh = !saved && !Object.keys(f.actions).length;
     return {
-      name: "PumaPack",
+      name: "The Long Convoy",
       primary: saved ? "resume" : fresh ? "practice" : "action",
-      /* the board's head: the boats of the game in hand, dated from it (else from the plot behind) */
-      msg: { to: (saved && saved.S.subs.length > 1 ? saved.S.subs.map(q => q.name).join(", ") : saved && saved.S.sub.name) || "The whole pack", dtg: C.dtgStr(saved ? saved.S.t : game.demo.t), prec: saved ? "Priority" : "Routine" },
+      /* each its words on the telegraph's face (a line apiece) and the fuller ones in its window */
       items: [
-        saved && { act: "resume", label: "Resume game", key: "R", meta: saved.S.scnName || "" },
-        { act: "action", label: "Missions", key: "C", meta: "" },
-        { act: "practice", label: "Target practice", key: "T", meta: fresh ? "start here" : "" },
-        { act: "record", label: "Service record", key: "O", meta: "" },
-        "gap",
-        { act: "settings", label: "Settings", key: "S" },
-        { act: "help", label: "Help", key: "?" },
-        { act: "about", label: "About", key: "A" },
+        saved && { act: "resume", face: ["Resume"], label: "Resume game", key: "R", meta: saved.S.scnName || "" },
+        { act: "action", face: ["Missions"], label: "Missions", key: "C", meta: "" },
+        { act: "practice", face: ["Target", "practice"], label: "Target practice", key: "T", meta: fresh ? "Start here" : "" },
+        { act: "record", face: ["Service", "record"], label: "Service record", key: "O", meta: "" },
+        { act: "settings", face: ["Settings"], label: "Settings", key: "S" },
+        { act: "help", face: ["Help"], label: "Help", key: "?" },
+        { act: "about", face: ["About"], label: "About", key: "A" },
       ],
     };
   }
-  /* the menu is a naval message pinned over the sea: a printed blank, its head and its lines typed in
-   * (css .ps-msg); each typed run carries its order and its length, for the typing on the reveal */
+  /* the menu is a ship's engine-room telegraph, brass round a face in the red light: the choices where its bells
+   * would be, round from lower left to lower right as the dashboard's telegraph has them; its arm swings to the
+   * one pointed at or keyed, and the window under the hub says it in full (css .ps-tel) */
+  const TEL_ARC = 118;
+  const telAngle = (i, n) => n < 2 ? 0 : -TEL_ARC + i * 2 * TEL_ARC / (n - 1);
+  function telFace(n) {
+    const rad = a => a * Math.PI / 180, P = (a, r) => `${(Math.sin(rad(a)) * r).toFixed(1)} ${(-Math.cos(rad(a)) * r).toFixed(1)}`;
+    let lines = "";
+    /* the face's divisions, between the choices and at the ends of the arc */
+    for (let i = 0; i <= n; i++) { const a = i === 0 ? -TEL_ARC - 18 : i === n ? TEL_ARC + 18 : (telAngle(i - 1, n) + telAngle(i, n)) / 2; lines += `<path d="M${P(a, 74)}L${P(a, 170)}"/>`; }
+    let bolts = "";
+    for (let i = 0; i < 12; i++) bolts += `<circle cx="${(Math.sin(i * Math.PI / 6) * 191).toFixed(1)}" cy="${(-Math.cos(i * Math.PI / 6) * 191).toFixed(1)}" r="3.2"/>`;
+    return `<svg class="tel-face" viewBox="-200 -200 400 400" aria-hidden="true">
+      <defs>
+        <radialGradient id="telBrass" cx="34%" cy="28%" r="85%"><stop offset="0" stop-color="#f6d48e"/><stop offset=".42" stop-color="#c38c3e"/><stop offset=".8" stop-color="#7a4c1a"/><stop offset="1" stop-color="#4a2c0c"/></radialGradient>
+        <radialGradient id="telFace" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#3c130c"/><stop offset=".7" stop-color="#220907"/><stop offset="1" stop-color="#120403"/></radialGradient>
+      </defs>
+      <circle r="199" fill="url(#telBrass)"/><circle r="185" fill="#2a1306"/><circle r="181" fill="url(#telFace)"/>
+      <g class="bolts">${bolts}</g>
+      <circle class="ring" r="172"/><circle class="ring" r="72"/>
+      <g class="div">${lines}</g>
+      <path class="arc" d="M${P(-TEL_ARC - 18, 64)}A64 64 0 1 1 ${P(TEL_ARC + 18, 64)}"/>
+    </svg>`;
+  }
+  /* the arm: a pointer from the hub with a counterweight behind, turned whole about the dial's middle (CSS) */
+  const TEL_ARM = `<svg viewBox="-200 -200 400 400" aria-hidden="true">
+      <path d="M-9 34 L-6 0 L-5 -88 L0 -104 L5 -88 L6 0 L9 34 Z" fill="url(#telBrass)" stroke="#3a2208" stroke-width="2"/>
+      <circle r="25" fill="url(#telBrass)" stroke="#3a2208" stroke-width="2"/><circle r="9" fill="#2a1306"/><path d="M-6 0H6" stroke="#c38c3e" stroke-width="2.5"/>
+    </svg>`;
   function titleHTML(cfg) {
-    const items = cfg.items.filter(Boolean), gap = items.indexOf("gap");
-    const main = items.slice(0, gap), util = items.slice(gap + 1), m = cfg.msg;
-    let i = 0;
-    const ty = (s, cls = "") => `<span class="ty${cls}" style="--i:${i++};--n:${s.length}">${esc(s)}</span>`;
-    const btn = (it, big) => `<button data-act="${it.act}" class="pr${it.act === cfg.primary ? " dflt" : ""}">${UI.TICK}<kbd>${esc(it.key)}</kbd>${ty(it.label, " lbl")}` +
-      (big && it.meta ? ty(it.meta, " meta") : "") + "</button>";
-    const field = (k, v, cls = "") => `<div${cls ? ` class="${cls}"` : ""}><dt>${k}</dt><dd>${ty(v)}</dd></div>`;
+    const items = cfg.items.filter(Boolean), n = items.length;
+    const btn = (it, i) => {
+      const a = telAngle(i, n), r = 0.64, x = 50 + Math.sin(a * Math.PI / 180) * r * 50, y = 50 - Math.cos(a * Math.PI / 180) * r * 50;
+      return `<button data-act="${it.act}" data-a="${a.toFixed(1)}" data-label="${esc(it.label)}" data-meta="${esc(it.meta || "")}" aria-label="${esc(it.label)}"` +
+        ` class="pr${it.act === cfg.primary ? " dflt" : ""}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%"><kbd>${esc(it.key)}</kbd>` +
+        it.face.map(w => `<span>${esc(w)}</span>`).join("") + "</button>";
+    };
+    const first = items.find(it => it.act === cfg.primary) || items[0];
     return `<div class="ps-title">
       <canvas class="ps-scene" aria-hidden="true"></canvas><div class="ps-shade" aria-hidden="true"></div>
       <main>
-        <h1 class="ps-mark" aria-label="${esc(cfg.name)}"><span class="puma">Puma</span><span class="svc">Pack</span></h1>
-        <nav class="ps-menu ps-msg paper" aria-label="Main menu">
-          <header class="msg-hd"><span>The pack board</span><span>${esc(m.prec)}</span></header>
-          <dl class="msg-f">${field("Boats", m.to)}${field("Date-time group", m.dtg)}${field("Contact", "PDF convoy steering west. Attack at will", "w")}</dl>
-          <p class="msg-l" aria-hidden="true">Orders</p>
-          <div class="msg-t">${main.map(it => btn(it, true)).join("")}</div>
-          <div class="util">${util.map(it => btn(it, false)).join("")}</div>
+        <h1 class="ps-mark" aria-label="${esc(cfg.name)}"><span class="lead">The Long</span><span class="word">Convoy</span></h1>
+        <nav class="ps-menu ps-tel" aria-label="Main menu" style="--a:${telAngle(items.indexOf(first), n)}deg">
+          ${telFace(n)}
+          ${items.map(btn).join("")}
+          <div class="tel-arm">${TEL_ARM}</div>
+          <div class="tel-win" aria-hidden="true"><b>${esc(first.label)}</b><span>${esc(first.meta || "")}</span></div>
         </nav>
       </main>
       <footer class="ps-foot"><span class="gk-credit">${UI.CREDIT}</span></footer>
@@ -77,7 +102,6 @@
   function openTitle() {
     game.mode = "title";
     const el = $("title");
-    if (!game.demo) newDemo();
     el.innerHTML = titleHTML(titleCfg());
     el.hidden = false;
     $("game").hidden = true;
@@ -91,27 +115,28 @@
     const k = Math.max(2, Math.round(innerHeight / 360));
     cv.width = Math.ceil(innerWidth / k); cv.height = Math.ceil(innerHeight / k);
   }
-  /* a convoy at dusk, behind the menu; never saved */
-  /* behind the menu, the plot: a pack of four closing on a night convoy, played for real under its own
-   * captains (the boat "in command" too: the bot sails her); never saved. When it ends, another */
-  function newDemo() {
-    game.demo = E.newAction("custom", { seed: 1 + Math.floor(Math.random() * 1e6), real: C.REAL_NONE, custom: { mi: 20, cls: "caracal", pack: "4", size: "large", escorts: "light", time: "night", wx: "clear" } });
-    game.demoBot = PP.Bot.make();
+  /* the telegraph's arm onto a choice, and its window saying it */
+  function telTo(b) {
+    const tel = b && b.closest(".ps-tel");
+    if (!tel) return;
+    tel.style.setProperty("--a", b.dataset.a + "deg");
+    const w = tel.querySelector(".tel-win");
+    w.querySelector("b").textContent = b.dataset.label; w.querySelector("span").textContent = b.dataset.meta;
   }
-  function pinDemo() {}
-  function revealTitle(print = true) {
+  /* on opening, the arm swings up from the far end of the dial onto the choice to make, and the bell rings it */
+  function revealTitle(swing = true) {
     const t = document.querySelector("#title .ps-title");
     if (!t) return;
-    if (print && !matchMedia("(prefers-reduced-motion: reduce)").matches) { t.classList.add("ps-print"); game.typeSnd = SFX.play("type"); }
-    const b = t.querySelector(".ps-menu .dflt") || t.querySelector(".ps-menu button");
-    if (b) b.focus({ preventScroll: true });
+    const tel = t.querySelector(".ps-tel"), b = t.querySelector(".ps-menu .dflt") || t.querySelector(".ps-menu button");
+    if (swing && tel && !PP.calm()) {
+      const last = [...tel.querySelectorAll("button")].pop();
+      tel.classList.add("still"); tel.style.setProperty("--a", (+last.dataset.a + 30) + "deg");
+      void tel.offsetWidth;
+      tel.classList.remove("still");
+      setTimeout(() => SFX.play("bell", 0.7), 420);
+    }
+    if (b) { b.focus({ preventScroll: true }); telTo(b); }
   }
-  /* any key or click while the signal types finishes it at once (and still does its work) */
-  const typedOut = () => {
-    const t = document.querySelector("#title .ps-print");
-    if (t) t.classList.replace("ps-print", "ps-typed");
-    if (game.typeSnd) { game.typeSnd.disconnect(); game.typeSnd = null; }
-  };
   game.refreshTitle = () => { if (game.mode !== "title") return; openTitle(); revealTitle(false); };
   game.toTitle = () => {
     UI.close(true);
@@ -123,23 +148,24 @@
   };
   async function titleAct(a) {
     SFX.unlock();
+    SFX.play("bell", 0.6);
     if (a === "resume") return resume();
     if (a === "action") return UI.actions();
-    if (a === "practice") return UI.practice();
+    /* target practice: straight to sea, three ships crossing ahead */
+    if (a === "practice") return game.startPractice();
     if (a === "record") return UI.record();
     if (a === "settings") return UI.settings();
     if (a === "help") return UI.help();
     if (a === "about") return UI.about();
   }
   function titleKey(ev) {
-    typedOut();
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
     if (k === "Enter" || k === " " || k === "Tab" || k === "Shift") return;
     const menu = document.querySelector("#title .ps-menu"), hit = menu && titleKeyButton(menu, k);
-    if (hit) { ev.preventDefault(); titleAct(hit.dataset.act); return; }
-    const row = (k === "ArrowLeft" || k === "ArrowRight") && document.activeElement && document.activeElement.closest(".ps-menu .util");
-    if (row) {
-      const bs = [...row.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+    if (hit) { ev.preventDefault(); hit.focus({ preventScroll: true }); titleAct(hit.dataset.act); return; }
+    /* the arrows step round the dial: right or down the way the bells go, left or up back */
+    if (menu && (k === "ArrowLeft" || k === "ArrowRight")) {
+      const bs = [...menu.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
       ev.preventDefault(); bs[(i + (k === "ArrowRight" ? 1 : -1) + bs.length) % bs.length].focus(); return;
     }
     if (menu) titleArrow(menu, ev);
@@ -148,7 +174,7 @@
   /* ---- a game ---- */
   const seed = () => 1 + Math.floor(Math.random() * 2 ** 30);
   game.startAction = (id, real, custom, side = "pack") => { PP.clearGame(); game.lastCustom = custom || null; startPlay(E.newAction(id, { seed: seed(), real, custom, side }), true); };
-  game.startPractice = kind => { PP.clearGame(); startPlay(E.newPractice({ seed: seed(), real: PP.prefs.real, kind }), true); };
+  game.startPractice = () => { PP.clearGame(); startPlay(E.newPractice({ seed: seed(), real: PP.prefs.real }), true); };
   function startPlay(S, fresh) {
     UI.close(true);
     game.S = S; game.mode = "play"; game.warned = {};
@@ -550,18 +576,11 @@
     HUD.draw(S, game.ui);
     if (game.mode === "play" && (now - (game.hintAt || 0)) > 500) { game.hintAt = now; hints(); }
   }
-  let titleAcc = 0;
   function titleFrame(dt, now) {
     const cv = document.querySelector("#title .ps-scene");
     if (!cv || UI.sheet && UI.sheet.el.classList.contains("full")) return;
-    const D = game.demo;
-    titleAcc += dt;
-    let n = 0;
-    while (titleAcc >= 20 && n++ < 3) { titleAcc -= 20; const c = game.demoBot.cmd(D); c.acts = c.acts.filter(a => a.a !== "tc").concat([{ a: "tc", v: 4 }]); E.tick(D, c); }
-    if (n >= 3) titleAcc = 0;
-    PP.ShipArt.budget = 3;
-    if (D.phase !== "sea") newDemo();
-    R.title(cv, D, now);
+    /* behind the menu, the painting (js/art/intro.js) */
+    PP.Intro.draw(cv, now);
   }
 
   /* ---- the Konami code: up up down down left right left right B A ---- */
@@ -627,7 +646,7 @@
       case "takeCmd": { const q = escSel(S); if (onMap && q !== f) I.push({ a: "commandEsc", id: q.id }); break; }
       case "pause": game.pause(); break;
       case "aids": PP.flipAids(); game.syncAids(); hints(); break;
-      case "help": UI.help(1, () => game.unpause()); break;
+      case "help": UI.help(UI.helpTab("Escort"), () => game.unpause()); break;
       /* the dashboard's telegraph and pattern picker: a position, a pattern, by its number */
       default: {
         const m = /^(bell|pat)(\d)$/.exec(a), dz = /^depth:(\d+)$/.exec(a), rm = /^rim:(tel|hdg):(\d+)$/.exec(a);
@@ -696,7 +715,7 @@
       case "aids": PP.flipAids(); game.syncAids(); HUD.toast(PP.prefs.aids === "field" ? `Field aids, and the key hints. ${kc("L", "pad:Back+RB")} for Classic` : `Classic: no aids, no key hints. ${kc("L", "pad:Back+RB")} for Field`, "", 2600); hints(); break;
       case "scope": I.push({ a: "scope" }); break;
       case "level": I.push({ a: Sub.surfaced(s) || s.depth > C.PD + 6 ? "pd" : "surface" }); break;
-      case "help": UI.help(6, () => game.unpause()); break;
+      case "help": UI.help(UI.helpTab("Gamepad"), () => game.unpause()); break;
       /* the pack: the next boat afloat (Shift, the one before) */
       case "boatNext": {
         const n = S.subs.length, d = shift ? n - 1 : 1;
@@ -770,7 +789,7 @@
     if (game.mode !== "play") return;
     let a = I.actionFor(ev.code);
     if (!a && (ev.key === "+" || ev.key === "=")) a = "tcU";
-    if (!a && ev.key === "?") { UI.help(game.S && game.S.side === "escorts" ? 1 : 5, () => game.unpause()); return; }
+    if (!a && ev.key === "?") { UI.help(UI.helpTab(game.S && game.S.side === "escorts" ? "Escort" : "Keys"), () => game.unpause()); return; }
     if (ev.code === "F5" || ev.code === "F12") return;
     if (a || /^F\d+$/.test(ev.code)) ev.preventDefault();
     if (!ev.repeat) konamiStep("keys", ev.code);
@@ -794,7 +813,16 @@
     if (document.querySelector(".ps-ask")) return;
     b.focus({ preventScroll: true });
   });
-  $("title").addEventListener("pointerdown", typedOut);
+  /* whatever has the focus on the dial (pointed at, keyed or arrowed to), the arm goes to; a detent's click when
+   * it moves by the keys */
+  let telPtr = 0;
+  $("title").addEventListener("pointerover", () => { telPtr = performance.now(); });
+  $("title").addEventListener("focusin", ev => {
+    const b = ev.target.closest && ev.target.closest(".ps-tel button");
+    if (!b) return;
+    telTo(b);
+    if (performance.now() - telPtr > 120) SFX.play("menu", 0.35);
+  });
   $("title").addEventListener("click", ev => { const b = ev.target.closest("[data-act]"); if (b) titleAct(b.dataset.act); });
   $("snd").addEventListener("click", () => game.toggleMute());
   $("pausebtn").addEventListener("click", () => game.pause());
@@ -964,7 +992,7 @@
   /* ---- boot ---- */
   function boot() {
     game.applySpeed(); game.applyLook(); game.syncAids(); syncSound();
-    injectTitleCSS();     /* the boot's; the title and the sheets are css/pumapack.css */
+    injectTitleCSS();     /* the boot's; the title and the sheets are css/thelongconvoy.css */
     fit();
     const q = new URLSearchParams(location.search);
     const run = SMALL.matches || q.has("play") ? { finish: async () => {}, cancel() {} } : runBoot({ lines: [bootReloadLine(), "flooding tubes one through six"] });
@@ -975,9 +1003,9 @@
       HUD.build();
       for (const cls of ["freighter", "destroyer", "liner"]) for (const b of [4, 8, 12]) PP.ShipArt.sprite(cls, b, 46, "dusk");
       if (q.has("play")) {
-        /* debug: ?play=<action id>|practice|gun&seed=<n>&side=<pack|escorts>&run=<steps>&station=<view|chart|damage>&hour=<h>&wx=<k>&pause=1 */
+        /* debug: ?play=<action id>|practice&seed=<n>&side=<pack|escorts>&run=<steps>&station=<view|chart|damage>&hour=<h>&wx=<k>&pause=1 */
         const p = q.get("play"), sd = +(q.get("seed") || 1);
-        const S = p === "practice" || p === "gun" ? E.newPractice({ seed: sd, real: PP.prefs.real, kind: p === "gun" ? "gun" : "torpedo" }) : E.newAction(E.ACTIONS.some(a => a.id === p) ? p : "easy", { seed: sd, real: PP.prefs.real, side: q.get("side") || "pack" });
+        const S = p === "practice" ? E.newPractice({ seed: sd, real: PP.prefs.real }) : E.newAction(E.ACTIONS.some(a => a.id === p) ? p : "easy", { seed: sd, real: PP.prefs.real, side: q.get("side") || "pack" });
         /* &run=<steps>: the test pilot plays that many steps first, so the picture is mid-battle */
         if (q.has("run")) { const bot = S.side === "escorts" ? PP.Bot.escort() : PP.Bot.make(); for (let i = 0, n = +q.get("run"); i < n && S.phase === "sea"; i++) E.tick(S, bot.cmd(S)); S.tcReq = 0; }
         if (q.has("hour")) S.t = Math.floor(S.t / C.DAY) * C.DAY + (+q.get("hour")) * 3600;

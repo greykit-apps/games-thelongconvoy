@@ -1,4 +1,4 @@
-/* PumaPack -- our boat: the helm, the telegraph, the diving planes and
+/* The Long Convoy -- our boat: the helm, the telegraph, the diving planes and
  * the ballast, the diesels and the battery, the periscope, and the damage.
  *
  * The helm steers to an ordered course, the telegraph to an ordered speed,

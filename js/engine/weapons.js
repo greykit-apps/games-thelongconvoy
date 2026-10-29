@@ -1,4 +1,4 @@
-/* PumaPack -- torpedoes, the torpedo data computer, and the deck gun.
+/* The Long Convoy -- torpedoes, the torpedo data computer, and the deck gun.
  *
  * The TDC holds an estimate of the target: where it is, its course and its
  * speed, run on by dead reckoning between looks. Each look through the

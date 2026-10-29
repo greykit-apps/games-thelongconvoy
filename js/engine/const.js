@@ -1,4 +1,4 @@
-/* PumaPack -- every number the war runs on.
+/* The Long Convoy -- every number the war runs on.
  *
  * The 1985 manual gives the feel of these and history gives the rest, but
  * the numbers are ours, tuned against the bot (tools/sim-check.js) and still

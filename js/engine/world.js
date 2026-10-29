@@ -1,4 +1,4 @@
-/* PumaPack -- one step of the war.
+/* The Long Convoy -- one step of the war.
  *
  * E.tick(S, cmd) carries out the orders in cmd, runs the boat, the ships,
  * the hunters, the torpedoes and the eyes for one step, and returns what

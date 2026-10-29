@@ -1,4 +1,4 @@
-/* PumaPack -- seeing and being seen.
+/* The Long Convoy -- seeing and being seen.
  *
  * Both ways, from one model, so what the picture shows is what the engine
  * says is there. The light comes from the hour and the moon, the weather

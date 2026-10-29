@@ -1,4 +1,4 @@
-/* PumaPack -- the HUD: flat dark panels over the station.
+/* The Long Convoy -- the HUD: flat dark panels over the station.
  *
  * Across the top, the stations and their keys. Top right, the clock and the
  * date, and the time compression (amber, with the reason, when the
@@ -201,14 +201,14 @@
       const t = `Aboard ${f.name}: ${Math.abs(f.spd).toFixed(0)} knots, heading ${PP.deg3(f.hdg)}, ${C.ESC_BELLS[f.bell]}. ` +
         `${sol.hh ? `Hedgehog chosen, ${f.hhLeft || 0} left` : `${P.name} pattern, ${sol.ready} of ${sol.need} loaded, ${f.dcLeft} charges aboard`}, set ${f.dcSet} feet. ` +
         (c ? `Contact bearing ${PP.deg3(c.brg)}, ${Math.round(c.rng / 50) * 50} yards, ${c.surf ? "on the surface" : "about " + Math.round(c.dz / 25) * 25 + " feet"}: ${c.over ? (sol.hh ? "in range" : "over the contact") : c.near ? "stand by" : "run in"}.` : "No contact.");
-      if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "PumaPack: " + t); }
+      if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "The Long Convoy: " + t); }
       return;
     }
     const s = S.sub, n = S.ships.filter(q => PP.Detect.known(S, q) && PP.Ships.alive(q)).length;
     const what = { scope: `Periscope, ${s.scope.up && s.scope.h >= 1 ? "up, bearing " + PP.deg3(s.hdg + s.scope.brg) + (s.scope.hi ? ", high power" : ", low power") : "down"}`, bridge: `Bridge, looking ${PP.deg3(ui.look)}`,
       panel: "Instruments", chart: "Chart", damage: `Damage report: hull ${Math.round(s.hull * 100)}%, ${Sub.SYS.filter(([k2]) => s.sys[k2] > 0.001).map(([, nm]) => nm.toLowerCase()).join(", ") || "nothing damaged"}` }[st] || st;
     const t = `${what}. ${n ? n + " ship" + (n > 1 ? "s" : "") + " in sight." : "No ships in sight."}`;
-    if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "PumaPack: " + t); }
+    if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "The Long Convoy: " + t); }
   }
 
   /* ---- the escorts' side: the escort you are aboard, her contact, and the map's orders for the others ---- */

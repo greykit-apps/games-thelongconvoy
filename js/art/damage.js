@@ -1,4 +1,4 @@
-/* PumaPack -- the damage report: the boat cut away side on, in the
+/* The Long Convoy -- the damage report: the boat cut away side on, in the
  * panel's steel. Her seven compartments under the casing and the conning
  * tower; the water in her, rising from the bilges; a compartment with a
  * hurt system hatched (amber damaged, red out), sparking while it is bad,

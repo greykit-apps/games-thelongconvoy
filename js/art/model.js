@@ -1,4 +1,4 @@
-/* PumaPack -- the tracer: ships built once in three dimensions and drawn
+/* The Long Convoy -- the tracer: ships built once in three dimensions and drawn
  * from them, so a freighter seen through the periscope shows the angle on
  * the bow it truly has.
  *

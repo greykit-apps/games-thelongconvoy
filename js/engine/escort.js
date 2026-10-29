@@ -1,4 +1,4 @@
-/* PumaPack -- the hunters: escorts, their depth charges and guns, and
+/* The Long Convoy -- the hunters: escorts, their depth charges and guns, and
  * the Empire's patrol planes.
  *
  * An escort keeps its station on the convoy until something gives us away:

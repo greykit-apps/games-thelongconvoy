@@ -1,4 +1,4 @@
-/* PumaPack -- the ships, as models, and their pictures.
+/* The Long Convoy -- the ships, as models, and their pictures.
  *
  * Every class is built from a hull (a prism tapering to the stem and the
  * stern, red lead below the boot-topping), raised forecastle and poop where

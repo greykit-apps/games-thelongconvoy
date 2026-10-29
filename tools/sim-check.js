@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * PumaPack, played headless by the bot (js/engine/bot.js).
+ * The Long Convoy, played headless by the bot (js/engine/bot.js).
  *
  *   node tools/sim-check.js [--seeds N] [--verbose]
  *

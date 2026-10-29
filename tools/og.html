@@ -4,38 +4,32 @@
 <meta charset="UTF-8">
 <title>og.png</title>
 <!-- The share card (og.png, 1200x630): the wordmark as the title sets it,
-     the description, a tagline and the icon, over the plot under red light
-     drawn by the game's own chart at three times: a pack of four closing on
-     a night convoy. Serve the
+     the owner's line under it and the icon, over the title's painting (a
+     destroyer on the surface at dusk, a boat under her in the red sea) as a
+     still, drawn by js/art/intro.js at a third of the size. Serve the
      repo over http, open tools/og.html, and save the canvas (window.ogPNG()
      is its data URL), or screenshot it headless at 1200x630:
        msedge --headless --hide-scrollbars --window-size=1200,630
               --screenshot=og.png http://127.0.0.1:8783/tools/og.html
-     The description and tagline are placeholders until the owner words them.
+     The words are the owner's (2026-10-29).
      Not deployed. -->
 <style>@font-face{font-family:"Pixelify Sans";font-weight:400 700;src:url(../fonts/pixelify-sans.woff2) format("woff2")}@font-face{font-family:"Barlow Semi Condensed";font-weight:600;src:url(../fonts/barlow-semi-condensed-600.woff2) format("woff2")}body{margin:0;background:#222;overflow:hidden}canvas{display:block}</style>
 </head>
 <body>
 <canvas id="og" width="1200" height="630"></canvas>
 <script>
-const SRC = ["../js/util.js", "../js/engine/const.js", "../js/engine/sea.js", "../js/engine/sub.js", "../js/engine/ships.js", "../js/engine/detect.js", "../js/engine/escort.js", "../js/engine/weapons.js",
-  "../js/engine/scenarios.js", "../js/engine/world.js", "../js/engine/bot.js", "../js/engine/orders.js", "../js/art/kit.js", "../js/art/chart.js"];
+const SRC = ["../js/util.js", "../js/art/intro.js"];
 (function next(i) { if (i === SRC.length) return document.fonts.load('700 100px "Pixelify Sans"').then(() => document.fonts.load('600 30px "Barlow Semi Condensed"')).then(main); const e = document.createElement("script"); e.src = SRC[i] + "?t=" + Date.now(); e.onload = () => next(i + 1); document.head.appendChild(e); })(0);
 </script>
 <script>
 function main() {
 "use strict";
 (() => {
-  const K = PP.K, E = PP.Engine;
-  PP.Sea.build();
-  /* the chart asks the play screen for its margins and labels; here there are none */
-  PP.Render = { safe: { t: 6, b: 6, tr: 6, br: 210 }, lab() {}, labels: [] };
-  const S = E.newAction("custom", { seed: 11, real: PP.C.REAL_NONE, custom: { mi: 20, cls: "caracal", pack: "4", size: "large", escorts: "light", time: "night", wx: "clear" } });
-  /* ten minutes on, the pack's captains closing */
-  const bot = PP.Bot.make();
-  for (let i = 0; i < 30000 && S.phase === "sea"; i++) E.tick(S, bot.cmd(S));
-  const W = 400, H = 210, sc = K.mk(W, H), g0 = sc.getContext("2d"), cv0 = S.convoys[0], z = PP.Chart.ZOOMS[3];
-  PP.Chart.draw(g0, S, { chartZoom: 3, chartAt: { x: cv0.x - W * 0.18 * z, y: cv0.y }, track: [], title: true }, {}, 0);
+  /* the painting as a still (as with the motion turned down): the boat under the destroyer */
+  PP.calm = () => true;
+  const sc = document.createElement("canvas");
+  sc.width = 400; sc.height = 210;
+  PP.Intro.draw(sc, 0);
   const cv = document.getElementById("og"), g = cv.getContext("2d");
   g.imageSmoothingEnabled = false;
   g.drawImage(sc, 0, 0, 1200, 630);
@@ -46,13 +40,12 @@ function main() {
   /* the wordmark: block letters and a stepped shadow, as the title has them */
   g.textBaseline = "alphabetic"; g.font = '700 110px "Pixelify Sans"';
   const word = (t, y, col) => { [["#1c0604", 16], ["#4f1209", 12], ["#8e2412", 8], ["#c8401f", 4]].forEach(([c, o]) => { g.fillStyle = c; g.fillText(t, 72 + o, y + o); }); g.fillStyle = col; g.fillText(t, 72, y); };
-  word("PUMA", 160, "#ffd9a8"); word("PACK", 262, "#ffc65a");
+  g.font = '700 58px "Pixelify Sans"'; word("THE LONG", 112, "#ffd9a8");
+  g.font = '700 118px "Pixelify Sans"'; word("CONVOY", 226, "#ffc65a");
   g.font = '600 30px "Barlow Semi Condensed"'; g.fillStyle = "#ffd0bd";
-  const words = "The Wolf Empire's wolfpack against Pumacity's convoys and the fleet that escorts them. Command either side.".split(" "), lines = [""];
+  const words = "Defend civilian shipping from Wolfen submarine packs, or switch sides and take them out in this modern re-imagining of Wolfpack (1990)".split(" "), lines = [""];
   for (const w of words) { const t = lines[lines.length - 1] ? lines[lines.length - 1] + " " + w : w; if (g.measureText(t).width > 520) lines.push(w); else lines[lines.length - 1] = t; }
   lines.forEach((l, i) => g.fillText(l, 72, 340 + i * 40));
-  g.font = '600 26px "Barlow Semi Condensed"'; g.fillStyle = "#ffc65a";
-  g.fillText("A remake of Wolfpack, the 1990 classic", 72, 566);
   const img = new Image();
   img.onload = () => { g.drawImage(img, 1040, 40, 120, 120); window.ogReady = true; document.title = "ready"; };
   img.src = "../icon.svg?" + Date.now();

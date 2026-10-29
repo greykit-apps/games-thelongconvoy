@@ -1,4 +1,4 @@
-/* PumaPack -- the chart: from a few thousand yards across (the attack)
+/* The Long Convoy -- the chart: from a few thousand yards across (the attack)
  * to the whole archipelago.
  *
  * Depth in ten hard bands under red light, the shoals lightest, the land dun with a bright coast.

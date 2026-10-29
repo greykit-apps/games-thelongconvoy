@@ -1,4 +1,4 @@
-/* PumaPack -- the control room: the instruments, painted on a steel
+/* The Long Convoy -- the control room: the instruments, painted on a steel
  * panel in brass bezels.
  *
  * The depth gauge, from the surface to below the crush depth, its red arc

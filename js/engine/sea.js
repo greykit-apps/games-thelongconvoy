@@ -1,4 +1,4 @@
-/* PumaPack -- the sea: the Wolf Empire's archipelago, 1,200 by 800
+/* The Long Convoy -- the sea: the Wolf Empire's archipelago, 1,200 by 800
  * nautical miles of it, and its depths.
  *
  * Built once from a fixed seed, never saved: the same sea in every game and

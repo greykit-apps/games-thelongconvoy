@@ -1,4 +1,4 @@
-/* PumaPack -- the dashboard: every instrument of the vessel you are aboard
+/* The Long Convoy -- the dashboard: every instrument of the vessel you are aboard
  * on one screen, as the 1990 game had it, in our own art and the boat's
  * red light.
  *

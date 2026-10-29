@@ -1,4 +1,4 @@
-/* PumaPack -- the page around the play screen, and the HUD over it:
+/* The Long Convoy -- the page around the play screen, and the HUD over it:
  * flat dark panels over the sea, hairline edges, warm
  * off-white words in a condensed sans, the keys and the readings in it too
  * (tabular figures; only the clock is in the pixel face, which merges T and
@@ -269,34 +269,47 @@ img.glyph { display: block; }
 .ps-mark { margin: 0; font: 700 clamp(56px, min(8.6vw, 14vh), 124px)/.92 var(--px); text-transform: uppercase; letter-spacing: .02em; color: #ffc65a;
   text-shadow: .04em .04em 0 #c8401f, .08em .08em 0 #8e2412, .12em .12em 0 #4f1209, .16em .16em 0 #1c0604, 0 0 40px rgba(255,80,40,.25); }
 .ps-mark > span { display: block; }
-.ps-mark .puma { color: #ffd9a8; }
-.ps-mark .svc { color: #ffc65a; }
-.ps-msg { --row: clamp(34px, 5vh, 46px); width: min(560px, 100%); margin-top: clamp(22px, 3.6vh, 36px); transform: rotate(-.6deg); transform-origin: 50% 0; }
-/* the pin it hangs by */
-.ps-msg::before { content: ""; position: absolute; z-index: 2; left: 66%; top: -9px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #8a2c22; box-shadow: 1px 4px 5px rgba(0,0,0,.45); }
-/* the text: the five orders as typed lines, the key in the margin and the tick beside it */
-.msg-t { background: linear-gradient(90deg, transparent 63px, var(--p-rule) 63px 64px, transparent 64px); }
-.msg-t button { grid-template-columns: 64px max-content minmax(0, 1fr); height: var(--row); padding: 0 20px 0 0; border-bottom: 1px solid var(--p-hair); }
-.msg-t button:last-child { border-bottom: 0; }
-.msg-t kbd { justify-self: end; margin-right: 11px; }
-.msg-t .lbl { padding-left: 16px; }
-.msg-t .meta { justify-self: end; max-width: 100%; margin: 0; padding-left: 14px; font: 400 15px/1.2 var(--p-type); color: var(--p-ink2); overflow: hidden; text-overflow: ellipsis; }
-.ps-msg .tick { left: 5px; }
-.ps-msg .util { display: flex; border-top: 2px solid var(--p-print); }
-.ps-msg .util button { flex: 1; grid-template-columns: max-content minmax(0, 1fr); gap: 10px; height: 46px; padding: 0 12px 0 34px; font-size: 17px; border-right: 1px solid var(--p-rule); }
-.ps-msg .util button:last-child { border-right: 0; }
-.ps-msg .util .lbl { overflow: hidden; text-overflow: ellipsis; }
-.ps-msg .util .tick { left: 7px; }
+/* "The Long" over "Convoy", the lead line smaller so the two set as one block */
+.ps-mark .lead { color: #ffd9a8; font-size: .52em; line-height: 1.05; letter-spacing: .06em; }
+.ps-mark .word { color: #ffc65a; }
+/* the telegraph: its face drawn (main.js telFace), the choices set round it as buttons, the arm over them turned
+ * to the one with the focus, the window under the hub saying it in full */
+.ps-tel { --d: clamp(300px, min(50vh, 36vw), 440px); --a: 0deg; position: relative; width: var(--d); height: var(--d); margin-top: clamp(14px, 2.6vh, 30px);
+  font-size: calc(var(--d) * .037); filter: drop-shadow(0 10px 24px rgba(0,0,0,.55)); }
+.tel-face, .tel-arm, .tel-arm svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tel-face .bolts { fill: #4a2c0c; stroke: #f0c880; stroke-width: .8; }
+.tel-face .ring, .tel-face .arc { fill: none; stroke: rgba(255,198,130,.32); stroke-width: 1.5; }
+.tel-face .div { stroke: rgba(255,198,130,.26); stroke-width: 1.5; }
+.tel-arm { pointer-events: none; transform: rotate(var(--a)); transition: transform .5s cubic-bezier(.32,1.45,.5,1); }
+.ps-tel.still .tel-arm { transition: none; }
+.ps-tel button { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: .12em;
+  min-width: 5.6em; padding: .35em .3em; margin: 0; border: 0; border-radius: .6em; background: transparent; box-shadow: none;
+  font: 700 1em/1.05 var(--ui); letter-spacing: .1em; text-transform: uppercase; color: #d8a78c; cursor: pointer; }
+.ps-tel button kbd { font-size: .74em; margin-bottom: .2em; opacity: .75; }
+.ps-tel button:hover, .ps-tel button:focus { background: radial-gradient(closest-side, rgba(255,140,80,.22), rgba(255,140,80,0)); color: #ffd36a; outline: none; text-shadow: 0 0 10px rgba(255,190,90,.55); }
+.ps-tel button:focus-visible { box-shadow: 0 0 0 2px rgba(255,211,106,.6); }
+.tel-win { position: absolute; left: 50%; top: 85.5%; transform: translate(-50%, -50%); width: 46%; padding: .45em .5em .4em; text-align: center; pointer-events: none;
+  background: #0d0302; border: 2px solid #8a5a20; border-radius: .35em; box-shadow: inset 0 2px 8px rgba(0,0,0,.8), 0 0 0 1px #2a1306; }
+.tel-win b { display: block; font: 700 1.05em/1.15 var(--px); letter-spacing: .06em; text-transform: uppercase; color: #ffd36a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tel-win span { display: block; min-height: 1.1em; font: 600 .78em/1.3 var(--ui); color: #c88a70; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .tel-arm { transition: none; } }
+/* Help: cards in a grid, each a heading and its rows, the keys in a column of their own, a tip under some */
+.hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 22px 32px; align-items: start; }
+.sh-body .hcard h3 { margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--p-rule, var(--ps-hair)); }
+dl.hk { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 14px; margin: 0; align-items: baseline; }
+dl.hk dt { white-space: nowrap; font-size: 14px; color: var(--p-print, var(--ps-muted)); }
+dl.hk dd { margin: 0; line-height: 1.35; }
+.sh-body .hcard .tip { margin: 11px 0 0; font-size: 14px; line-height: 1.4; color: var(--p-ink2, var(--ps-muted)); }
+.sh-body ol.steps { margin: 0; padding-left: 22px; }
+.sh-body ol.steps li { margin: 0 0 8px; line-height: 1.4; }
+.sh-body ol.steps li::marker { color: var(--p-pencil, var(--ps-yellow)); font-weight: 700; }
+.sh-body .hgrid + .note, .sh-body .hgrid + p { margin-top: 18px; }
 /* Help's prose in two columns across the wide sheet, the way a manual's page is set */
 .sh-body .cols { columns: 2 320px; column-gap: 44px; }
 .sh-body .cols > * { break-inside: avoid; }
 .sh-body .cols p { max-width: none; }
 .ps-foot { position: absolute; left: clamp(32px, 7vw, 120px); bottom: 24px; font-size: 14px; }
-/* the reveal: each typed run comes out a character at a time, in the order it is read */
-.ty { display: inline-block; white-space: nowrap; }
-.ps-print .ty { animation: ps-type calc(var(--n) * 9ms) steps(var(--n), end) calc(140ms + var(--i) * 32ms) both; }
-@keyframes ps-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
-@media (prefers-reduced-motion: reduce) { .ps-print .ty { animation: none; } .paper button:focus .tick path { transition: none; } .paper button:focus::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .paper button:focus .tick path { transition: none; } .paper button:focus::after { animation: none; } }
 
 /* ---- new game, the round's report, the end ---- */
 .diffs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }

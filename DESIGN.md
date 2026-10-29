@@ -1,5 +1,5 @@
 ---
-name: PumaPack
+name: The Long Convoy
 description: The Wolf Empire's wolfpack against Pumacity's convoys and the PDF that escorts them; a boat rigged for red light, the map first, the world outside in its own colours.
 colors:
   page: "#090404"
@@ -69,13 +69,13 @@ spacing:
   panel-pad: "10px 14px 12px"
 ---
 
-# Design System: PumaPack
+# Design System: The Long Convoy
 
 ## Overview
 
 **Creative North Star: "Rigged for Red"**
 
-PumaPack is a desktop naval game in the shape of the 1990 *Wolfpack*: the battle is run from the map, one vessel at a time is yours, and the rest sail under the orders you give them. Past the shared greykit boot, everything is seen from inside a vessel at night with the lights rigged for red: black panels, red-orange light, amber readouts. The world outside the hull (the sea, the sky, the ships seen from the bridge or through the periscope) keeps its own colours, so a look out is a look out.
+The Long Convoy is a desktop naval game in the shape of the 1990 *Wolfpack*: the battle is run from the map, one vessel at a time is yours, and the rest sail under the orders you give them. Past the shared greykit boot, everything is seen from inside a vessel at night with the lights rigged for red: black panels, red-orange light, amber readouts. The world outside the hull (the sea, the sky, the ships seen from the bridge or through the periscope) keeps its own colours, so a look out is a look out.
 
 Two sides share one look. As the Wolf Empire's wolfpack you are aboard a submarine; as the Pumacity Defense Fleet (the PDF) you are aboard an escort. The panels change what they say, not how they look.
 

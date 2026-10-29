@@ -81,7 +81,7 @@ deploy:
     # paths on the destination, so excluding a file already published would
     # pin it there. With --delete-excluded, "do not publish" also means
     # "remove from the live site".
-    - puma_rsync -avz --delete --delete-excluded --exclude='.git' --exclude='.claude' --exclude='PRODUCT.md' --exclude='DESIGN.md' --exclude='.impeccable' --exclude='.impeccable.md' --exclude='.gitlab-ci.yml' --exclude='tools' ./ ${DREAMHOST_USERNAME}@${DREAMHOST_HOST}:/home/${DREAMHOST_USERNAME}/greykit.com/games/pumapack/
+    - puma_rsync -avz --delete --delete-excluded --exclude='.git' --exclude='.claude' --exclude='PRODUCT.md' --exclude='DESIGN.md' --exclude='.impeccable' --exclude='.impeccable.md' --exclude='.gitlab-ci.yml' --exclude='tools' ./ ${DREAMHOST_USERNAME}@${DREAMHOST_HOST}:/home/${DREAMHOST_USERNAME}/greykit.com/games/thelongconvoy/
   # environment: lets GitLab's "Prevent outdated deployment jobs" act on this
   # job, so a deploy from an older pipeline that starts after a newer one has
   # deployed fails instead of republishing stale files. resource_group: runs
@@ -89,5 +89,5 @@ deploy:
   # starts cannot finish last. Together, the last merge is the one left live.
   environment:
     name: production
-    url: https://greykit.com/games/pumapack/
+    url: https://greykit.com/games/thelongconvoy/
   resource_group: production
