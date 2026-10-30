@@ -187,7 +187,7 @@
     const u = game.ui;
     u.track = []; u.trackT = 0; u.chartAt = null; u.bino = false;
     u.station = "dash";
-    u.look = PP.Chart.me(S).hdg; u.chartZoom = 3;
+    u.look = PP.Chart.me(S).hdg; u.chartZoom = 3; u.chartFit = false;
     u.sel = null;
     /* a mission opens on the dashboard of the vessel you are aboard */
     if (fresh) u.station = "dash";
@@ -195,9 +195,11 @@
     R.init($("screen"));
     game.acc = 0;
     if (fresh) {
-      HUD.toast(S.scnName, "", 3200);
+      if (S.mode !== "action") HUD.toast(S.scnName, "", 3200);
     } else HUD.toast("Back on station", "", 2000);
     hints();
+    /* a mission (not the practice) opens on its briefing, the clock still until it is begun */
+    if (fresh && S.mode === "action") UI.briefing(S, () => game.unpause());
   }
   function resume() {
     const g = PP.loadGame();
@@ -228,6 +230,23 @@
   const toast = (t, tone, ms) => HUD.toast(t, tone, ms);
   const cls = id => { const s = PP.Ships.byId(game.S, id); return s ? C.SHIPS[s.cls].name.toLowerCase() : "ship"; };
   const brgW = b => PP.deg3(b);
+  /* reports that come in a burst (eight sets of screws as a convoy comes into hearing, three ships at once over the
+   * horizon) go out as one line: gathered for a moment, then one bearing as before, or the arc they lie across */
+  const bursts = {};
+  const burst = (kind, brg, flag, one, many) => {
+    const b = bursts[kind] || (bursts[kind] = { brgs: [], flag: false, first: null });
+    if (!b.brgs.length) setTimeout(() => {
+      const L = b.brgs.slice(), f = b.flag, first = b.first; b.brgs = []; b.flag = false; b.first = null;
+      if (L.length === 1) { first(); return; }
+      /* the arc they lie across: from the end of the widest gap round to its start */
+      const d = L.map(x => ((x / PP.DEG) % 360 + 360) % 360).sort((a, c) => a - c);
+      let gi = d.length - 1, gap = d[0] + 360 - d[d.length - 1];
+      for (let i = 0; i < d.length - 1; i++) if (d[i + 1] - d[i] > gap) { gap = d[i + 1] - d[i]; gi = i; }
+      many(L.length, PP.deg3(d[(gi + 1) % d.length] * PP.DEG), PP.deg3(d[gi] * PP.DEG), f);
+    }, 250);
+    if (!b.first) b.first = one;
+    b.brgs.push(brg); b.flag = b.flag || !!flag;
+  };
   /* a key in the crew's words, drawn as a cap: the pad's button when the pad was touched last */
   const kc = (k, p) => `<kbd>${onPad() && p ? p : k}</kbd>`;
   /* the crew's last report of a bearing, marked on the periscope's and the bridge's ring */
@@ -327,10 +346,14 @@
         case "fuelOut": toast("Out of fuel", "red", 3600); break;
         case "flooding": SFX.play("warn"); toast("Flooding!", "red", 3000); break;
         case "creak": SFX.play("creak", 0.6 + Math.min(0.4, (s.depth - Sub.testDepth(s)) / 200)); if (!game.warned.deep) { game.warned.deep = true; toast("Below test depth: the hull is groaning", "red", 3000); } break;
-        case "sighted": SFX.play("sighted"); report(e, S); toast(`${e.role === "escort" ? "Escort" : "Ship"} sighted, bearing ${brgW(e.brg)}: a ${C.SHIPS[e.cls].name.toLowerCase()}`, e.role === "escort" ? "amber" : "", 3000); slow(); break;
+        case "sighted": SFX.play("sighted"); report(e, S); slow();
+          burst("sighted", e.brg, e.role === "escort", () => toast(`${e.role === "escort" ? "Escort" : "Ship"} sighted, bearing ${brgW(e.brg)}: a ${C.SHIPS[e.cls].name.toLowerCase()}`, e.role === "escort" ? "amber" : "", 3000),
+            (n, a, b, esc1) => toast(`${n} ships sighted, bearing ${a} to ${b}${esc1 ? ", an escort among them" : ""}`, esc1 ? "amber" : "", 3400)); break;
         case "radarContact": SFX.play("sighted"); report(e, S); toast(`Radar contact, bearing ${brgW(e.brg)}, ${PP.num(Math.round(e.rng / 100) * 100)} yards`, "", 3000); slow(); break;
         case "smoke": report(e, S); toast(`Smoke on the horizon, bearing ${brgW(e.brg)}`, "", 3200); slow(); break;
-        case "screws": report(e, S); toast(`Screws on the hydrophones, bearing ${brgW(e.brg)}${e.fast ? ": fast, an escort" : ""}`, e.fast ? "amber" : "", 3000); slow(); break;
+        case "screws": report(e, S); slow();
+          burst("screws", e.brg, e.fast, () => toast(`Screws on the hydrophones, bearing ${brgW(e.brg)}${e.fast ? ": fast, an escort" : ""}`, e.fast ? "amber" : "", 3000),
+            (n, a, b, fast) => toast(`Screws on the hydrophones: ${n}, bearing ${a} to ${b}${fast ? ", an escort among them" : ""}`, fast ? "amber" : "", 3400)); break;
         case "locked": SFX.play("menu"); toast(`Selected: the ${cls(e.id)} ${e.name}`, "", 1800); break;
         case "lostLock": toast("Lost the target", "amber"); break;
         case "noRange": toast("Nothing in sight to range on", "amber", 1600); break;
@@ -342,7 +365,7 @@
         case "noTarget": toast("No vessel in range", "amber", 1600); break;
         case "noSolution": break;
         case "reloaded": SFX.play("reloaded"); break;
-        case "torpHit": SFX.play("hit"); toast(`Hit! The ${cls(e.ship)}`, "green", 2400); slow(); if (S.mode === "practice" && game.coach !== "done") { game.coach = "done"; PP.prefs.learned = true; PP.savePrefs(); toast("That's the attack. Escorts next: try a convoy action", "green", 4200); } break;
+        case "torpHit": SFX.play("hit"); toast(`Hit! The ${cls(e.ship)}`, "green", 2400); slow(); if (S.mode === "practice" && game.coach !== "done") { game.coach = "done"; PP.prefs.learned = true; PP.savePrefs(); toast("That's the attack. Next, a mission with escorts: they hunt back", "green", 4200); } break;
         case "torpDud": SFX.play("dud"); toast(e.why === "unarmed" ? "It hit before it armed" : "A dud: it hit, and did nothing", "amber", 2600); break;
         case "torpPremature": SFX.play("hit", 0.6); toast("A torpedo went off early", "amber", 2400); break;
         case "torpUnder": toast("It ran under the target: too deep", "amber", 2400); break;
@@ -504,6 +527,7 @@
     const st = R.stationOf(S, game.ui), m = PP.Escort.mine(S), fresh = m.some(q => q.ai.contact && S.t - q.ai.contact < 60);
     const C2 = (k, w) => k.map(I.cap).join("") + " " + w;
     if (fresh) return ["danger", "Contact", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["Q", "E"], "charges' depth"), C2(["Space"], "pattern"), C2(["F"], "hedgehog")]];
+    if (st === "sonar") return ["", "", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "active or passive")]];
     return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
   }
   function strip(S) {
@@ -516,6 +540,7 @@
       panel: surf ? ["tele", "helm", ["pd", "dive to periscope depth"], "crash", "time"] : ["tele", "helm", "depth", "pd", "surface"],
       chart: ["zoom", "tele", "helm", "time", "click", "pan"],
       damage: surf ? ["tele", "helm", "time", "pd"] : ["tele", "helm", "depth", "silent"],
+      sonar: surf ? ["tele", "helm", "time"] : ["tele", "helm", "depth", "silent"],
     };
     return ["", "", by[st] || []];
   }
@@ -539,8 +564,21 @@
     if (st === "bridge" || st === "scope" || st === "view") st = "dash";
     if (st === "dash" && game.ui.station !== "dash") game.ui.look = PP.Chart.me(S).hdg;
     if (st !== game.ui.station) game.ui.chartAt = null;
+    /* the first look at the map in a mission: as close as shows the whole of your side and what you know of theirs */
+    if (st === "chart" && !game.ui.chartFit) { game.ui.chartFit = true; game.ui.chartZoom = fitZoom(S); }
     game.ui.station = st; SFX.play("menu"); hints();
   };
+  /* the closest of the map's scales (none closer than 25 yards a pixel, none wider than 1,100) at which every vessel
+   * of your side, and every ship known within 30,000 yards, lies on the map round the one you are aboard */
+  function fitZoom(S) {
+    const me = PP.Chart.me(S), cv = $("screen"), hw = cv.width / 2 - 36, hh = cv.height * 0.36, pts = [];
+    if (S.side === "escorts") for (const q of PP.Escort.mine(S)) pts.push(q);
+    else for (const q of S.subs) if (!q.lost) pts.push(q);
+    for (const q of S.ships) if (PP.Ships.alive(q) && (S.side === "escorts" || PP.Detect.known(S, q)) && PP.dist(me.x, me.y, q.x, q.y) < 30000) pts.push(q);
+    const Z = PP.Chart.ZOOMS;
+    for (let i = 1; i <= 5; i++) if (pts.every(q => Math.abs(q.x - me.x) <= hw * Z[i] && Math.abs(q.y - me.y) <= hh * Z[i])) return i;
+    return 5;
+  }
   /* lock the ship nearest the crosshair (or the next one, pressed again) */
   function lockNearest() {
     const S = game.S, L = R.last;

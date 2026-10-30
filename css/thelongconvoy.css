@@ -191,6 +191,10 @@ img.glyph { display: block; }
 .paper button:focus::after { content: ""; position: absolute; left: -10px; top: -11px; width: 22px; height: 18px; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M2.4 10.8 C4.6 12.2 6.6 14.4 8.4 17.4 C11.6 10.6 16.2 5.6 22.2 1.8' fill='none' stroke='%23c2452f' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; animation: p-tick .16s cubic-bezier(.3,.7,.2,1) both; }
 @keyframes p-tick { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 :is(.ps-msg, .ps-pop .col) button:focus::after, .paper .sh-tabs button:focus::after { content: none; }
+/* the tick marks a line chosen from a list (the title, the pause, the missions); on an action button in a row (Cancel,
+ * End the mission, Again, Close) a tick would read as the thing done, so there the focus is the fill and the
+ * underline alone */
+.paper :is(.row, .sh-head) > button:focus::after { content: none; }
 .paper button.pill.on, .paper button.pill.on:focus { border-color: var(--p-ink); background: rgba(255,120,90,.06); }
 .paper button.switch { font-family: var(--p-type); font-weight: 700; }
 .paper input { background: rgba(255,120,90,.06); border-color: rgba(255,120,90,.36); }
@@ -328,6 +332,9 @@ dl.hk dd { margin: 0; line-height: 1.35; }
 .diffs .last { margin-left: auto; font: 600 12px/1 var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ps-muted); }
 .diffs button:focus .last { color: rgba(18,24,33,.72); }
 .sh-body p.lesson { margin: 0 0 12px; font-size: 17px; color: var(--ps-text); }
+/* the briefing's first moves: numbered, each a line, the keys in them */
+.sh-body ol.brief { margin: 4px 0 14px; padding-left: 1.4em; display: grid; gap: 8px; font-size: 16px; line-height: 1.45; }
+.sh-body ol.brief li::marker { color: var(--ps-muted); font-weight: 600; }
 .sh-body p.closeby { margin: -8px 0 14px; font-size: 15px; color: var(--ps-text); }
 .report { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; align-items: start; }
 table.tally, table.scores, table.aids, table.keys { width: 100%; }
@@ -335,6 +342,8 @@ table.tally td { padding: 4px 0; border-top: 1px solid var(--ps-hair); }
 table.tally tr.sum td { border-top: 1px solid var(--ps-line); padding-top: 8px; font-weight: 600; }
 table.scores td { padding: 6px 12px 6px 0; border-top: 1px solid var(--ps-hair); }
 table.scores tr.mine td { color: var(--ps-yellow); font-weight: 600; }
+/* a mission not yet fought: said quietly, under the names */
+.paper table.scores .num .note { font: 500 14px var(--ui); color: var(--p-print, var(--ps-muted)); }
 table.aids td, table.keys td { padding: 9px 16px 9px 0; border-top: 1px solid var(--ps-hair); }
 table.aids td.act { text-align: right; white-space: nowrap; padding-right: 0; }
 table.aids td .note { display: inline-block; margin-top: 2px; font-size: 14px; }
@@ -426,6 +435,7 @@ img.fig { display: inline-block; vertical-align: middle; }
 .hb-flags span.hunt { color: #ffd7cc; background: rgba(140,36,18,.85); border-color: rgba(255,61,36,.8); }
 /* the TDC: the target, and the solution */
 #h-tdc { right: 16px; bottom: 16px; width: 270px; padding: 10px 14px 12px; }
+#hud #h-tdc.idle { display: none; }
 .ht-name { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ht-cls { font-size: 14px; color: var(--ps-muted); margin-bottom: 6px; }
 .ht-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline; }
@@ -513,7 +523,7 @@ img.fig { display: inline-block; vertical-align: middle; }
 /* the port's call, when a base is in reach */
 /* ---- the dashboard (art/dash.js): its buttons and its message window over the canvas; the old panels stand down ---- */
 #hud.dashmode #h-tabs, #hud.dashmode #h-clock, #hud.dashmode #h-boat, #hud.dashmode #h-tdc, #hud.dashmode #h-orders, #hud.dashmode .h-low,
-#hud.statusmode #h-tabs, #hud.statusmode #h-clock, #hud.statusmode #h-boat, #hud.statusmode #h-tdc, #hud.statusmode #h-orders, #hud.statusmode #h-hull, #hud.statusmode #h-dmg { display: none; }
+#hud.statusmode #h-boat, #hud.statusmode #h-tdc, #hud.statusmode #h-orders, #hud.statusmode #h-hull, #hud.statusmode #h-dmg { display: none; }
 #hud:not(.dashmode) .h-msgs { display: none; }
 .h-dash { position: absolute; inset: 0; pointer-events: none; }
 .h-dash .db { position: absolute; pointer-events: auto; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 3px; margin: 0;
@@ -559,15 +569,20 @@ img.fig { display: inline-block; vertical-align: middle; }
 @media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
 .h-dash .db.pick.row { align-items: center; justify-content: flex-end; padding: 0 5px 0 0; }
 /* the depth slider: the canvas draws it, the button is where to hold it */
-/* the trigger when the lamp says over her: its words and edge in the readout amber */
-.h-dash .db.danger.ready { color: var(--ps-yellow); border-color: var(--ps-yellow); }
+/* the triggers (fire, lay charges, the guns): an ordinary button until the lamp says on target, then the one solid
+ * amber thing on the dashboard, so the shot never looks like Blow or Crash (red, for emergencies only); amber
+ * words and edge while a spread or a pattern is going */
+.h-dash .db.trigger.ready { color: #160807; background: var(--ps-yellow); border-color: var(--ps-yellow); box-shadow: none; }
+.h-dash .db.trigger.ready:hover { background: var(--ps-yellow-hi, #ffe08f); border-color: var(--ps-yellow-hi, #ffe08f); }
+.h-dash .db.trigger.ready kbd { color: #160807; border-color: rgba(22,8,7,.45); background: rgba(22,8,7,.08); }
+.h-dash .db.trigger.on { color: var(--ps-yellow); border-color: var(--ps-yellow); }
 /* Blow or Crash clicked once: it flashes, asking for the second click */
 .h-dash .db.danger.armed { color: #160807; background: var(--ps-yellow); border-color: var(--ps-yellow); animation: db-armed .5s steps(2) infinite; }
 @keyframes db-armed { 50% { background: #4a1208; color: var(--ps-yellow); } }
 @media (prefers-reduced-motion: reduce) { .h-dash .db.danger.armed { animation: none; } }
 /* the guns: a lamp on their face, lit while they bear; while they reload a bar fills along the foot */
 .h-dash .db.guns .lamp { width: .5em; height: .5em; border-radius: 50%; background: #3a1a14; box-shadow: inset 0 0 0 1px rgba(255,110,80,.4); flex: none; }
-.h-dash .db.guns.ready .lamp { background: var(--ps-yellow); box-shadow: 0 0 6px var(--ps-yellow); animation: gun-lamp 1.2s ease-in-out infinite; }
+.h-dash .db.guns.ready .lamp { background: #160807; box-shadow: none; animation: gun-lamp 1.2s ease-in-out infinite; }
 .h-dash .db.guns.loading .lamp { background: #8a5a20; box-shadow: none; }
 .h-dash .db.guns.loading::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: calc(var(--fill, 0) * 100%); background: var(--ps-yellow); }
 @keyframes gun-lamp { 50% { opacity: .55; } }
@@ -605,6 +620,9 @@ img.fig { display: inline-block; vertical-align: middle; }
 #h-orders .fleet th { padding: 2px 8px 4px 0; text-align: left; font: 600 10px/1.2 var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ps-muted); border-bottom: 1px solid var(--ps-hair); }
 #h-orders .fleet td { padding: 4px 6px 4px 0; font: 500 13px/1.25 var(--ui); border-bottom: 1px solid var(--ps-hair); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #h-orders .fleet th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* her lamps wrap to a second line rather than run out of the panel */
+#h-orders .fleet td:last-child { white-space: normal; overflow: visible; }
+#h-orders .lmp { margin-bottom: 2px; }
 #h-orders .fleet tbody tr { cursor: pointer; }
 #h-orders .fleet tbody tr:hover { background: rgba(255,110,80,.08); }
 #h-orders .fleet tr.on td { color: var(--ps-yellow); }
@@ -649,7 +667,13 @@ img.fig { display: inline-block; vertical-align: middle; }
 .h-flash.on { animation: ps-flash .4s ease-out; }
 @keyframes ps-flash { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .h-flash.on { animation: none; } }
-@media (max-width: 1239px) { .h-low { max-width: calc(100vw - 600px); } #h-boat { width: 270px; } #h-tdc { width: 240px; } }
+@media (max-width: 1239px) {
+  .h-low { max-width: calc(100vw - 600px); } #h-boat, #h-hull, #h-dmg { width: 270px; } #h-tdc { width: 240px; }
+  /* the pack's table on a narrower window: wider than half the screen, its columns a little tighter, so the
+   * Status column (Hunted, Flooding) keeps its room instead of scrolling out of sight */
+  #h-orders { width: min(640px, calc(100vw - 400px)); }
+  #h-orders table.fleet { font-size: 13px; }
+}
 
 /* the pause and sound buttons, up by the clock, clear of the TDC */
 #corner { position: fixed; right: 222px; top: 12px; display: flex; gap: 8px; z-index: 5; }
@@ -657,10 +681,10 @@ img.fig { display: inline-block; vertical-align: middle; }
 @media (hover: hover) { #corner button:hover { background: rgba(44,18,15,.92); color: #fff; } }
 #corner button:focus { background: rgba(20,8,7,.86); color: #f2d6c0; box-shadow: none; border-color: rgba(255,190,170,.12); }
 #corner button:focus-visible { outline: 2px solid var(--ps-yellow); outline-offset: 2px; }
-/* a narrower window: the buttons go to the top left, out of the stations' way, and below 960 pixels the
- * stations follow them there, tighter, clear of the clock */
-@media (max-width: 1180px) { #corner { right: auto; left: 16px; } }
+/* hud.js sets them beside the clock, or in the top right where there is no clock; below 960 pixels they go to
+ * the top left, out of the stations' way, and the stations follow them there, tighter, clear of the clock */
 @media (max-width: 959px) {
+  #corner { right: auto; left: 16px; }
   #h-tabs { left: 112px; transform: none; }
   #h-tabs button { gap: 6px; padding: 0 8px 0 6px; font-size: 14px; }
   #h-clock { min-width: 150px; padding: 8px 12px; }

@@ -107,11 +107,20 @@
   }
   HUD.clearLabels = () => { for (const n of labs.values()) n.remove(); labs.clear(); for (const n of dbs.values()) n.remove(); dbs.clear(); HUD.msgs = []; HUD.msgsKey = ""; };
   /* the pause and sound buttons: on the dashboard, in the top right of the view, over its sky and clear of
-   * the bearing tape and the small map; on the other screens, where the stylesheet puts them */
+   * the bearing tape and the small map; on the other screens, just left of the clock (in the top right where
+   * there is none), so they never lie over a screen's own words; below 960 pixels, where the stylesheet puts them */
   function corner(L) {
     const n = $("corner"), cv = $("screen");
     let top = "", right = "";
     if (L) { const r = cv.getBoundingClientRect(), k = r.width / cv.width || 1; top = Math.round(r.top + (L.view.y + 4) * k) + "px"; right = Math.round(innerWidth - r.left - (L.view.x + L.view.w - 4) * k) + "px"; }
+    else if (innerWidth >= 960) {
+      const ck = HUD.el.querySelector("#h-clock"), c = ck && !ck.hidden ? ck.getBoundingClientRect() : null;
+      top = "12px"; right = c && c.width ? Math.round(innerWidth - c.left + 8) : 16;
+      /* a long date widens the clock: crowded against the stations, they go to the top left instead */
+      const tb = HUD.el.querySelector("#h-tabs").getBoundingClientRect();
+      if (tb.width && innerWidth - right - n.offsetWidth < tb.right + 8) { if (n.style.left !== "16px") { n.style.left = "16px"; n.style.right = "auto"; n.style.top = top; } return; }
+      right += "px";
+    }
     if (n.style.top !== top || n.style.right !== right) { n.style.top = top; n.style.right = right; n.style.left = L ? "auto" : ""; }
   }
 
@@ -204,7 +213,7 @@
     if (hint && !hint.hidden) { const r = hint.getBoundingClientRect(); if (r.height) bot = Math.ceil((innerHeight - r.top) / k) + 2; }
     const corner = $("corner").getBoundingClientRect(), tdc = HUD.el.querySelector("#h-tdc");
     const tr = Math.ceil(Math.max(HUD.el.querySelector("#h-clock").getBoundingClientRect().bottom, corner.bottom) / k) + 2;
-    const br = tdc.hidden ? cv.height : Math.floor(tdc.getBoundingClientRect().top / k) - 2;
+    const br = tdc.hidden || !tdc.offsetParent ? cv.height : Math.floor(tdc.getBoundingClientRect().top / k) - 2;
     R.safe = { t: top, b: bot, tr, br };
   }
   /* what the station shows, in words, for a screen reader */
@@ -225,15 +234,20 @@
     if (HUD.desc !== t) { HUD.desc = t; $("screen").setAttribute("aria-label", "The Long Convoy: " + t); }
   }
 
-  /* ---- the escorts' side: the escort you are aboard, her contact, and the map's orders for the others ---- */
-  function drawEsc(S, ui, st) {
-    const el = HUD.el, f = PP.Escort.flag(S); if (!f) return;
-    const k = C.SHIPS[f.cls], X = C.ESC_SIDE;
+  /* the stations' strip and the clock, either side, on every screen that shows them (the Sonar screen too) */
+  function stations(S, st) {
+    const el = HUD.el;
     set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.st === st)); });
     set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });
     set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
     const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
     set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
+  }
+
+  /* ---- the escorts' side: the escort you are aboard, her contact, and the map's orders for the others ---- */
+  function drawEsc(S, ui, st) {
+    const el = HUD.el, f = PP.Escort.flag(S); if (!f) return;
+    const k = C.SHIPS[f.cls], X = C.ESC_SIDE;
     /* her panel */
     const mine = PP.Escort.mine(S), hh = C.monthOf(S.t) >= X.hedgehogFrom;
     /* the card at the lower left: the escort the mouse is over (in the map's list, or her name on the map), else yours */
@@ -309,14 +323,10 @@
     dashButtons((dashOn || sonarOn) && PP.Render.dash ? PP.Render.dash.buttons || [] : []);
     if (dashOn && PP.Render.dash && PP.Render.dash.msg) msgWindow(PP.Render.dash.msg);
     corner(dashOn && PP.Render.dash && PP.Render.dash.L);
+    stations(S, st);
     if (dashOn || sonarOn) return;
     if (dmg) damage(S);
     if (side === "escorts") { drawEsc(S, ui, st); return; }
-    set(el.querySelector("#h-tabs"), "tabs", st, e => { for (const b of e.querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.st === st)); });
-    set(el.querySelector(".hc-time"), "time", C.timeStr(S.t), (e, v) => { e.textContent = v; });
-    set(el.querySelector(".hc-date"), "date", C.dateStr(S.t) + (S.wx ? " · " + C.WX[S.wx.k].name : ""), (e, v) => { e.textContent = v; });
-    const tcReq = C.TC[S.tcReq], tcNow = PP.Engine.tcNow(S), held = tcNow < tcReq;
-    set(el.querySelector(".hc-tc"), "tc", `${tcNow}:${tcReq}:${held ? S.tcWhy : ""}`, e => { e.classList.toggle("held", held); e.querySelector("b").textContent = tcNow + "x"; e.querySelector(".why").textContent = held ? `${WHY[S.tcWhy] || "held back"}, not ${tcReq}x` : ""; });
     /* the card at the lower left: the boat the mouse is over (in the map's list, or her name on the map), else the one
      * you are aboard; her name and what she is to you at its head */
     const b = HUD.hovered(S) || s;
@@ -373,13 +383,13 @@
       const sol = W.solve(S, e, s.bank), ok = sol && sol.ok;
       tdc = `<div class="ht-name">${t ? esc(t.name) : "Last known"}</div><div class="ht-cls">${t ? esc(C.SHIPS[t.cls].name) + (PP.Detect.known(S, t) ? "" : ", not in sight") : "the target is lost"}</div>
         <div class="ht-grid"><span class="lbl">Bearing</span><b>${PP.deg3(e.brg)}</b><span class="lbl">Range</span><b>${PP.num(Math.round(e.rng / 10) * 10)}</b>
-        <span class="lbl">Target speed</span><b>${e.s.toFixed(1)} kn</b><span class="lbl" title="How far the torpedo runs to meet the target, in yards">Run</span><b>${ok ? PP.num(Math.round(sol.run / 10) * 10) : "--"}</b></div>
+        <span class="lbl">Target speed</span><b>${e.s.toFixed(1)} kn</b><span class="lbl" title="How far the torpedo runs to meet the target, in yards">Torpedo run</span><b>${ok ? PP.num(Math.round(sol.run / 10) * 10) : "--"}</b></div>
         <div class="ht-sol ${ok ? "ok" : "no"}"><span class="ht-lamp"></span><span>${ok ? "On target: fire " + (s.bank === "F" ? "forward" : "aft") : sol ? { gyro: `Wrong angle: fire the ${s.bank === "F" ? "after" : "forward"} tubes`, range: "Out of range", speed: "No shot" }[sol.why] || "No shot" : "No shot"}</span></div>`;
     } else tdc = `<div class="ht-name">Target</div><p class="ht-none">None selected. ${PP.Input.device === "pad" ? "<kbd>pad:X</kbd>" : "<kbd>T</kbd>"} selects the nearest ship in sight; ${PP.Input.device === "pad" ? "<kbd>pad:A</kbd>" : "<kbd>Space</kbd>"} fires at the nearest in range.</p>`;
     set(el.querySelector("#h-tdc"), "tdc", tdc, (x, v) => { x.innerHTML = PP.Input.caps(v); });
-    /* nothing to aim at, nothing in sight: the TDC stands back */
+    /* nothing to aim at, nothing in sight: the TDC stands down, off the map, rather than a ghost of itself over it */
     const idle = !e && !S.ships.some(q => PP.Detect.known(S, q) && PP.Ships.alive(q));
-    set(el.querySelector("#h-tdc"), "tdcIdle", idle, (x, v) => x.classList.toggle("thin", v));
+    set(el.querySelector("#h-tdc"), "tdcIdle", idle, (x, v) => x.classList.toggle("idle", v));
     /* the map's panel: the pack, a row a boat (an order in it a click to change) */
     const onMap = st === "chart", fleetP = onMap ? PP.Dash.fleetHTML(S) : "";
     set(el.querySelector("#h-orders"), "orders", onMap ? fleetP + PP.Input.device : "", x => {

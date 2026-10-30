@@ -110,14 +110,14 @@
     const v = L.view;
     const inner = inWindow(g, S, ui, now, v, "v", (cg, w, h) => R.viewInto(cg, S, ui, now, w, h));
     if (R.last) { R.last.ox = v.x; R.last.oy = v.y; }
-    const st = L.strip, bw = 58;
+    /* the strip under the view: its buttons set from the left and from the right, a small gap between; on a
+     * narrow screen (1024 by 768) Left and Right shrink to their arrows, so nothing is laid over anything */
+    const st = L.strip, SL = [], SR = [], sbtn = (side, id, html, w, o) => side.push({ id, html, w, o: o || {} });
     plate(g, st.x, st.y, st.w, st.h);
-    btn("lookL", "&#9664; Left", st.x + 2, st.y + 2, bw, st.h - 4, { hold: "aL" });
-    btn("lookR", "Right &#9654;", st.x + st.w - bw - 2, st.y + 2, bw, st.h - 4, { hold: "aR" });
     if (inner === "scope") {
-      btn("scopeUD", S.sub.scope.up ? "Scope down" : "Scope up", st.x + bw + 6, st.y + 2, 58, st.h - 4, { act: "scope", on: S.sub.scope.up });
-      btn("power", S.sub.scope.hi ? "Low power" : "High power", st.x + bw + 68, st.y + 2, 58, st.h - 4, { act: "zoom" });
-    } else btn("glasses", ui.bino ? "Glasses down" : "Glasses", st.x + bw + 6, st.y + 2, 58, st.h - 4, { act: "zoom", on: !!ui.bino });
+      sbtn(SL, "scopeUD", S.sub.scope.up ? "Scope down" : "Scope up", 58, { act: "scope", on: S.sub.scope.up });
+      sbtn(SL, "power", S.sub.scope.hi ? "Low power" : "High power", 58, { act: "zoom" });
+    } else sbtn(SL, "glasses", ui.bino ? "Glasses down" : "Glasses", 58, { act: "zoom", on: !!ui.bino });
     if (esc) {
       /* her guns: dark with nothing up in sight; live (the trigger's amber, its lamp lit) when one is on her target,
        * in reach and loaded; reloading, the bar along the foot filling as the next round goes in; the tip says which
@@ -125,12 +125,12 @@
       const f = PP.Escort.flag(S), tg = f && PP.Escort.target(S, f), G = tg ? PP.Escort.guns(S, f, tg) : [], bear = G.filter(o => o.bears), ready = bear.some(o => o.load <= 0);
       const why = !tg ? "" : ready ? "fire (G)" : bear.length ? "loading" : G.some(o => o.inArc && o.inRange) ? "training round" : G.some(o => o.inArc) ? "out of range of those that bear" : "none bear on the target";
       const names = bear.map(o => o.g.k === "pom" ? "the pom-pom" : o.g.k).join(", ");
-      btn("guns", "<i class=\"lamp\"></i>Guns <kbd>G</kbd>", st.x + bw + 68, st.y + 2, 50, st.h - 4, { act: "gun", dim: !tg,
-        cls: "guns" + (tg ? " danger" + (ready ? " ready" : bear.length ? " loading" : "") : ""),
+      sbtn(SL, "guns", "<i class=\"lamp\"></i>Guns <kbd>G</kbd>", 50, { act: "gun", dim: !tg,
+        cls: "guns trigger" + (tg ? (ready ? " ready" : bear.length ? " loading" : "") : ""),
         fill: bear.length && !ready ? Math.max(...bear.map(o => 1 - o.load / o.g.reload)) : undefined,
         label: !tg ? "Guns, nothing in sight" : `Guns, ${ready ? "ready" : why}`,
         title: tg ? `Guns: ${tg.b.name}, ${Math.round(tg.d).toLocaleString()} yd; ${bear.length ? `${names} bear${bear.length === 1 ? "s" : ""}; ` : ""}${why}` : "Guns: no target in sight (G)" });
-      btn("next", "Next escort <kbd>N</kbd>", st.x + bw + 122, st.y + 2, 78, st.h - 4, { act: "boatNext", dim: PP.Escort.mine(S).length < 2, title: "Take command of the next escort (N)" });
+      sbtn(SL, "next", "Next escort <kbd>N</kbd>", 78, { act: "boatNext", dim: PP.Escort.mine(S).length < 2, title: "Take command of the next escort (N)" });
     }
     if (!esc) {
       const s0 = S.sub;
@@ -139,12 +139,23 @@
       const g0 = s0.gun, gq = g0.on && PP.Weapons.gunTarget(S), gv = gq && PP.Weapons.gunSight(S, gq), gl = g0.reload > 0;
       const gReady = gv && gv.on && g0.man >= 1 && !gl && s0.shells > 0;
       const gWhy = !g0.on ? "" : g0.man < 1 ? "manning" : !gq ? "nothing in reach" : !gv.inArc ? "abaft its arc" : !gv.on ? "training round" : gl ? "loading" : s0.shells <= 0 ? "no shells" : "fire (G)";
-      btn("gun", g0.on ? "<i class=\"lamp\"></i>Gun <kbd>G</kbd>" : "Man gun", st.x + bw + (inner === "scope" ? 128 : 68), st.y + 2, 50, st.h - 4, { act: "gun", dim: !Sub.surfaced(s0),
-        cls: "guns" + (gq ? " danger" + (gReady ? " ready" : gl ? " loading" : "") : ""), fill: gq && gl ? 1 - g0.reload / C.GUN.reload : undefined,
+      sbtn(SL, "gun", g0.on ? "<i class=\"lamp\"></i>Gun <kbd>G</kbd>" : "Man gun", 50, { act: "gun", dim: !Sub.surfaced(s0),
+        cls: "guns trigger" + (gq ? (gReady ? " ready" : gl ? " loading" : "") : ""), fill: gq && gl ? 1 - g0.reload / C.GUN.reload : undefined,
         label: g0.on ? `Deck gun, ${gReady ? "ready" : gWhy}` : "Man the deck gun",
         title: !Sub.surfaced(s0) ? "The deck gun: on the surface only" : !g0.on ? "Man the deck gun: its crew lay it on the target themselves (G)" : `Deck gun${gq ? `: ${gq.name}, ${PP.num(Math.round(PP.dist(s0.x, s0.y, gq.x, gq.y) / 50) * 50)} yd` : ""}; ${gWhy}. ${s0.shells} shells. Shift+G secures it` });
-      btn("select", "Select <kbd>T</kbd>", st.x + st.w - bw - 70, st.y + 2, 64, st.h - 4, { act: "lock" });
-      btn("swing", "On target <kbd>H</kbd>", st.x + st.w - bw - 138, st.y + 2, 64, st.h - 4, { act: "onHer" });
+      sbtn(SR, "swing", "On target <kbd>H</kbd>", 64, { act: "onHer" });
+      sbtn(SR, "select", "Select <kbd>T</kbd>", 64, { act: "lock" });
+    }
+    {
+      const gap = 4, sum = a => a.reduce((t, b) => t + b.w + gap, 0);
+      const narrow = sum(SL) + sum(SR) + 2 * (58 + gap) + 4 > st.w, aw = narrow ? 22 : 58;
+      const look = (id, word, arrowL, hold) => ({ id, w: aw, html: narrow ? (arrowL ? "&#9664;" : "&#9654;") : arrowL ? `&#9664; ${word}` : `${word} &#9654;`,
+        o: { hold, label: `Look ${word.toLowerCase()}`, title: narrow ? `Look ${word.toLowerCase()} (${arrowL ? "←" : "→"})` : undefined } });
+      SL.unshift(look("lookL", "Left", true, "aL")); SR.push(look("lookR", "Right", false, "aR"));
+      let x = st.x + 2;
+      for (const b of SL) { btn(b.id, b.html, x, st.y + 2, b.w, st.h - 4, b.o); x += b.w + gap; }
+      x = st.x + st.w - 2;
+      for (const b of SR.slice().reverse()) { x -= b.w; btn(b.id, b.html, x, st.y + 2, b.w, st.h - 4, b.o); x -= gap; }
     }
     /* the small map */
     const m = L.map;
@@ -243,7 +254,7 @@
     /* the one trigger: the gun when it is manned, else the bank's tubes; lit when the lamp says on target */
     const loaded = Sub.loaded(s, s.bank), est = W.est(S), sol = est && W.solve(S, est, s.bank), sv = s.salvo;
     const word = sv ? `Firing&hellip; ${sv.k} of ${sv.n} away` : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"}`;
-    btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "danger" + (sv ? " on" : loaded && sol && sol.ok ? " ready" : ""), dim: !loaded && !sv,
+    btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "trigger" + (sv ? " on" : loaded && sol && sol.ok ? " ready" : ""), dim: !loaded && !sv,
       title: `Fire the ${s.bank === "F" ? "forward" : "after"} tubes, a spread of ${s.spread} (Space)` });
     /* her battery and her fuel, side by side: each a bar filling from the foot, its name over it, its reading on
      * drums under it */
@@ -424,10 +435,13 @@
     K.ring(g, cx, cy, Math.round(r * 0.34), DIM);
     let made = 0;
     for (let i = 1; i < n; i++) if (sp >= bf[i - 1]) made = i - 1 + PP.clamp((sp - bf[i - 1]) / (bf[i] - bf[i - 1]), 0, 1);
-    const w = Math.max(18, Math.round(r * 0.46)), h = 12;
+    /* each word's box as wide as the word (a little more), no wider than it may be, so neighbours round the top
+     * (1/3, 2/3, Std) do not lie over each other on a small dial */
+    /* on a small dial (a wide, short screen) the words sit further out, their boxes tighter, the ticks shorter */
+    const small = r < 26, wMax = Math.max(18, Math.round(r * 0.46)), h = small ? 8 : 10;
     for (let i = 0; i < n; i++) {
-      const a = sweep(i / (n - 1)), [x, y] = at(cx, cy, r * 0.64, a);
-      tick(g, cx, cy, r - 7, r - 2, a, i === bell ? AMBER : TICK);
+      const a = sweep(i / (n - 1)), [x, y] = at(cx, cy, r * (small ? 0.72 : 0.66), a), w = Math.min(wMax, Math.max(small ? 9 : 11, Math.round(bells[i].length * (small ? 2.8 : 3)) + 2));
+      tick(g, cx, cy, small ? r - 4 : r - 7, small ? r - 1 : r - 2, a, i === bell ? AMBER : TICK);
       btn("bell" + i, bells[i], x - w / 2, y - h / 2, w, h, { act: "bell" + i, cls: "tel", on: i === bell, dim: i > maxBell, title: i > maxBell ? `${bells[i]}: not while running silent` : `${bells[i]}: ${Math.round(Math.abs(bf[i]) * kn)} knots${bf[i] < 0 ? " astern" : ""}` });
     }
     needle(g, cx, cy, Math.round(r * 0.34), sweep(bell / (n - 1)), AMBER, 3);
@@ -480,7 +494,7 @@
     K.rect(g, cx - 5, yy - 1, 11, 3, AMBER);
     lab("surf", "Surface", cx + 7, y0, "dl sm sea", "lm");
     lab("set", `<b>${f.dcSet}</b> <span class="c">ft</span>`, cx + 9, Math.max(yy, y0 + 8), "dl sm read", "lm");
-    btn("depth", "", x, y0 - 3, w, y1 - y0 + 7, { cls: "slide", slide: { y0, y1, lo, max: hi, step: 25, act: "depth", v: f.dcSet }, label: "Charges' depth", title: `Charges set for ${f.dcSet} feet: drag for ${lo} to ${hi}` });
+    btn("depth", "", x, y0 - 3, w, y1 - y0 + 5, { cls: "slide", slide: { y0, y1, lo, max: hi, step: 25, act: "depth", v: f.dcSet }, label: "Charges' depth", title: `Charges set for ${f.dcSet} feet: drag for ${lo} to ${hi}` });
   }
 
   /* her plan, bow to the right: the throwers along each side (port above, starboard below, the aftmost first), a
@@ -605,7 +619,7 @@
     /* the one trigger: what it fires, whether it is ready, and lit when the lamp says over her */
     const none = sol.hh ? hn <= 0 : f.dcLeft <= 0, P = C.ESC_PATTERNS[sel];
     const word = f.pat ? "Laying&hellip;" : none ? (sol.hh ? "Hedgehog empty" : "No charges") : sol.hh ? "Fire hedgehog" : sol.ready < sol.need ? `Lay ${sol.ready} of ${sol.need}` : "Lay charges";
-    btn("pattern", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "danger" + (f.pat ? " on" : "") + (c && c.over && !none ? " ready" : ""), dim: none,
+    btn("pattern", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "trigger" + (f.pat ? " on" : c && c.over && !none ? " ready" : ""), dim: none,
       title: sol.hh ? "Fire the hedgehog (Space)" : `Lay the ${P.name.toLowerCase()} pattern, ${sol.need} charges${sol.ready < sol.need ? `; ${sol.ready} loaded, the crews are reloading` : ""} (Space)` });
     if (wide) attackPanel(g, f, sol, dialsEnd + 12, top, Math.min(cpw, 170), oy + 7 - top);
     else attackPanel(g, f, sol, bt.x + bt.w - 94, top, 88, bt.y + bt.h - 16 - top);
@@ -651,6 +665,6 @@
         lamps([[hunted(q), "Hunted", "red", "An escort has her"], [q.water > 0.2, "Flooding", "red", "Taking water"], [q.sys.radio >= 0.5, "Radio out", "red", "Takes no orders, sends no news"],
           [q.silent, "Silent", "amber", "Silent running"], [Sub.snorkeling(q), "Snorkel", "amber", "Snorkelling: diesels at periscope depth, loud"], [Sub.radarWorks(q), "Radar", "amber", "Her radar on: they can hear it"],
           [q.bottomed, "Bottomed", "amber", "Lying on the bottom"], [Sub.charge(q).why === null && Sub.charge(q).rate > 0, "Charging", "green", "Charging her battery"]])]);
-    }), [7, 7.4, 3, 2.4, 3.3, 3.3, 3.6, 2.2, 3.9, 0]);
+    }), [7, 7.4, 3.3, 2.4, 3.3, 3.3, 3.6, 2.2, 3.9, 0]);
   };
 })();
