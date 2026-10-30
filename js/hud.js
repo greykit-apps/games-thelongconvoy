@@ -44,6 +44,7 @@
       <div class="hp" id="h-orders" hidden></div>
       <div class="h-low"><div class="h-toasts"></div><div class="hp h-hint" hidden></div></div>
       <div class="hp h-end" hidden></div>
+      <div class="h-stamp" hidden aria-hidden="true"></div>
       <div class="h-flash"></div>
       <div class="h-dash"></div>
       <div class="h-msgs" aria-hidden="true"></div>
@@ -80,11 +81,23 @@
     while (HUD.toasts.length > 2) HUD.toasts.shift().d.remove();
     const live = $(tone === "red" ? "alert" : "live"); if (live) live.textContent = d.textContent;
   };
+  /* a hit or a sinking, stamped over the view out for two seconds (over the screen, on another station), the message
+   * window's frame lit with it; its words are the toast's too, so a screen reader has them once */
+  HUD.stamp = (word, sub) => {
+    const el = HUD.el && HUD.el.querySelector(".h-stamp"); if (!el) return;
+    const cv = $("screen"), k = cv.getBoundingClientRect().width / cv.width || 1, D = PP.Render.dash;
+    const v = HUD.el.classList.contains("dashmode") && D && D.L ? D.L.view : { x: 0, y: 0, w: cv.width, h: cv.height };
+    el.style.cssText = `left:${Math.round((v.x + v.w / 2) * k)}px;top:${Math.round((v.y + v.h * 0.32) * k)}px;font-size:${Math.round(PP.clamp(k * 7, 13, 24))}px`;
+    el.innerHTML = `<b>${esc(word)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}`;
+    el.hidden = false; el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+    clearTimeout(HUD.stampT); HUD.stampT = setTimeout(() => { el.hidden = true; }, 2400);
+    const m = HUD.el.querySelector(".h-msgs"); m.classList.remove("hit"); void m.offsetWidth; m.classList.add("hit");
+  };
   HUD.flash = () => { const f = HUD.el && HUD.el.querySelector(".h-flash"); if (!f) return; f.classList.remove("on"); void f.offsetWidth; f.classList.add("on"); };
   /* the key strip; tone "danger" when you are hunted, "coach" for the practice's lesson */
   HUD.hint = (html, tone = "") => { const h = HUD.el.querySelector(".h-hint"); if (!html) { h.hidden = true; HUD.hintNow = ""; return; } if (HUD.hintNow !== tone + html) { HUD.hintNow = tone + html; h.innerHTML = PP.Input.caps(html); h.className = "hp h-hint" + (tone ? " " + tone : ""); } h.hidden = false; };
   HUD.end = (title, sub, tone) => { const e = HUD.el.querySelector(".h-end"); if (!title) { e.hidden = true; return; } e.dataset.tone = tone; e.innerHTML = `<b>${esc(title)}</b><span>${esc(sub || "")}</span>`; e.hidden = false; };
-  HUD.clear = () => { HUD.toasts.forEach(t => t.d.remove()); HUD.toasts = []; if (HUD.el) { HUD.end(null); HUD.hint(null); HUD.clearLabels(); } HUD.last = {}; };
+  HUD.clear = () => { HUD.toasts.forEach(t => t.d.remove()); HUD.toasts = []; if (HUD.el) { HUD.end(null); HUD.hint(null); HUD.clearLabels(); HUD.el.querySelector(".h-stamp").hidden = true; } HUD.last = {}; };
 
   /* the station's live readings, set in the HUD's own type over the canvas where the station puts them
    * (PP.Render.labels: canvas pixels, an anchor, a tone); painted legends stay on the canvas */
@@ -202,6 +215,13 @@
     if (HUD.msgsKey !== key) { HUD.msgsKey = key; box.innerHTML = (HUD.msgs || []).slice(-8).map(m => `<p class="${m.tone || ""}"><span class="t">${m.t}</span> ${m.text}</p>`).join(""); box.scrollTop = box.scrollHeight; }
   }
 
+  /* on the dashboard the foot's strip (the practice's lesson, the danger's way out) sits at the foot of the view out,
+   * where the eye is in an attack; elsewhere it keeps the foot of the screen */
+  function lowSpot(v) {
+    const low = HUD.el.querySelector(".h-low"), cv = $("screen"), k = cv.getBoundingClientRect().width / cv.width || 1;
+    const css = v ? `left:${Math.round((v.x + v.w / 2) * k)}px;top:${Math.round((v.y + v.h) * k) - 8}px;bottom:auto;transform:translate(-50%,-100%);max-width:${Math.round(v.w * k) - 24}px` : "";
+    if (low.dataset.css !== css) { low.dataset.css = css; low.style.cssText = css; }
+  }
   /* the part of the play screen no panel covers, in the canvas's pixels: the stations lay out inside it.
    * t and b, the strip of stations and the key strip; tr, the foot of the clock and the buttons up on the
    * right; br, the head of the TDC down on the right (the canvas's height when it is not showing) */
@@ -322,6 +342,7 @@
     set(el, "dashMode", st, e => { e.classList.toggle("dashmode", dashOn); e.classList.toggle("statusmode", sonarOn); });
     dashButtons((dashOn || sonarOn) && PP.Render.dash ? PP.Render.dash.buttons || [] : []);
     if (dashOn && PP.Render.dash && PP.Render.dash.msg) msgWindow(PP.Render.dash.msg);
+    lowSpot(dashOn && PP.Render.dash && PP.Render.dash.L.view);
     corner(dashOn && PP.Render.dash && PP.Render.dash.L);
     stations(S, st);
     if (dashOn || sonarOn) return;

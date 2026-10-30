@@ -25,7 +25,7 @@
   };
   I.BIND = BIND;
   I.actionFor = code => BIND[code] || null;
-  I.clear = () => { I.held.clear(); I.pad.clear(); I.queue.length = 0; I.stick = null; I.rstick = null; I.heldT = {}; I.slew = null; };
+  I.clear = () => { I.held.clear(); I.pad.clear(); I.queue.length = 0; I.stick = null; I.rstick = null; I.heldT = {}; I.slew = null; I.keep = false; };
 
   /* ---- the key caps: one face for every key, the arrows drawn, the letters as this keyboard has them ----
    * The keys are bound where they sit (ev.code), so on an AZERTY keyboard the telegraph is Z, not W: where the
@@ -94,14 +94,15 @@
       else {
         const now = st === "scope" ? s.hdg + s.scope.brg : ui.look, d = PP.angDiff(now, want), max = 400 * PP.DEG * sec;
         turn(PP.clamp(d, -max, max));
-        if (Math.abs(d) <= max) I.slew = null;
+        if (Math.abs(d) <= max && !I.keep) I.slew = null;
       }
-    } else if (!view) I.slew = null;
+    } else if (!view && !I.keep) I.slew = null;
     return c;
   };
-  /* swing the view to a true bearing worked out each step (so it keeps up with a ship), null to give up */
-  I.slew = null;
-  I.swing = f => { I.slew = f; };
+  /* swing the view to a true bearing worked out each step (so it keeps up with a ship), null to give up; kept, it
+   * stays on the bearing (and waits through a look at another station) until f gives up or you train it yourself */
+  I.slew = null; I.keep = false;
+  I.swing = (f, keep) => { I.slew = f; I.keep = !!keep; };
   /* a tap of the helm: five degrees at once, before the hold takes over */
   I.tapHelm = d => { I.tapD += d * 5 * PP.DEG; };
 

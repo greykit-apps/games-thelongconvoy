@@ -121,6 +121,8 @@ The pause, the sheets, the questions and the debrief are **boards**: a dark grou
 
 The play screen is the **dashboard** of the vessel you are aboard, as the 1990 game had one per kind of vessel, drawn on one canvas at about 640 by 360 and scaled up whole (`js/art/dash.js`): the view out in the big window top right, the strip of its controls under it; the small map top left, then timing, AUTO / USER CONTROL, the screens, the sonar's waterfall and the message window down the left; the gauges along the foot, the vessel's own (a submarine's telegraph, compass, depth, battery and fuel, tubes, snorkel and Metox; an escort's telegraph, compass, sonar scope and P / A switch, charges and racks, hedgehog). Every reading is a HUD label and every control a real button over the canvas, each with its key. The Map, Sonar and Damage screens (`2`, `3`, `4`) are full screens framed alike: the stations across the top, the clock top right with the pause and sound buttons just left of it, the keys at the foot. The Captain's log (`5`) is a sheet over the screen. On a narrow screen (1024 by 768) the strip under the view sets its buttons from each end and Left and Right shrink to their arrows, so no button lies over another; the telegraph's words keep apart on a small dial.
 
+The key strip along the foot of the Map, Sonar and Damage screens is not on the dashboard, which has its own buttons and message window; two of its kinds are, set at the foot of the view out where the eye is in an attack: the Target Practice's lesson (brass-edged) and the danger's way out (Hunted, in red). On the map with a pack to command, the strip says how to select a boat, and once one is selected, her orders (`O`, a right click, `Enter`, `N`).
+
 A mission (not the practice) opens on its **briefing**, a board over the dashboard with the clock still: the card's words, your side and the vessel you are aboard, what counts, three first moves. Begin (`Space`) starts it.
 
 ## Elevation & Depth
@@ -134,6 +136,12 @@ Square-ish (6px), **hud-panel** ground, hairline edge. A row is a label, a readi
 
 ### The ship list and the preview card
 On the map, top left, your whole side in a table, a row a vessel, in fixed columns with tabular figures so nothing moves as the numbers change: the one you are aboard in amber, the one selected marked with an amber bar. Her order is a framed button the width of its column (a click gives the next). Her lamps are words in small boxes, lit only when they apply: red for danger (hunted, flooding, radio out, deaf), amber for a state (silent, snorkel, radar, active), green for good (charging). At the lower left a HUD panel shows whichever vessel the mouse is over, in the list or on the plot, else the one you are aboard: her name, class and order at its head, her readings and bars under it.
+
+### The orders menu
+A boat's order tag on the map opens her orders at the mouse: each with its number (its key while the menu is open), the one she sails under in amber, Take command at the foot in green, and under them what the order pointed at or focused does, written in the menu rather than in a tip over the orders below it.
+
+### A hit, and the run before it
+After a spread with a solution, the view stays on the target while it runs and twenty seconds after, until you train it yourself; the trigger reads *Running… n in the water* and is not lit again. Your own hit, and any ship sunk, is stamped over the view out for two seconds: the word in the wordmark's pixel face, amber, on the red light's black, the ship under it, the message window's frame lit with it. It lands and fades; no bounce.
 
 ### The telegraph (the title's menu)
 A brass engine-room telegraph drawn in SVG: a brass rim and bolts round a red-lit face, the choices set round it where the bells go, from lower left to lower right as the dashboard's telegraph has them. A brass arm swings to the choice pointed at or keyed, with a little overshoot; the window under the hub says it in full, in the wordmark's face. The bell rings a choice.

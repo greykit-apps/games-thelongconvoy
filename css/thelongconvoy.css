@@ -186,6 +186,8 @@ img.glyph { display: block; }
 .paper button.primary:focus { background: var(--p-ink); border-color: var(--p-ink); text-decoration-color: var(--p-paper); }
 /* on an inked button the pencil's tick stands off the corner, on the paper, where it reads (3.6:1, not 2.95 on the ink) */
 .paper button.primary:focus::after { left: -15px; top: -15px; }
+/* a key cap on a filled button (amber at rest, ink in focus) is cut in the paper's colour, not the ink's */
+.paper button.primary kbd { color: var(--p-paper); border-color: rgba(26,9,7,.4); background: rgba(26,9,7,.08); }
 .paper button.danger { border-color: rgba(255,61,36,.6); }
 .paper button.danger:focus { background: var(--p-red); border-color: var(--p-red); color: var(--p-paper); }
 .paper button:focus::after { content: ""; position: absolute; left: -10px; top: -11px; width: 22px; height: 18px; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'%3E%3Cpath d='M2.4 10.8 C4.6 12.2 6.6 14.4 8.4 17.4 C11.6 10.6 16.2 5.6 22.2 1.8' fill='none' stroke='%23c2452f' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; animation: p-tick .16s cubic-bezier(.3,.7,.2,1) both; }
@@ -370,7 +372,7 @@ img.fig { display: inline-block; vertical-align: middle; }
 /* ---- the HUD: a strip of stations across the top, the boat's readings at the bottom left, the TDC on the right ---- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; font: 500 15px/1.2 var(--ui); color: var(--ps-text); }
 #hud .hp { position: absolute; background: var(--ps-hudpanel); border: 1px solid rgba(255,110,80,.14); border-radius: 6px; box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 8px 22px rgba(0,0,0,.28); }
-#hud .lbl { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(236,231,220,.72); }
+#hud .lbl { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ps-muted); }
 #hud .hp { transition: opacity .25s ease-out; }
 #hud .hp.thin { opacity: .3; }
 @media (prefers-reduced-motion: reduce) { #hud .hp { transition: none; } }
@@ -499,7 +501,7 @@ img.fig { display: inline-block; vertical-align: middle; }
 #hud .h-toast.red kbd { color: #ffd7cc; border-color: rgba(255,215,204,.45); background: rgba(255,215,204,.08); }
 #hud .h-toast.green { color: #d6f5e2; }
 #hud .h-toast.amber { color: #ffd9a0; }
-#hud .h-hint { position: static; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 6px; padding: 8px 14px; font-size: 14px; color: rgba(236,231,220,.78); }
+#hud .h-hint { position: static; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 6px; padding: 8px 14px; font-size: 14px; color: rgba(255,208,189,.82); }
 #hud .h-hint .sep { display: inline-block; width: 1px; height: 16px; background: var(--ps-hair); margin: 0 6px; }
 #hud .h-hint .seg { text-align: center; }
 #hud .h-hint .seg kbd + kbd { margin-left: 3px; }
@@ -520,9 +522,25 @@ img.fig { display: inline-block; vertical-align: middle; }
 #hud .h-end[data-tone="danger"] { border-color: rgba(255,61,36,.55); }
 #hud .h-end[data-tone="danger"] b { color: var(--ps-red-text); }
 #hud .h-end span { color: var(--ps-muted); }
+/* a hit or a sinking, stamped over the view for two seconds: the clock's pixel face, amber on the red light's black;
+ * it lands at once and fades, no bounce */
+#hud .h-stamp { position: absolute; transform: translate(-50%, -50%); padding: .35em 1.1em .5em; text-align: center; pointer-events: none; background: rgba(16,6,5,.84); border: 1px solid rgba(255,198,90,.55); border-radius: 2px; }
+#hud .h-stamp b { display: block; font: 700 2.3em/1 var(--px); letter-spacing: .1em; text-transform: uppercase; color: var(--ps-yellow); text-shadow: .08em .08em 0 #5c1a10; }
+#hud .h-stamp span { display: block; margin-top: .35em; font: 600 .9em/1.2 var(--ui); letter-spacing: .12em; text-transform: uppercase; color: var(--ps-text); }
+#hud .h-stamp.on { animation: h-stamp 2.4s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes h-stamp { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); } 7% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+.h-msgs.hit { animation: h-msgs-hit 1.4s ease-out; }
+@keyframes h-msgs-hit { from { box-shadow: inset 0 0 0 1px var(--ps-yellow), inset 0 0 22px rgba(255,198,90,.22); } to { box-shadow: inset 0 0 0 1px rgba(255,198,90,0), inset 0 0 22px rgba(255,198,90,0); } }
+@media (prefers-reduced-motion: reduce) {
+  #hud .h-stamp.on { animation: h-stamp-still 2.4s linear both; }
+  .h-msgs.hit { animation: none; }
+}
+@keyframes h-stamp-still { 0%, 78% { opacity: 1; } 100% { opacity: 0; } }
 /* the port's call, when a base is in reach */
 /* ---- the dashboard (art/dash.js): its buttons and its message window over the canvas; the old panels stand down ---- */
-#hud.dashmode #h-tabs, #hud.dashmode #h-clock, #hud.dashmode #h-boat, #hud.dashmode #h-tdc, #hud.dashmode #h-orders, #hud.dashmode .h-low,
+/* the foot's strip stays on the dashboard only for the practice's lesson and the danger's way out, set at the foot of
+ * the view (hud.js); the plain key strip and the toasts stand down (the message window keeps the news) */
+#hud.dashmode #h-tabs, #hud.dashmode #h-clock, #hud.dashmode #h-boat, #hud.dashmode #h-tdc, #hud.dashmode #h-orders, #hud.dashmode .h-toasts, #hud.dashmode .h-hint:not(.coach):not(.danger),
 #hud.statusmode #h-boat, #hud.statusmode #h-tdc, #hud.statusmode #h-orders, #hud.statusmode #h-hull, #hud.statusmode #h-dmg { display: none; }
 #hud:not(.dashmode) .h-msgs { display: none; }
 .h-dash { position: absolute; inset: 0; pointer-events: none; }
@@ -589,7 +607,8 @@ img.fig { display: inline-block; vertical-align: middle; }
 @media (prefers-reduced-motion: reduce) { .h-dash .db.guns.ready .lamp { animation: none; } }
 .h-dash .db.slide { background: none; border-color: transparent; box-shadow: none; cursor: ns-resize; touch-action: none; }
 .h-dash .db.slide:hover { background: rgba(255,110,80,.06); border-color: transparent; }
-.h-labels .hl.sea { color: #8cc4e2; }
+/* the surface mark on a depth scale: the red light's cream, not the sea's blue (nothing inside the hull is blue) */
+.h-labels .hl.sea { color: var(--ps-text); }
 @keyframes db-alarm { 50% { background: #6a1a0c; color: var(--ps-text); } }
 @media (prefers-reduced-motion: reduce) { .h-dash .db.alarm { animation: none; } }
 .h-msgs { position: absolute; overflow: hidden; padding: 4px 6px; font: 500 12px/1.3 var(--ui); color: var(--ps-muted); pointer-events: none; display: flex; flex-direction: column; justify-content: flex-end; }
@@ -651,7 +670,10 @@ img.fig { display: inline-block; vertical-align: middle; }
 .omenu { position: absolute; z-index: 5; min-width: 150px; padding: 8px 8px 6px; display: flex; flex-direction: column; gap: 3px; }
 .omenu .ht-name { margin: 0 4px 4px; }
 .omenu .om-note { margin: 0 4px 4px; font: 600 12px/1.2 var(--ui); color: var(--ps-muted); }
-.omenu button { font: 600 14px/1 var(--ui); padding: 6px 8px; text-align: left; background: transparent; color: inherit; border: 1px solid var(--ps-hair); cursor: pointer; }
+.omenu button { display: flex; align-items: center; gap: 8px; font: 600 14px/1 var(--ui); padding: 5px 8px 5px 5px; text-align: left; background: transparent; color: inherit; border: 1px solid var(--ps-hair); cursor: pointer; }
+.omenu button kbd { min-width: 1.6em; padding: 2px 4px 1px; font-size: 11px; color: var(--ps-muted); }
+.omenu button.on kbd { color: var(--ps-yellow); border-color: rgba(255,198,90,.45); }
+.omenu .om-desc { width: 0; min-width: 100%; min-height: 2.6em; margin: 5px 4px 0; font: 500 12px/1.3 var(--ui); color: var(--ps-muted); }
 .omenu button.on { color: var(--ps-yellow); border-color: currentColor; }
 .omenu button:hover, .omenu button:focus-visible { border-color: var(--ps-muted); outline: none; }
 .omenu button.take { margin-top: 3px; color: var(--ps-green); }
