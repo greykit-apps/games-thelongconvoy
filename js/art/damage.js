@@ -1,5 +1,6 @@
 /* The Long Convoy -- the damage report: the boat cut away side on, in the
- * panel's steel. Her seven compartments under the casing and the conning
+ * panel's steel, on the red light's ground with its words and its depth bar
+ * in the red light's colours (only the boat herself keeps her metal). Her seven compartments under the casing and the conning
  * tower; the water in her, rising from the bilges; a compartment with a
  * hurt system hatched (amber damaged, red out), sparking while it is bad,
  * so a state is never read by colour alone. Under her, the depth she is at
@@ -9,7 +10,7 @@
 "use strict";
 (() => {
   const K = PP.K, M = K.M, C = PP.C, Sub = PP.Sub, D = PP.DamageArt = {};
-  const INK = "#07090d", BG = "#0a0f16";
+  const INK = "#0b0504", BG = "#0d0504";
   /* the compartments, bow to stern, the systems in each, and the share of her length each takes */
   const ROOMS = [["FWD TORP", ["tubesF", "planes"], 1.15], ["FWD BATT", ["battery"], 0.9], ["CONTROL", ["scope", "radar", "sonar", "pumps"], 1], ["AFT BATT", ["battery"], 0.9],
     ["ENGINES", ["engines"], 1.25], ["MOTORS", ["motors"], 0.85], ["AFT TORP", ["tubesA", "planes"], 1]];
@@ -19,8 +20,8 @@
   const ground = (Wd, Ht) => K.get(`dmg:${Wd}x${Ht}`, () => {
     const c = K.mk(Wd, Ht), g = c.getContext("2d");
     g.fillStyle = BG; g.fillRect(0, 0, Wd, Ht);
-    for (let x = 0; x < Wd; x += 16) for (let y = 0; y < Ht; y++) if ((y & 1) === 0) { g.fillStyle = x % 64 === 0 ? "rgba(127,170,200,.07)" : "rgba(127,170,200,.035)"; g.fillRect(x, y, 1, 1); }
-    for (let y = 0; y < Ht; y += 16) for (let x = 0; x < Wd; x++) if ((x & 1) === 0) { g.fillStyle = y % 64 === 0 ? "rgba(127,170,200,.07)" : "rgba(127,170,200,.035)"; g.fillRect(x, y, 1, 1); }
+    for (let x = 0; x < Wd; x += 16) for (let y = 0; y < Ht; y++) if ((y & 1) === 0) { g.fillStyle = x % 64 === 0 ? "rgba(255,140,110,.07)" : "rgba(255,140,110,.035)"; g.fillRect(x, y, 1, 1); }
+    for (let y = 0; y < Ht; y += 16) for (let x = 0; x < Wd; x++) if ((x & 1) === 0) { g.fillStyle = y % 64 === 0 ? "rgba(255,140,110,.07)" : "rgba(255,140,110,.035)"; g.fillRect(x, y, 1, 1); }
     return c;
   });
 
@@ -69,7 +70,7 @@
         for (let x = Math.round(rx + 3); x < rx + w - 2; x++) { const h = half(x) - 3; for (let y = Math.round(yC - h); y < yC + h; y++) if ((x + y) % gap === 0) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } }
         if (!calm) for (let k = 0; k < (worst >= 0.5 ? 6 : 3); k++) { const hh = K.hash(i, k, Math.floor(now / 90)); if (hh < 0.45) continue; K.px(g, mid + (K.hash(i, k, 7 + Math.floor(now / 90)) - 0.5) * w * 0.6, yC + (hh - 0.7) * R * 1.4, "#ffe08a"); }
       }
-      const tone = worst >= 0.5 ? "#ff9a80" : worst > 0.05 ? "#f0a43c" : "#8d949d";
+      const tone = worst >= 0.5 ? "#ff9a80" : worst > 0.05 ? "#f0a43c" : "#c27662";
       K.text5(g, name, Math.round(mid - K.text5w(name) / 2), Math.round(yC + R + 7), tone, INK);
       if (worst > 0.05) K.rect(g, Math.round(mid - K.text5w(name) / 2), Math.round(yC + R + 15), K.text5w(name), 1, tone);
       rx += w;
@@ -81,12 +82,12 @@
     const by = Math.round(yC + R + 34), bx = x0, bw = L, X = d => Math.round(bx + PP.clamp(d / maxD, 0, 1) * bw);
     K.rect(g, bx - 1, by - 1, bw + 2, 8, INK);
     for (let x = bx; x < bx + bw; x++) {
-      const d = (x - bx) / bw * maxD, col = d >= crush ? "#7a1a10" : d >= test ? RED_D : "#1d2a3a";
+      const d = (x - bx) / bw * maxD, col = d >= crush ? "#7a1a10" : d >= test ? RED_D : "#33201a";
       for (let y = by; y < by + 6; y++) { g.fillStyle = d >= test && d < crush && (x + y) % 3 === 0 ? "#3a1a12" : col; g.fillRect(x, y, 1, 1); }
     }
     if (crush < k.crush - 1) for (let x = X(crush); x < X(k.crush); x++) if (x % 2) K.px(g, x, by + 7, "#ff9a80");
     const dx = X(s.depth);
-    K.poly(g, [[dx, by + 7], [dx - 4, by + 13], [dx + 4, by + 13]], "#ece7dc");
+    K.poly(g, [[dx, by + 7], [dx - 4, by + 13], [dx + 4, by + 13]], "#ffd0bd");
     if (Math.abs(s.ordDepth - s.depth) > 3) { const ox = X(s.ordDepth); K.poly(g, [[ox, by - 2], [ox - 3, by - 7], [ox + 3, by - 7]], "#e6bd6a"); }
     label3(g, "DEPTH", bx, by - 10);
     lab("d:now", `<b>${Sub.surfaced(s) ? "Surfaced" : Math.round(s.depth) + " ft"}</b>`, dx, by + 15, "rd" + (s.depth > test ? " danger" : ""), "ct");
@@ -96,5 +97,5 @@
     lab("d:crush", `Crush ${Math.round(crush)}`, X(crush), by - 3, "cap danger", near && crush > test ? "lb" : near ? "rb" : "cb");
   };
   const RED_D = "#5a2216";
-  const label3 = (g, t, x, y) => K.text5(g, t, x, y, "#8d949d", INK);
+  const label3 = (g, t, x, y) => K.text5(g, t, x, y, "#c27662", INK);
 })();

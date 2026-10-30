@@ -98,7 +98,7 @@
         at: [560, 345], hdg: 280, conv: { kinds: C.MERCHANTS, n, escorts: escN }, boats: spots.slice(0, np).map(([a, b]) => [c.cls, a, b, PD]) };
     }
     const S = E.base({ seed, mode: "action", mi: A.mi, hour: A.hour, day: A.day || 10, real, cls: A.boats[0][0], name: PP.pick(PP.mulberry(seed), C.BOAT_NAMES) });
-    S.scn = A.id; S.scnName = A.name;
+    S.scn = A.id; S.scnName = A.name; S.scnNote = A.note || "";
     E.setWx(S, A.wx);
     const hdg = A.hdg * PP.DEG, x = A.at[0] * NM, y = A.at[1] * NM;
     let comp;
@@ -136,7 +136,7 @@
       for (const sh of S.ships) if (sh.role === "escort") { sh.ord = "screen"; sh.wps = []; }
       const first = S.ships.find(q => q.role === "escort");
       if (first) PP.Escort.take(S, first);
-      S.scnName = A.escName || A.name;
+      S.scnName = A.escName || A.name; S.scnNote = A.escNote || A.note || "";
       (A.escOrders || []).forEach((o, i) => { if (S.subs[i]) S.subs[i].orders = o; });
     }
     if (A.limit) S.endT = S.t + A.limit * 3600;

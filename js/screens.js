@@ -115,6 +115,8 @@
 
   /* ---- the convoy actions, in the order of the war ---- */
   const escorts = A => { const n = A.conv.esc ? A.conv.esc.length : A.conv.escorts; return n ? `${n} escort${n > 1 ? "s" : ""}` : "unescorted"; };
+  /* a mission's best on the side shown, as its card's last word */
+  const bestOf = (f, A, side) => { const r = f.actions[PP.recKey(A, side)]; return !r ? "" : side === "escorts" ? ` · best ${r.score}%` : ` · best ${num(r.tons)} t`; };
   UI.actions = () => {
     const real = Object.assign({}, PP.prefs.real), f = PP.fame();
     /* the side you play: the pack, or the escorts (the 1990 game let you play either) */
@@ -123,7 +125,7 @@
     UI.open("Missions", { wide: true, back: () => PP.game.toTitle(),
       html: () => `<div class="row">${pill(side === "pack", "The Wolfpack", "side:pack")}${pill(side === "escorts", "The PDF", "side:escorts")}</div>
         <p class="lede">${side === "pack" ? "The Wolf Empire's wolfpack against Pumacity's shipping: one engagement, one night or day of the war." : "The Pumacity Defense Fleet, escorting the city's shipping against the wolfpack: you are aboard one escort, the others keep their stations under your orders."}</p>
-        <div class="diffs acts">${list().map((A, i) => `<button data-a="${A.id}"><b><kbd>${i + 1}</kbd>${esc(side === "escorts" ? A.escName || A.name : A.name)}</b><span>${esc(side === "escorts" ? A.escNote || A.note : A.note)}</span><span class="meta">${esc(C.dateStr(C.monthStart(A.mi) + ((A.day || 10) - 1) * C.DAY))} · ${A.boats.length} boat${A.boats.length > 1 ? "s" : ""} · ${A.conv.n ? A.conv.n + " ships" : "no merchants"} · ${escorts(A)}${f.actions[A.id] ? ` · best ${num(f.actions[A.id].tons)} t` : ""}</span></button>`).join("")}
+        <div class="diffs acts">${list().map((A, i) => `<button data-a="${A.id}"><b><kbd>${i + 1}</kbd>${esc(side === "escorts" ? A.escName || A.name : A.name)}</b><span>${esc(side === "escorts" ? A.escNote || A.note : A.note)}</span><span class="meta">${esc(C.dateStr(C.monthStart(A.mi) + ((A.day || 10) - 1) * C.DAY))} · ${A.boats.length} boat${A.boats.length > 1 ? "s" : ""} · ${A.conv.n ? A.conv.n + " ships" : "no merchants"} · ${escorts(A)}${bestOf(f, A, side)}</span></button>`).join("")}
           ${side === "pack" ? `<button data-a="custom"><b><kbd>9</kbd>Custom mission</b><span>The year, the pack, the convoy, the time and the weather of your choosing.</span></button>` : ""}</div>
         ${realLine(real, "real")}`,
       onKey: ev => { const n = +ev.key, L = list(); if (n >= 1 && n <= L.length) { ev.preventDefault(); go(L[n - 1].id); return true; } if (ev.key === "9" && side === "pack") { ev.preventDefault(); go("custom"); return true; } return false; },
@@ -160,9 +162,39 @@
   /* ---- the service record ---- */
   UI.record = after => {
     const f = PP.fame();
+    /* each side's missions, its best result in each; one not yet fought says so, and an empty record says where to start */
+    const side = (sd, head, sub) => {
+      const L = E.ACTIONS.filter(A => (A.sides || ["pack"]).includes(sd));
+      return `<h3>${head}</h3><p class="note">${sub}</p><table class="scores">${L.map(A => { const r = f.actions[PP.recKey(A, sd)];
+        return `<tr><td>${esc(sd === "escorts" ? A.escName || A.name : A.name)}</td><td class="num">${r ? (sd === "escorts" ? `${r.score}%` : num(r.tons) + " t") : '<span class="note">not yet fought</span>'}</td><td>${r ? (sd === "escorts" ? "" : r.score !== undefined ? `${r.score}% · ` : "") + esc(r.rating) + ` · reality ${r.pct}%` : ""}</td></tr>`; }).join("")}</table>`;
+    };
+    const none = !Object.keys(f.actions).length;
     UI.open("Service record", { wide: true, onClose: after,
-      html: () => `<h3>Missions</h3><table class="scores">${E.ACTIONS.map(A => { const r = f.actions[A.id]; return `<tr><td>${esc(A.name)}</td><td class="num">${r ? num(r.tons) + " t" : "—"}</td><td>${r ? (r.score !== undefined ? `${r.score}% · ` : "") + esc(r.rating) + ` · reality ${r.pct}%` : ""}</td></tr>`; }).join("")}</table>`,
+      html: () => `${none ? `<p class="lesson">Your best result in each mission is kept here, in this browser. Nothing yet: fight one from <b>Missions</b> (<kbd>C</kbd> on the title).</p>` : ""}
+        ${side("pack", "The Wolfpack", "The most tonnage sunk")}${side("escorts", "The PDF", "The best score: the convoy's tonnage saved, and the boats sunk")}`,
     });
+  };
+
+  /* ---- the briefing: a mission's orders on the paper before the clock starts. What the card said, who is on
+   * your side and which of them you are aboard, what counts, and the first moves. Begin (Space, or Esc) starts it;
+   * the clock is still while any sheet is up ---- */
+  UI.briefing = (S, done) => {
+    const esc_ = S.side === "escorts", f = esc_ ? PP.Escort.flag(S) : S.sub, mine = esc_ ? PP.Escort.mine(S) : S.subs;
+    const d = C.date(S.t), when = `${C.dateStr(S.t)}, ${String(d.h).padStart(2, "0")}${String(d.min).padStart(2, "0")}${S.wx ? ", " + C.WX[S.wx.k].name.toLowerCase() : ""}`;
+    const merch = S.ships.filter(q => q.role === "merchant").length, escs = S.ships.filter(q => q.role === "escort").length;
+    const side = esc_ ? `${mine.length} escort${mine.length > 1 ? "s" : ""} of the PDF${merch ? `, round ${merch} ships` : ""}, against ${S.subs.length} boat${S.subs.length > 1 ? "s" : ""}. You are aboard <b>${esc(f.name)}</b>${mine.length > 1 ? "; the others keep station under the orders you give them" : ""}.`
+      : `${mine.length} boat${mine.length > 1 ? "s" : ""} of the pack, against ${merch ? `${merch} ships` : "no merchants"} and ${escs} escort${escs === 1 ? "" : "s"}. You are aboard <b>${esc(f.name)}</b>${mine.length > 1 ? "; the others hunt under their own captains, on the orders you give them" : ""}.`;
+    const goal = esc_ ? (merch ? "Bring the convoy through: the score is the tonnage saved, and the boats sunk." : "Find the boats and sink them.")
+      : S.goal === "escort" ? "Sink the escort, or slip away from her: deep, slow and quiet." : "Sink what you can of the convoy, and bring the pack home: the score counts both.";
+    const first = esc_ ? ["<kbd>2</kbd> the map: your escorts, the convoy, every contact.", "Under 15 knots to hear them; <kbd>X</kbd> pings, and they hear that too.", "Run in over a contact and lay the pattern: <kbd>Space</kbd>."]
+      : ["<kbd>2</kbd> the map: the pack and the convoy. Get ahead of it.", "Periscope depth (<kbd>P</kbd>) as it comes on; <kbd>T</kbd> picks a ship.", "<kbd>Space</kbd> fires when the lamp says On target. Then deep (<kbd>E</kbd>) and quiet (<kbd>X</kbd>)."];
+    const go = () => { if (!UI.sheet) return; UI.close(true); done(); };
+    UI.open(S.scnName || "Orders", { wide: true, closable: false,
+      html: () => `<div class="report"><div><p class="meta">${esc(when)}</p>${S.scnNote ? `<p class="lesson">${esc(S.scnNote)}</p>` : ""}<p>${side}</p><p class="lesson"><b>${goal}</b></p></div>
+        <div><h3>First moves</h3><ol class="brief">${first.map(x => `<li>${x}</li>`).join("")}</ol><p class="note"><kbd>?</kbd> has every key; <kbd>Esc</kbd> pauses.</p></div></div>
+        <div class="row end"><button data-act="go" class="primary">Begin <kbd>Space</kbd></button></div>`,
+      onClick: b => { if (b.dataset.act === "go") go(); },
+      onKey: ev => { if (ev.key === "Escape" || ev.key === " " && !(document.activeElement && document.activeElement.tagName === "BUTTON")) { ev.preventDefault(); go(); return true; } return false; } });
   };
 
   /* ---- pause: a slip of the title's signal paper; where and when, the choices, and the keys that matter most ---- */
@@ -184,8 +216,8 @@
         if (a === "log") { UI.close(true); UI.log(S, () => UI.pause()); }
         if (a === "settings") { UI.close(true); UI.settings(() => UI.pause()); }
         if (a === "help") { UI.close(true); UI.help(0, () => UI.pause()); }
-        if (a === "leave") { if (PP.prefs.resume) { UI.close(true); PP.game.leave(); } else if (await UI.ask("End this action here? What you have sunk still counts.", "End the action")) { UI.close(true); PP.game.endAction(); } }
-        if (a === "end" && await UI.ask("End this action here? What you have sunk still counts.", "End the action")) { UI.close(true); PP.game.endAction(); }
+        if (a === "leave") { if (PP.prefs.resume) { UI.close(true); PP.game.leave(); } else if (await UI.ask("End this mission here? What you have sunk still counts.", "End the mission")) { UI.close(true); PP.game.endAction(); } }
+        if (a === "end" && await UI.ask("End this mission here? What you have sunk still counts.", "End the mission")) { UI.close(true); PP.game.endAction(); }
       },
       onClose: () => PP.game.unpause(),
     });
@@ -211,9 +243,12 @@
   }).join("")}</table>`;
   UI.actionOver = S => {
     const pct = C.realPct(S.real), D = E.debrief(S), rating = D.rating, lost = S.end && (S.end.why === "crushed" || S.end.why === "flooded");
-    const rec = { tons: S.stats.tons, pts: Math.round(S.stats.tons * pct / 100), pct, rating, score: D.score, code: !!S.cheated, at: Date.now() };
-    const best = S.mode === "action" && !lost && S.stats.tons > 0 ? PP.addAction(S.scn, rec) : false;
-    const why = { allSunk: S.goal === "escort" ? "The hunter is on the bottom." : "Every merchant in the convoy is on the bottom.", escaped: "The rest of the convoy got away.", slipped: "The pack slipped away from the hunter.", crushed: "The last of the pack is lost.", flooded: "The last of the pack is lost.", ended: "You broke off the action.", time: "The time was up.", fleetLost: "Every escort is sunk." }[S.end ? S.end.why : "ended"] || "";
+    /* kept by side: the pack's best is the most sunk; the PDF's, its score (a convoy brought through untouched sinks
+     * nothing, and is the best of all) */
+    const pdf = S.side === "escorts", A0 = E.ACTIONS.find(a => a.id === S.scn);
+    const rec = { tons: S.stats.tons, pts: Math.round((pdf ? D.score * 100 : S.stats.tons) * pct / 100), pct, rating, score: D.score, side: pdf ? "escorts" : "pack", code: !!S.cheated, at: Date.now() };
+    const best = S.mode === "action" && A0 && (pdf || (!lost && S.stats.tons > 0)) ? PP.addAction(PP.recKey(A0, S.side), rec) : false;
+    const why = { allSunk: S.goal === "escort" ? "The hunter is on the bottom." : "Every merchant in the convoy is on the bottom.", escaped: "The rest of the convoy got away.", slipped: "The pack slipped away from the hunter.", crushed: "The last of the pack is lost.", flooded: "The last of the pack is lost.", ended: "You ended it here.", time: "The time was up.", fleetLost: "Every escort is sunk." }[S.end ? S.end.why : "ended"] || "";
     if (S.mode === "action") {
       const sd = D.sides;
       UI.open("Debrief", { wide: true, closable: false,
@@ -240,14 +275,15 @@
       return;
     }
     UI.open(lost ? "Lost with all hands" : "Practice over", { wide: true, closable: false,
-      html: () => `<div class="report"><div><h3 class="mname big${lost ? " danger" : S.stats.tons ? " ok" : ""}">${num(S.stats.tons)} tons</h3>
-        <p class="meta">${esc(why)} ${esc(S.scnName || "")}</p>
+      /* the headline: the tonnage sunk; in the practice, with nothing sunk, the hits (a hit is the lesson learnt) */
+      html: () => `<div class="report"><div><h3 class="mname big${lost ? " danger" : S.stats.tons || (S.mode === "practice" && S.stats.hits) ? " ok" : ""}">${S.mode === "practice" && !S.stats.tons && !lost ? (S.stats.hits ? `${S.stats.hits} hit${S.stats.hits > 1 ? "s" : ""}` : S.stats.fired ? "No hits yet" : "No shots yet") : `${num(S.stats.tons)} tons`}</h3>
+        <p class="meta">${esc(S.scnName || "")}. ${esc(why)}</p>
         ${!lost && S.stats.charges ? `<p class="honour">Survived ${S.stats.charges} depth charge${S.stats.charges > 1 ? "s" : ""}</p>` : ""}
         ${S.mode === "action" && !lost && !S.stats.tons ? `<p class="lesson">${S.stats.fired ? (S.stats.hits ? "Hits, but nothing went down: a big ship can take more than one. Stay with her for the next shot." : "Every shot missed. Shoot from ahead of the target, 1,000 to 2,000 yards off its track, near 90° on the bow.") : "No torpedoes away. Get ahead of the convoy on the surface, then dive across its track."} The convoy is still out there.</p>` : ""}
-        ${S.mode === "practice" ? `<p class="lesson">${S.stats.hits ? "That's the attack. Escorts next: a convoy action, where they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of the target and off its track, under 3,000 yards." : "Select a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the lamp says On target."}</p>` : ""}
+        ${S.mode === "practice" ? `<p class="lesson">${S.stats.hits ? "That's the attack. Next, a mission with escorts: they hunt back." : S.stats.fired ? "A miss teaches the angle: shoot from ahead of the target and off its track, under 3,000 yards." : "Select a ship with <kbd>T</kbd>, and fire with <kbd>Space</kbd> when the lamp says On target."}</p>` : ""}
         ${S.mode === "practice" ? "" : `<p class="note">Reality ${pct}%.</p>`}</div>
         <div>${S.stats.sunk.length ? `<h3>Sunk</h3>${sunkTable(S.stats.sunk)}` : ""}<h3>The engagement</h3>${tally(S)}</div></div>
-        <div class="row end"><button data-act="again" class="primary">${S.mode === "practice" ? "Again" : "Fight it again"}</button><button data-act="actions">${S.mode === "practice" ? "Missions" : "Convoy actions"}</button><button data-act="title">Main menu</button></div>`,
+        <div class="row end"><button data-act="again" class="primary">${S.mode === "practice" ? "Again" : "Fight it again"}</button><button data-act="actions">Missions</button><button data-act="title">Main menu</button></div>`,
       onClick: b => {
         const a = b.dataset.act;
         if (a === "again") { UI.close(true); S.mode === "practice" ? PP.game.startPractice() : PP.game.startAction(S.scn, S.real, PP.game.lastCustom); }
@@ -316,7 +352,7 @@
   const HELP_TABS = ["Start here", "U-boat", "Escort", "Keys", "Gamepad"];
   UI.helpTab = name => Math.max(0, HELP_TABS.indexOf(name));
   UI.helpTabs = () => [
-    ["Start here", `<p class="lede">Sink the convoy as the Wolf Empire's U-boats, or bring it home as the Pumacity Defense Fleet's escorts. Pick a side on the <b>Missions</b> page.</p>
+    ["Start here", `<p class="lede">Sink the convoy as the Wolf Empire's U-boats, or bring it home as the Pumacity Defense Fleet's escorts. New to it? <b>Target Practice</b> (<kbd>T</kbd> on the title) is one boat and a few ships, no escorts: the attack below, in safety. Then pick a side on the <b>Missions</b> page.</p>
       ${grid(
         `<section class="hcard"><h3>Your first attack, in a U-boat</h3><ol class="steps">
           <li>Open the <b>map</b> (${kb("2")}) and get ahead of the convoy. On the surface you are fastest.</li>

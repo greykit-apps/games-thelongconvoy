@@ -129,19 +129,22 @@
   /* the full screen: the waterfall large, and down the right what it is hearing and how well */
   Snr.screen = (g, S, ui, now, Wd, Ht) => {
     K.rect(g, 0, 0, Wd, Ht, "#0d0504");
-    const me = listener(S), m = 8, pw = Math.max(120, Math.round(Wd * 0.22)), wx = m, wy = 30, ww = Wd - pw - 3 * m, wh = Ht - wy - 44;
+    /* framed as the Map and the Damage report are: the stations across the top, the clock top right, the keys at
+     * the foot; the waterfall under the stations, what it hears in a column under the clock */
+    const sf = R.safe || { t: 28, b: 12, tr: 28 }, me = listener(S), m = 8, pw = Math.max(120, Math.round(Wd * 0.22));
+    const wx = m, wy = sf.t + 16, ww = Wd - pw - 3 * m, wh = Ht - wy - Math.max(sf.b, 20) - 4;
     K.rect(g, wx - 1, wy - 1, ww + 2, wh + 2, "rgba(255,110,80,.3)");
     Snr.draw(g, S, wx, wy, ww, wh);
-    const esc = S.side === "escorts", px = wx + ww + m + m, B = [];
-    R.lab("s:title", `<b>Sonar</b> <span class="c">${esc ? (me && me.ping ? "active, pinging" : "passive, listening") : "hydrophones"} · a line a second, newest at the top</span>`, wx, 16, "dl", "lm");
-    B.push({ id: "back", html: "&#9664; Dashboard <kbd>1</kbd>", x: px, y: wy, w: 92, h: 16, act: "st1" });
-    if (esc && me) B.push({ id: "pa", html: me.ping ? "Active <kbd>X</kbd>" : "Passive <kbd>X</kbd>", x: px, y: wy + 20, w: 92, h: 16, act: "silent", on: !!me.ping, title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too (X)" });
+    const esc = S.side === "escorts", px = wx + ww + m + m, B = [], py = Math.max(wy, (sf.tr || 0) + 6);
+    R.lab("s:title", `<b>Sonar</b> <span class="c">${esc ? (me && me.ping ? "active, pinging" : "passive, listening") : "hydrophones"} · a line a second, newest at the top</span>`, wx, wy - 8, "dl", "lm");
+    if (esc && me) B.push({ id: "pa", html: me.ping ? "Active <kbd>X</kbd>" : "Passive <kbd>X</kbd>", x: px, y: py, w: 92, h: 16, act: "silent", on: !!me.ping, title: "Passive: listen (slow, under 15 knots). Active: ping, which they hear too (X)" });
     if (me) {
-      let y = wy + (esc ? 50 : 30);
+      let y = py + (esc ? 30 : 8);
       const say = (id, html, cls = "") => { R.lab("s:" + id, html, px, y, "dl" + (cls ? " " + cls : ""), "lm"); y += 15; };
       const why = esc ? (me.spd > D.hydFastKn ? "Too fast to hear: under 15 knots to listen" : "") : Sub.surfaced(me) ? "On the surface: the hydrophones hear the sea" : me.sys.sonar > 0.3 ? "The hydrophones are damaged" : "";
       say("spd", `<span class="c">Speed</span> <b>${Math.abs(me.spd).toFixed(1)} kn</b>`);
-      if (why) say("why", why, "amber");
+      /* (in two lines at its colon, so it keeps inside the column) */
+      if (why) why.split(/(?<=:) /).forEach((w, i) => say("why" + i, w, "amber"));
       y += 6; say("hd", '<span class="c">Heard now</span>');
       const list = W.heard.slice().sort((a, b) => b.v - a.v).slice(0, 9);
       if (!list.length) say("none", '<span class="c">Nothing above the sea</span>');

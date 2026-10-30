@@ -79,7 +79,7 @@
   const surf = s => !s.subs && s.depth === undefined ? true : Sub.surfaced(s);
   CH.view = (S, ui, Wd, Ht) => {
     /* (the dashboard's small map keeps only its row of buttons along the foot, so she sits in its middle) */
-    const sf = PP.Render.safe || { t: 28, b: 12 }, top = sf.t, bot = Ht - (ui.mini ? 16 : Math.max(sf.b, 60)), my = (top + bot) / 2;
+    const sf = PP.Render.safe || { t: 28, b: 12 }, top = sf.t, bot = Ht - (ui.mini === true ? 16 : Math.max(sf.b, 60)), my = (top + bot) / 2;
     let z = CH.ZOOMS[ui.chartZoom], cx, cy;
     if (!z) { z = Math.max(CH.seaW() / (Wd - 16), CH.seaH() / Math.max(40, bot - top - 8)); cx = CH.seaW() / 2; cy = CH.seaH() / 2; }
     else { const me = CH.me(S); cx = ui.chartAt ? ui.chartAt.x : me.x; cy = ui.chartAt ? ui.chartAt.y : me.y; }
@@ -143,8 +143,18 @@
     const tr = ui.track || [];
     g.fillStyle = "rgba(255,210,190,.35)";
     for (let i = 0; i < tr.length; i += 1) g.fillRect(Math.round(X(tr[i][0])), Math.round(Y(tr[i][1])), 1, 1);
-    /* range rings, close in */
-    if (z < 400 && !ui.title) for (const r of z <= 25 ? [1000, 2000, 4000] : z <= 60 ? [2000, 5000, 10000] : [5000, 10000, 20000]) { ringPx(g, X(s.x), Y(s.y), r / z, "rgba(255,150,120,.16)", 2); K.text5(g, PP.num(r) + " YD", Math.round(X(s.x) + r / z * 0.7 + 3), Math.round(Y(s.y) - r / z * 0.7 - 3), "rgba(255,190,170,.5)"); }
+    /* what a name must keep off: the rings' figures, the marks of the ships (named, below, adds the names) */
+    const named = [], marks = [], ringTxt = [];
+    const hitsOn = (b, w) => named.filter(o => Math.abs(o.y - b.y) < 9 && b.x < o.x + o.w + 3 && o.x < b.x + w + 3).length * 2 +
+      marks.filter(m => b.x < m.x + m.w && m.x < b.x + w && b.y - 1 < m.y + m.h && m.y < b.y + 8).length;
+    /* range rings, close in, their figures quiet */
+    if (z < 400 && !ui.title) for (const r of z <= 25 ? [1000, 2000, 4000] : z <= 60 ? [2000, 5000, 10000] : [5000, 10000, 20000]) {
+      /* (its figure a little south of east on the ring, where no panel of the HUD lies, each ring's lower than the one
+       * inside it so they stack apart; none off the edge, none over another) */
+      const t = PP.num(r) + " YD", tw = K.text5w(t), lx = Math.round(X(s.x) + r / z * 0.87 + 3), ly = Math.round(Y(s.y) + r / z * 0.5 + 1);
+      ringPx(g, X(s.x), Y(s.y), r / z, "rgba(255,150,120,.14)", 2);
+      if (lx + tw < Wd - 4) ringTxt.push({ t, x: lx, y: ly, w: tw });
+    }
     /* the escorts' ears (a Field aid): how far each could hear us now */
     if (aids.rings && !esc) for (const sh of S.ships) {
       if (sh.role !== "escort" || !PP.Ships.alive(sh) || !(Det.known(S, sh) || !S.real.vis)) continue;
@@ -161,6 +171,7 @@
       const r = Math.max(2, Math.min(5, Math.round(C.SHIPS[sh.cls].len / z / 2) + 2));
       if (know || (free && near)) {
         const x = X(sh.x), y = Y(sh.y);
+        marks.push({ x: x - r - 1, y: y - r - 1, w: 2 * r + 3, h: 2 * r + 3 });
         if (sh.sinking) cross(g, x, y, r, "#b88a7c");
         else if (sh.role === "escort") tri(g, x, y, r + 1, sh.hdg, COL.escort);
         else diamond(g, x, y, r, COL.merchant);
@@ -171,9 +182,12 @@
         if (sh.role === "escort") tri(g, x, y, r + 1, sh.kn.hdg || 0, COL.ghost, true); else diamond(g, x, y, r, COL.ghost, true);
       }
       /* heard, not seen: a line of bearing */
-      if (!know && sh.kn.ear && S.t - sh.kn.ear < 20) { const b = sh.kn.earBrg, L2 = Math.min(Wd, Ht) * 0.45; dash(g, X(s.x), Y(s.y), X(s.x) + PP.hx(b) * L2, Y(s.y) + PP.hy(b) * L2, "rgba(127,224,168,.7)", 2, 3); }
+      /* (in the red light's cream, faint and fading as the report ages: a hint where to look, not a mark) */
+      if (!know && sh.kn.ear && S.t - sh.kn.ear < 20) { const b = sh.kn.earBrg, L2 = Math.min(Wd, Ht) * 0.32, a = 0.42 * (1 - (S.t - sh.kn.ear) / 24); dash(g, X(s.x) + PP.hx(b) * 8, Y(s.y) + PP.hy(b) * 8, X(s.x) + PP.hx(b) * L2, Y(s.y) + PP.hy(b) * L2, `rgba(255,214,196,${a.toFixed(2)})`, 1, 4); }
       if (!know && sh.kn.smoke && S.t - sh.kn.smoke < 60) { const b = sh.kn.smokeBrg, L2 = Math.min(Wd, Ht) * 0.45; dash(g, X(s.x), Y(s.y), X(s.x) + PP.hx(b) * L2, Y(s.y) + PP.hy(b) * L2, "rgba(232,194,122,.6)", 1, 4); }
     }
+    /* the rings' figures, now the marks are down: one that would lie over a ship, or another figure, is left out */
+    for (const o of ringTxt) if (!hitsOn(o, o.w)) { K.text5(g, o.t, o.x, o.y, "rgba(255,190,170,.38)"); named.push(o); }
     const put = [];
     for (const q of rngAt.sort((a, b) => a.d - b.d)) {
       if (put.some(p => Math.abs(p.y - q.y) < 7 && q.x < p.x + 30 && p.x < q.x + 30)) continue;
@@ -217,12 +231,15 @@
         if ((q.seenT !== undefined && S.t - q.seenT < 30) || !S.real.vis && PP.dist(s.x, s.y, q.x, q.y) < 4000) tri(g, X(q.x), Y(q.y), 4, q.hdg, COL.escort, !Sub.surfaced(q));
       }
     }
-    /* a name beside a mark, unless it would sit on one already written (the nearer to the middle written first) */
-    const named = [];
-    const nameAt = (txt, x, y, col, ref) => {
-      /* a name that would run off the right edge goes on the other side of her */
-      const w = K.text5w(txt), b = { x: Math.round(x + w > Wd - 2 ? x - 16 - w : x), y: Math.round(y), w };
-      if (named.some(o => Math.abs(o.y - b.y) < 8 && b.x < o.x + o.w + 4 && o.x < b.x + w + 4)) return;
+    /* a name beside a mark: on her right, else her left, else above or below, wherever it lies over the fewest of
+     * the names already written, the rings' figures and the ships' marks (the boat aboard written first) */
+    const nameAt = (txt, x, y, col, ref, must) => {
+      const w = K.text5w(txt), mx = x - 8;
+      const tries = [[x, y], [mx - 8 - w, y], [mx - w / 2, y - 12], [mx - w / 2, y + 13]]
+        .map(([a, c]) => ({ x: Math.round(PP.clamp(a, 2, Wd - 2 - w)), y: Math.round(c), w }));
+      let b = tries[0], best = Infinity;
+      for (const t of tries) { const n = hitsOn(t, w); if (n < best) { best = n; b = t; } if (!n) break; }
+      if (best >= 2 && !must) return;
       named.push(b); K.text5(g, txt, b.x, b.y, col, INK);
       if (ref) {
         const nw = K.text5w(ref.name);
@@ -231,13 +248,18 @@
       }
     };
     /* the rest of the pack: the same triangle, dimmer, her name beside her; a boat lost, a cross where she went down */
+    const selId = esc ? null : (S.subs.find(q => q.id === ui.sel && !q.lost) || S.sub).id;
+    if (!esc) for (const q of S.subs) if (!q.lost) marks.push({ x: X(q.x) - 6, y: Y(q.y) - 6, w: 13, h: 13 });
+    /* the small map's row of buttons along its foot: a name keeps off it as off a mark */
+    if (ui.mini === true) marks.push({ x: 0, y: Ht - 16, w: Wd, h: 16 });
     if (!esc) for (const q of [s].concat(S.subs.filter(o => o !== s))) {
       const qx = X(q.x), qy = Y(q.y);
       if (q.lost) { cross(g, qx, qy, 4, COL.ghost); continue; }
       if (q !== s) tri(g, qx, qy, 4, q.hdg, Sub.surfaced(q) ? COL.pack : COL.packDown);
       /* the boat you are aboard is named too: her order is the one she sails under when you leave her */
       if (q === s && ui.title) continue;
-      nameAt(q.name.toUpperCase() + (ui.title ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), qx + (q === s ? 8 : 7), qy - 3, q === s ? COL.sub : COL.packDown, ui.title ? null : { side: "pack", id: q.id, name: q.name.toUpperCase() });
+      /* her order beside her name only when she is the one selected: the pack's table lists them all */
+      nameAt(q.name.toUpperCase() + (ui.title || q.id !== selId ? "" : " - " + PP.Orders.name(q.orders).toUpperCase()), qx + (q === s ? 8 : 7), qy - 3, q === s ? COL.sub : COL.packDown, ui.title ? null : { side: "pack", id: q.id, name: q.name.toUpperCase() }, q === s);
     }
     /* the boat selected for orders: a ring, and her waypoints joined up from her */
     const si = S.subs.findIndex(q => q.id === ui.sel && !q.lost);
@@ -252,15 +274,19 @@
     dash(g, sx, sy, sx + PP.hx(s.ordHdg) * 22, sy + PP.hy(s.ordHdg) * 22, "rgba(255,198,90,.9)", 2, 2);
     tri(g, sx, sy, 5, s.hdg, surf(s) ? COL.sub : "#e09a80");
     /* on the escorts' side, each escort's name and order beside her */
-    if (esc && !ui.title && z <= 150) for (const q of [s].concat(S.ships.filter(o => o !== s && o.role === "escort" && PP.Ships.alive(o)))) nameAt(q.name.toUpperCase() + " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase(), X(q.x) + 8, Y(q.y) - 3, q === s ? COL.sub : "rgba(255,170,150,.85)", { side: "escorts", id: q.id, name: q.name.toUpperCase() });
+    if (esc && !ui.title && z <= 150) for (const q of [s].concat(S.ships.filter(o => o !== s && o.role === "escort" && PP.Ships.alive(o)))) nameAt(q.name.toUpperCase() + " - " + ((C.ESC_ORDERS.find(o => o[0] === q.ord) || C.ESC_ORDERS[0])[1]).toUpperCase(), X(q.x) + 8, Y(q.y) - 3, q === s ? COL.sub : "rgba(255,170,150,.85)", { side: "escorts", id: q.id, name: q.name.toUpperCase() }, q === s);
     pointers(g, S, ui, X, Y, v, Wd);
     /* the scale */
-    const bar = z >= 400 ? 100 * PP.YD_NM : z >= 60 ? 10000 : 2000, bl = bar / z;
-    const sy0 = sf.t + 10;
-    K.rect(g, 12, sy0 + 4, bl, 2, "rgba(255,200,180,.75)"); K.rect(g, 12, sy0, 1, 6, "rgba(255,200,180,.75)"); K.rect(g, 12 + bl, sy0, 1, 6, "rgba(255,200,180,.75)");
+    /* the longest round length that stays short (under 90 pixels), so the bar keeps clear of the panels beside it */
+    const nm = z >= 400, steps = nm ? [10, 20, 50, 100].map(n => n * PP.YD_NM) : [500, 1000, 2000, 5000, 10000, 20000, 50000];
+    const bar = steps.filter(b => b / z <= 90).pop() || steps[0], bl = Math.round(bar / z);
+    const bt = nm ? Math.round(bar / PP.YD_NM) + " NM" : PP.num(bar) + " YD", btw = K.text5w(bt);
+    /* top left in the small map; on the Map screen, whose top left is the pack's table, top right under the clock */
+    const full = ui.mini !== true && !ui.title, sx0 = full ? Math.round(Wd - 16 - bl - btw) : 12, sy0 = full ? (sf.tr || sf.t) + 8 : sf.t + 10;
+    K.rect(g, sx0, sy0 + 4, bl, 2, "rgba(255,200,180,.75)"); K.rect(g, sx0, sy0, 1, 6, "rgba(255,200,180,.75)"); K.rect(g, sx0 + bl, sy0, 1, 6, "rgba(255,200,180,.75)");
     /* its words after it, or under it on a small chart */
-    const bt = z >= 400 ? "100 NM" : PP.num(bar) + " YD", under = 16 + bl + K.text5w(bt) > Wd - 4;
-    K.text5(g, bt, under ? 12 : 16 + bl, under ? sy0 + 9 : sy0 - 1, "rgba(255,200,180,.85)", INK);
+    const under = sx0 + 4 + bl + btw > Wd - 4;
+    K.text5(g, bt, under ? sx0 : sx0 + 4 + bl, under ? sy0 + 9 : sy0 - 1, "rgba(255,200,180,.85)", INK);
     return { X, Y, z, cx, cy };
   };
   /* a point on the chart (canvas pixels) to the sea */

@@ -57,6 +57,9 @@
 
   /* ---- the service record: each mission's best ---- */
   PP.fame = () => { const f = PP.store.get(KEY_FAME, null); return f && f.actions ? f : { actions: {} }; };
+  /* where a mission's best result is kept: by its id, and on the PDF's side of a mission both sides can fight, by its
+   * id and "@pdf" (a result kept before the sides were told apart is under the id alone) */
+  PP.recKey = (A, side) => side === "escorts" && (A.sides || ["pack"]).includes("pack") ? A.id + "@pdf" : A.id;
   PP.addAction = (id, rec) => {
     const f = PP.fame(), best = f.actions[id];
     if (!best || rec.pts > best.pts) { f.actions[id] = rec; PP.store.set(KEY_FAME, f); return true; }
