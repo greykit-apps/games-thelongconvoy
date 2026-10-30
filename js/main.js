@@ -493,7 +493,7 @@
     next: KY(["T"], ["pad:X"], "next ship"),
     fire: KY(["Space"], ["pad:A"], "fire"),
     look: KY(["left", "right"], ["pad:R-stick"], "look"),
-    glasses: KY(["up", "down"], ["pad:Y"], "glasses"),
+    glasses: KY(["Z"], ["pad:Y"], "glasses"),
     gun: KY(["G"], ["pad:dR"], "man the gun"),
     gunFire: KY(["G"], ["pad:dR"], "fire the gun"),
     time: KY(["+", "−"], ["pad:LT", "pad:RT"], "time"),
@@ -541,7 +541,7 @@
     const C2 = (k, w) => k.map(I.cap).join("") + " " + w;
     if (fresh) return ["danger", "Contact", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["Q", "E"], "charges' depth"), C2(["Space"], "pattern"), C2(["F"], "hedgehog")]];
     if (st === "sonar") return ["", "", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "active or passive")]];
-    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
+    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "orders")] : [C2(["left", "right"], "look"), C2(["Z"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
   }
   function strip(S) {
     const s = S.sub, st = R.stationOf(S, game.ui), surf = Sub.surfaced(s), locked = S.tdc.tgt !== null;

@@ -116,8 +116,8 @@
     plate(g, st.x, st.y, st.w, st.h);
     if (inner === "scope") {
       sbtn(SL, "scopeUD", S.sub.scope.up ? "Scope down" : "Scope up", 58, { act: "scope", on: S.sub.scope.up });
-      sbtn(SL, "power", S.sub.scope.hi ? "Low power" : "High power", 58, { act: "zoom" });
-    } else sbtn(SL, "glasses", ui.bino ? "Glasses down" : "Glasses", 58, { act: "zoom", on: !!ui.bino });
+      sbtn(SL, "power", `${S.sub.scope.hi ? "Low power" : "High power"} <kbd>Z</kbd>`, 74, { act: "zoom", title: "High or low power (Z)" });
+    } else sbtn(SL, "glasses", `${ui.bino ? "Glasses down" : "Glasses"} <kbd>Z</kbd>`, ui.bino ? 82 : 66, { act: "zoom", on: !!ui.bino, title: "The glasses, up or down (Z)" });
     if (esc) {
       /* her guns: dark with nothing up in sight; live (the trigger's amber, its lamp lit) when one is on her target,
        * in reach and loaded; reloading, the bar along the foot filling as the next round goes in; the tip says which
@@ -256,7 +256,7 @@
     /* while her spread is in the water the trigger says so, and is not lit again: Space still fires, but the lamp
      * does not invite a second spread at a target the first may sink */
     const run = S.torps.filter(t => t.by === s.id).length;
-    const word = sv ? `Firing&hellip; ${sv.k} of ${sv.n} away` : run ? `Running&hellip; ${run} in the water` : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"}`;
+    const word = sv ? `Firing&hellip; ${sv.k} of ${sv.n} away` : run ? `Running&hellip; ${run} in the water` : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"} <kbd>Space</kbd>`;
     btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "trigger" + (sv || run ? " on" : loaded && sol && sol.ok ? " ready" : ""), dim: !loaded && !sv && !run,
       title: run && !sv ? `${run} still running. Space fires another spread of ${s.spread}` : `Fire the ${s.bank === "F" ? "forward" : "after"} tubes, a spread of ${s.spread} (Space)` });
     /* her battery and her fuel, side by side: each a bar filling from the foot, its name over it, its reading on
@@ -621,7 +621,7 @@
       label: hh ? `Hedgehog, ${hn} salvoes left` : "Hedgehog, not fitted", title: hh ? `Hedgehog: a ring of 24 bombs ${X.hhRange} yards ahead, that go off only on a hull; ${hn} left (V, or F to fire it at once)` : "Not fitted until Year III" });
     /* the one trigger: what it fires, whether it is ready, and lit when the lamp says over her */
     const none = sol.hh ? hn <= 0 : f.dcLeft <= 0, P = C.ESC_PATTERNS[sel];
-    const word = f.pat ? "Laying&hellip;" : none ? (sol.hh ? "Hedgehog empty" : "No charges") : sol.hh ? "Fire hedgehog" : sol.ready < sol.need ? `Lay ${sol.ready} of ${sol.need}` : "Lay charges";
+    const word = f.pat ? "Laying&hellip;" : none ? (sol.hh ? "Hedgehog empty" : "No charges") : sol.hh ? "Fire hedgehog <kbd>Space</kbd>" : sol.ready < sol.need ? `Lay ${sol.ready} of ${sol.need} <kbd>Space</kbd>` : "Lay charges <kbd>Space</kbd>";
     btn("pattern", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "trigger" + (f.pat ? " on" : c && c.over && !none ? " ready" : ""), dim: none,
       title: sol.hh ? "Fire the hedgehog (Space)" : `Lay the ${P.name.toLowerCase()} pattern, ${sol.need} charges${sol.ready < sol.need ? `; ${sol.ready} loaded, the crews are reloading` : ""} (Space)` });
     if (wide) attackPanel(g, f, sol, dialsEnd + 12, top, Math.min(cpw, 170), oy + 7 - top);
