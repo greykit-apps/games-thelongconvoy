@@ -33,6 +33,7 @@ Eight missions from the pack's side and eight from the escorts', from two boats 
 | `Q` `E` | depth; `P` periscope depth, `U` surface, `C` crash dive |
 | `Enter` / `N` / `O` | take command of the boat selected / of the next / her next order |
 | `T` / `Space` | select the ship nearest the crosshair / fire the spread |
+| `Z` | the glasses, or the periscope's power; on the map, zoom |
 | `X` | silent running; on an escort, active or passive sonar |
 | `+` `−` | time compression |
 | `Esc` / `L` / `M` / `?` | pause / Classic or Field / sound / every key |
