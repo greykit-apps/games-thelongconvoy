@@ -253,9 +253,12 @@
     boat(g, S, s, sx, y0, sw, ch - 18, now, btn);
     /* the one trigger: the gun when it is manned, else the bank's tubes; lit when the lamp says on target */
     const loaded = Sub.loaded(s, s.bank), est = W.est(S), sol = est && W.solve(S, est, s.bank), sv = s.salvo;
-    const word = sv ? `Firing&hellip; ${sv.k} of ${sv.n} away` : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"}`;
-    btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "trigger" + (sv ? " on" : loaded && sol && sol.ok ? " ready" : ""), dim: !loaded && !sv,
-      title: `Fire the ${s.bank === "F" ? "forward" : "after"} tubes, a spread of ${s.spread} (Space)` });
+    /* while her spread is in the water the trigger says so, and is not lit again: Space still fires, but the lamp
+     * does not invite a second spread at a target the first may sink */
+    const run = S.torps.filter(t => t.by === s.id).length;
+    const word = sv ? `Firing&hellip; ${sv.k} of ${sv.n} away` : run ? `Running&hellip; ${run} in the water` : !loaded ? "No tubes loaded" : `Fire ${Math.min(s.spread, loaded)} ${s.bank === "F" ? "forward" : "aft"}`;
+    btn("fire", word, sx, y0 + ch - 16, sw, 16, { act: "fire", cls: "trigger" + (sv || run ? " on" : loaded && sol && sol.ok ? " ready" : ""), dim: !loaded && !sv && !run,
+      title: run && !sv ? `${run} still running. Space fires another spread of ${s.spread}` : `Fire the ${s.bank === "F" ? "forward" : "after"} tubes, a spread of ${s.spread} (Space)` });
     /* her battery and her fuel, side by side: each a bar filling from the foot, its name over it, its reading on
      * drums under it */
     const ch0 = Sub.charge(s), cw = Math.floor(MW / 2);

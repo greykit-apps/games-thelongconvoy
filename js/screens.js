@@ -135,7 +135,7 @@
         if (v && v.startsWith("side:")) { side = v.slice(5); PP.prefs.side = side; PP.savePrefs(); api.refresh(); }
       },
     });
-    function go(id) { if (id === "custom") { UI.close(true); UI.custom(real); return; } UI.close(true); PP.game.startAction(id, real, null, side); }
+    async function go(id) { if (id === "custom") { UI.close(true); UI.custom(real); return; } if (!await PP.game.keepSaved()) return; UI.close(true); PP.game.startAction(id, real, null, side); }
   };
   UI.custom = real => {
     const last = PP.store.get(PP.KEY_LAST, null) || {};
@@ -150,10 +150,10 @@
         <h3>Time</h3>${opts("time", E.CUSTOM.time)}
         <h3>Weather</h3>${opts("wx", E.CUSTOM.wx)}
         <div class="row end"><button data-act="go" class="primary">Into action</button></div>`,
-      onClick: (b, api) => {
+      onClick: async (b, api) => {
         const v = b.dataset.set;
         if (v) { const [, k, x] = v.split(":"); c[k] = k === "mi" ? +x : x; if (C.SUBS[c.cls].from > c.mi) c.cls = "caracal"; api.refresh(); }
-        if (b.dataset.act === "go") { PP.store.set(PP.KEY_LAST, c); UI.close(true); PP.game.startAction("custom", real, c); }
+        if (b.dataset.act === "go") { if (!await PP.game.keepSaved()) return; PP.store.set(PP.KEY_LAST, c); UI.close(true); PP.game.startAction("custom", real, c); }
       },
     });
   };
@@ -186,8 +186,11 @@
       : `${mine.length} boat${mine.length > 1 ? "s" : ""} of the pack, against ${merch ? `${merch} ships` : "no merchants"} and ${escs} escort${escs === 1 ? "" : "s"}. You are aboard <b>${esc(f.name)}</b>${mine.length > 1 ? "; the others hunt under their own captains, on the orders you give them" : ""}.`;
     const goal = esc_ ? (merch ? "Bring the convoy through: the score is the tonnage saved, and the boats sunk." : "Find the boats and sink them.")
       : S.goal === "escort" ? "Sink the escort, or slip away from her: deep, slow and quiet." : "Sink what you can of the convoy, and bring the pack home: the score counts both.";
-    const first = esc_ ? ["<kbd>2</kbd> the map: your escorts, the convoy, every contact.", "Under 15 knots to hear them; <kbd>X</kbd> pings, and they hear that too.", "Run in over a contact and lay the pattern: <kbd>Space</kbd>."]
-      : ["<kbd>2</kbd> the map: the pack and the convoy. Get ahead of it.", "Periscope depth (<kbd>P</kbd>) as it comes on; <kbd>T</kbd> picks a ship.", "<kbd>Space</kbd> fires when the lamp says On target. Then deep (<kbd>E</kbd>) and quiet (<kbd>X</kbd>)."];
+    /* with others of your side to command, the second move is how: select one on the map, give her an order */
+    const orders = mine.length < 2 ? [] : esc_ ? ["Click an escort on the map, then <kbd>O</kbd> for her orders; <kbd>Enter</kbd> goes aboard her."]
+      : ["Click a boat on the map, then <kbd>O</kbd> for her orders; <kbd>Enter</kbd> takes command of her. Bring them in from two sides."];
+    const first = esc_ ? ["<kbd>2</kbd> the map: your escorts, the convoy, every contact.", ...orders, "Under 15 knots to hear them; <kbd>X</kbd> pings, and they hear that too.", "Run in over a contact and lay the pattern: <kbd>Space</kbd>."]
+      : ["<kbd>2</kbd> the map: the pack and the convoy. Get ahead of it.", ...orders, "Periscope depth (<kbd>P</kbd>) as it comes on; <kbd>T</kbd> selects a ship.", "<kbd>Space</kbd> fires when the lamp says On target. Then deep (<kbd>E</kbd>) and quiet (<kbd>X</kbd>)."];
     const go = () => { if (!UI.sheet) return; UI.close(true); done(); };
     UI.open(S.scnName || "Orders", { wide: true, closable: false,
       html: () => `<div class="report"><div><p class="meta">${esc(when)}</p>${S.scnNote ? `<p class="lesson">${esc(S.scnNote)}</p>` : ""}<p>${side}</p><p class="lesson"><b>${goal}</b></p></div>
@@ -198,8 +201,8 @@
   };
 
   /* ---- pause: a slip of the title's signal paper; where and when, the choices, and the keys that matter most ---- */
-  const KEY_LEGEND = [["W S", "telegraph"], ["A D", "helm"], ["Q E", "depth"], ["C", "crash dive"], ["← →", "train, look"], ["T", "lock"], ["Space", "fire"], ["?", "all keys"]];
-  const PAD_LEGEND = [["pad:L-stick", "helm, telegraph"], ["pad:dU pad:dD", "depth"], ["pad:L-click", "crash dive"], ["pad:R-stick", "train, look"], ["pad:X", "lock"], ["pad:A", "fire"], ["pad:LB pad:RB", "stations"], ["pad:Back+Start", "all keys"]];
+  const KEY_LEGEND = [["W S", "telegraph"], ["A D", "helm"], ["Q E", "depth"], ["C", "crash dive"], ["← →", "train, look"], ["T", "select a ship"], ["Space", "fire"], ["?", "all keys"]];
+  const PAD_LEGEND = [["pad:L-stick", "helm, telegraph"], ["pad:dU pad:dD", "depth"], ["pad:L-click", "crash dive"], ["pad:R-stick", "train, look"], ["pad:X", "select a ship"], ["pad:A", "fire"], ["pad:LB pad:RB", "stations"], ["pad:Back+Start", "all keys"]];
   UI.pause = () => {
     const S = PP.game.S, n = S.stats.sunk.length;
     const btn = (act, words, cls = "") => `<button data-act="${act}"${cls ? ` class="${cls}"` : ""}>${UI.TICK}<span class="lbl">${words}</span></button>`;
@@ -357,19 +360,21 @@
         `<section class="hcard"><h3>Your first attack, in a U-boat</h3><ol class="steps">
           <li>Open the <b>map</b> (${kb("2")}) and get ahead of the convoy. On the surface you are fastest.</li>
           <li>Dive to <b>periscope depth</b> (${kb("P")}) as it comes on.</li>
-          <li><b>Pick a ship</b>: ${kb("T")}, or click it.</li>
+          <li><b>Select a ship</b>: ${kb("T")}, or click it.</li>
           <li>Wait for the lamp to say <b>On target</b>, then <b>fire</b> (${kb("Space")}).</li>
           <li>Then go <b>deep</b> (${kb("E")}), <b>slow</b> (${kb("S")}) and <b>quiet</b> (${kb("X")}).</li>
         </ol><p class="tip">The best shot is from ahead of the ship, side-on to it, 1,000 to 3,000 yards off.</p></section>`,
         card("The screens", [[kb("1"), "Dashboard: the view out and every control"], [kb("2"), "Map: the whole battle, and your other vessels"], [kb("3"), "Sonar: what you hear, as a waterfall"], [kb("4"), "Damage (a U-boat's)"], [kb("5"), "Captain's log, over the screen"], [kb("Tab"), "The next screen"]],
           "On the dashboard every control is a button. Point at one to see what it does and its key."),
+        card("Bring the pack in", [["Click a boat", "Select her, on the map or in its list"], [kb("O"), "Her next order; on the map, click her order for all of them"], ["Right click", "A waypoint for her"], [kb("Enter"), "Take command of her"], [kb("N"), "The next boat"]],
+          "Send two boats at the convoy from two sides: its escorts can hunt only so many at once."),
         card("Any time", [[kb("Esc"), "Pause"], [kb("+", "−"), "Time faster, slower; " + kb("Backspace") + " back to 1x"], [kb("?"), "This help"], [kb("M"), "Sound on or off"], [kb("L"), "Field or Classic aids"]],
           "Time speeds up only while nothing is close; the clock says what is holding it back."))}`],
     ["U-boat", grid(
       card("Drive", [[kb("W", "S"), "Speed, a bell at a time"], [kb("A", "D"), "Rudder, while held"], ["Compass rim", "Click to steer for that heading"], [kb("Q", "E"), "Shallower, deeper"],
         [kb("P") + " " + kb("U"), "Periscope depth, surface"], [kb("C"), "Crash dive"]]),
       card("The dive bubble", [["Tube", "Click a rate to hold it. Going down, she stops short of crush depth"], ["Blow", "Straight to the surface. No diving for 4 minutes. Click twice"], ["Crash", "Down fast to a safe depth. Click twice"]]),
-      card("Attack", [[kb("T"), "Pick a ship (again: the next)"], [kb("Space"), "Fire the spread"], [kb("V"), "Spread: one to four torpedoes"], [kb("F"), "Forward or after tubes"], [kb("H"), "Swing the view onto the target"]],
+      card("Attack", [[kb("T"), "Select a ship (again: the next)"], [kb("Space"), "Fire the spread"], [kb("V"), "Spread: one to four torpedoes"], [kb("F"), "Forward or after tubes"], [kb("H"), "Swing the view onto the target"]],
         "The lamp says <b>On target</b>, <b>Wrong angle</b> (try the other tubes) or <b>Out of range</b>."),
       card("Deck gun", [[kb("G"), "Man the gun, on the surface"], [kb("G"), "Fire: the crew aim it"], [kb("Shift", "G"), "Secure it"]], "It cannot fire past the tower. A dive waits while the crew stow it."),
       card("Stay alive", [[kb("X"), "Silent running"], [kb("K"), "Noisemaker: escorts may chase it (four aboard)"], ["Metox", "Lights when radar sweeps you: dive"], ["Aircraft", "Crash dive"]],
@@ -396,14 +401,14 @@
       card("Your escort group", [["The map", "Lists the group, a row each: order, sonar, contact, charges, hull"], ["Click an escort", "Select it (a row, or on the map)"], [kb("O"), "Its order: Screen, Hunt, Patrol, Hold"], ["Right click", "Add a waypoint"], [kb("Enter"), "Go aboard (or click it again)"], [kb("N"), "The next escort"]]))],
     ["Keys", grid(
       card("Handling", [[kb("W", "S"), "Speed"], [kb("A", "D"), "Rudder"], [kb("Q", "E"), "Shallower, deeper (escort: charges' depth)"], [kb("P", "U", "C"), "Periscope depth, surface, crash dive"], [kb("J"), "AUTO or your control"]]),
-      card("Weapons", [[kb("Space"), "Fire, or lay the pattern"], [kb("T"), "Pick a ship"], [kb("V"), "Spread or pattern"], [kb("F"), "Tubes, or the hedgehog"], [kb("G"), "Gun"], [kb("K"), "Noisemaker"]]),
+      card("Weapons", [[kb("Space"), "Fire, or lay the pattern"], [kb("T"), "Select a ship"], [kb("V"), "Spread or pattern"], [kb("F"), "Tubes, or the hedgehog"], [kb("G"), "Gun"], [kb("K"), "Noisemaker"]]),
       card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
       card("Screens and time", [[kb("1") + "–" + kb("5"), "Dashboard, map, sonar, damage; the log"], [kb("Tab"), "Next screen"], [kb("+", "−"), "Time faster, slower"], [kb("Backspace"), "Back to 1x"]]),
       card("Your side", [[kb("N"), "Next vessel (" + kb("Shift") + ": back)"], [kb("O"), "Next order"], [kb("Enter"), "Take command"]]),
       card("Systems", [[kb("X"), "Silent running, or sonar"], [kb("I"), "Snorkel"], [kb("Y"), "Radar"], [kb("L"), "Aids"], [kb("M"), "Sound"], [kb("Esc"), "Pause"]])) +
       `<p class="note">Keys are shown where they sit on a US keyboard; where the browser can tell, each shows your own keyboard's letter.</p>`],
     ["Gamepad", keys([["Sticks", "<kbd>pad:L-stick</kbd> the helm, flicked up or down the telegraph; <kbd>pad:R-stick</kbd> trains the periscope, looks round"],
-      ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> pick a ship, <kbd>pad:Y</kbd> power, the glasses, the map's zoom"],
+      ["Buttons", "<kbd>pad:A</kbd> fire, <kbd>pad:B</kbd> periscope up or down, <kbd>pad:X</kbd> select a ship, <kbd>pad:Y</kbd> power, the glasses, the map's zoom"],
       ["D-pad", "<kbd>pad:dU</kbd> <kbd>pad:dD</kbd> depth, <kbd>pad:dL</kbd> the tubes, <kbd>pad:dR</kbd> the gun"],
       ["Stick clicks", "<kbd>pad:L-click</kbd> crash dive, <kbd>pad:R-click</kbd> up a level: periscope depth, then the surface"],
       ["Shoulders", "<kbd>pad:LB</kbd> <kbd>pad:RB</kbd> screens, <kbd>pad:LT</kbd> <kbd>pad:RT</kbd> time"],

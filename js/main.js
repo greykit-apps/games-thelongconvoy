@@ -152,7 +152,7 @@
     if (a === "resume") return resume();
     if (a === "action") return UI.actions();
     /* target practice: straight to sea, three ships crossing ahead */
-    if (a === "practice") return game.startPractice();
+    if (a === "practice") return (await game.keepSaved()) && game.startPractice();
     if (a === "record") return UI.record();
     if (a === "settings") return UI.settings();
     if (a === "help") return UI.help();
@@ -173,11 +173,18 @@
 
   /* ---- a game ---- */
   const seed = () => 1 + Math.floor(Math.random() * 2 ** 30);
+  /* a new mission takes the place of the one saved: ask first, by its name (a practice is not worth the question).
+   * Asked before the page closes, so Cancel leaves you where you were */
+  game.keepSaved = async () => {
+    const g = PP.loadGame();
+    if (!g || g.S.mode === "practice") return true;
+    return UI.ask(`${g.S.scnName || "A mission"} is still being fought. Start a new one and its progress is lost.`, "Give it up", "A mission in progress");
+  };
   game.startAction = (id, real, custom, side = "pack") => { PP.clearGame(); game.lastCustom = custom || null; startPlay(E.newAction(id, { seed: seed(), real, custom, side }), true); };
   game.startPractice = () => { PP.clearGame(); startPlay(E.newPractice({ seed: seed(), real: PP.prefs.real }), true); };
   function startPlay(S, fresh) {
     UI.close(true);
-    game.S = S; game.mode = "play"; game.warned = {};
+    game.S = S; game.mode = "play"; game.warned = {}; game.mine = new Set();
     if (S.mode === "practice" && fresh) game.coach = PP.prefs.learned ? "done" : null;
     SFX.stopTune();
     $("title").hidden = true; $("title").innerHTML = "";
@@ -358,14 +365,14 @@
         case "lostLock": toast("Lost the target", "amber"); break;
         case "noRange": toast("Nothing in sight to range on", "amber", 1600); break;
         case "ranged": toast(`Range ${PP.num(Math.round(e.rng / 50) * 50)} yards`, "", 1400); break;
-        case "fired": SFX.play("launch"); toast(`Tube ${e.tube.slice(1)} ${e.tube[0] === "F" ? "forward" : "aft"}: fired${e.n > 1 ? `, ${e.k + 1} of ${e.n}` : ""}${e.solved ? `, ${Math.round(e.run)} yards` : ", no solution"}`, "", 1800); break;
+        case "fired": SFX.play("launch"); (game.mine = game.mine || new Set()).add(e.id); if (e.solved && S.tdc.tgt !== null) follow(S.tdc.tgt); toast(`Tube ${e.tube.slice(1)} ${e.tube[0] === "F" ? "forward" : "aft"}: fired${e.n > 1 ? `, ${e.k + 1} of ${e.n}` : ""}${e.solved ? `, ${Math.round(e.run)} yards` : ", no solution"}`, "", 1800); break;
         case "salvoOn": toast("The spread is still going out", "", 1200); break;
         case "cantFire": toast({ damaged: "Those tubes are damaged", deep: "Too deep to fire", none: "No tubes there", empty: (e.bank === "F" ? "Forward" : "After") + ` tubes empty: ${kc("F", "pad:dL")} switches`,
           angle: `Wrong angle: fire the ${e.bank === "F" ? "after" : "forward"} tubes (${kc("F", "pad:dL")}), or turn toward the target`, range: "Out of range: let the target close" }[e.why] || "Can't fire", "amber"); break;
         case "noTarget": toast("No vessel in range", "amber", 1600); break;
         case "noSolution": break;
         case "reloaded": SFX.play("reloaded"); break;
-        case "torpHit": SFX.play("hit"); toast(`Hit! The ${cls(e.ship)}`, "green", 2400); slow(); if (S.mode === "practice" && game.coach !== "done") { game.coach = "done"; PP.prefs.learned = true; PP.savePrefs(); toast("That's the attack. Next, a mission with escorts: they hunt back", "green", 4200); } break;
+        case "torpHit": SFX.play("hit"); toast(`Hit! The ${cls(e.ship)}`, "green", 2400); if (game.mine && game.mine.has(e.id)) { const q = PP.Ships.byId(S, e.ship); HUD.stamp("Hit", q ? `The ${cls(e.ship)} ${q.name}` : ""); } slow(); if (S.mode === "practice" && game.coach !== "done") { game.coach = "done"; PP.prefs.learned = true; PP.savePrefs(); toast("That's the attack. Next, a mission with escorts: they hunt back", "green", 4200); } break;
         case "torpDud": SFX.play("dud"); toast(e.why === "unarmed" ? "It hit before it armed" : "A dud: it hit, and did nothing", "amber", 2600); break;
         case "torpPremature": SFX.play("hit", 0.6); toast("A torpedo went off early", "amber", 2400); break;
         case "torpUnder": toast("It ran under the target: too deep", "amber", 2400); break;
@@ -374,7 +381,8 @@
         case "wakeSeen": toast("They've seen a torpedo's wake", "amber", 2000); break;
         case "shipExplodes": SFX.play("bigHit"); toast("The target blew up!", "green", 2600); break;
         case "shipSinking": SFX.play("breakup", 0.7); break;
-        case "shipSunk": SFX.play("sunk"); toast(e.role === "escort" ? `${C.SHIPS[e.cls].name} ${e.name} sunk` : `${C.SHIPS[e.cls].name} ${e.name} sunk: ${PP.num(e.tons)} tons`, "green", 3200); break;
+        case "shipSunk": SFX.play("sunk"); toast(e.role === "escort" ? `${C.SHIPS[e.cls].name} ${e.name} sunk` : `${C.SHIPS[e.cls].name} ${e.name} sunk: ${PP.num(e.tons)} tons`, "green", 3200);
+          HUD.stamp("Sunk", e.role === "escort" ? `${C.SHIPS[e.cls].name} ${e.name}` : `${e.name} · ${PP.num(e.tons)} tons`); break;
         case "convoyTurns": toast("The convoy is turning away", "", 2200); break;
         case "scatter": toast("The convoy is scattering!", "amber", 2400); break;
         case "spotted": if (S.t - (game.warned.spot || -1e9) > 120) { game.warned.spot = S.t; toast(e.how === "eye" ? "They've seen us" : e.how === "radar" ? "Their radar has us" : "They've heard us", "red", 2600); } break;
@@ -493,9 +501,13 @@
     silent: KY(["X"], ["pad:Back+B"], "silent running"),
     slower: KY(["S"], ["pad:L-stick"], "slower", "flick down: slower"),
     turn: KY(["A", "D"], ["pad:L-stick"], "turn across his line"),
-    chart: KY(["1"], ["pad:Back"], "the map"),
-    scope: KY(["2"], ["pad:LB", "pad:RB"], "the view", "to the view"),
+    chart: KY(["2"], ["pad:Back"], "the map"),
+    scope: KY(["1"], ["pad:LB", "pad:RB"], "the dashboard", "to the dashboard"),
     click: KY([], null, "click a boat to select it"),
+    order: KY(["O"], ["pad:Back+X"], "her next order"),
+    waypoint: KY([], null, "right-click: her waypoint"),
+    command: KY(["Enter"], ["pad:Back+dD"], "take command"),
+    nextBoat: KY(["N"], ["pad:Back+dU"], "next boat"),
     pan: KY([], null, "drag to look round"),
     keys: KY(["?"], ["pad:Back+Start"], "all keys"),
   };
@@ -504,16 +516,17 @@
   const chip = (n, w) => { const it = KEY[n], ks = onPad() ? it.p : it.k; return ks ? (ks.map(I.cap).join("") + " " + (w || (onPad() ? it.pw : it.w))).trim() : ""; };
   function coach(S) {
     if (S.mode !== "practice" || S.scn !== "torpedo" || game.coach === "done") return null;
-    const s = S.sub, st = R.stationOf(S, game.ui);
+    /* on the dashboard the lesson is the view's: its periscope, or the bridge on the surface */
+    const s = S.sub, st0 = R.stationOf(S, game.ui), st = st0 === "dash" ? R.innerOf(S) : st0;
     if (S.stats.hits) { game.coach = "done"; return null; }
-    if (S.stats.fired && S.torps.length) return `Watch it run: ${chip("chart")}${SEP}${chip("scope")}`;
+    if (S.stats.fired && S.torps.length) return st0 === "dash" ? `Watch it run${SEP}${chip("chart")}` : `Watch it run: ${chip("chart")}${SEP}${chip("scope")}`;
     if (S.stats.fired) return `A miss. Shoot from ahead of the target, 1,000 to 2,000 yards off its track, near 90° on the bow${SEP}${chip("lock")}${SEP}${chip("fire")}`;
     if (st !== "scope" && st !== "bridge") return `The attack is made at the periscope: ${chip("scope", " ")}`;
     if (st === "scope" && s.depth > C.PD + 4) return chip("pd");
     if (st === "scope" && !s.scope.up) return chip("raise");
     if (S.tdc.tgt === null) {
       const L = R.last, seen = L && L.view && L.view.drawn.some(d => PP.Detect.known(S, PP.Ships.byId(S, d.id)) && d.haze < 0.9);
-      if (seen) return s.scope.hi ? `${chip("lock", "locks the ship nearest the crosshair")}${SEP}${chip("power", "back to low power")}` : `${chip("power", "high power, for a closer look")}${SEP}${chip("lock", "locks the ship nearest the crosshair")}`;
+      if (seen) return s.scope.hi ? `${chip("lock", "selects the ship nearest the crosshair")}${SEP}${chip("power", "back to low power")}` : `${chip("power", "high power, for a closer look")}${SEP}${chip("lock", "selects the ship nearest the crosshair")}`;
       const near = S.ships.filter(q => PP.Detect.known(S, q) && PP.Ships.alive(q)).sort((a, b) => PP.dist(s.x, s.y, a.x, a.y) - PP.dist(s.x, s.y, b.x, b.y))[0];
       return near ? `${chip("onHer")}, or ${chip(st === "scope" ? "train" : "look", st === "scope" ? "train the periscope onto it" : "look round to it")}: the nearest ship bears ${PP.deg3(PP.angTo(s.x, s.y, near.x, near.y))}, the hollow mark on the ring` : "Watch for the targets";
     }
@@ -532,13 +545,15 @@
   }
   function strip(S) {
     const s = S.sub, st = R.stationOf(S, game.ui), surf = Sub.surfaced(s), locked = S.tdc.tgt !== null;
+    /* the map, with a pack to command: how to select a boat, and once one is selected (not the one aboard), her orders */
+    const pack = S.subs.filter(q => !q.lost).length > 1, other = pack && game.selIdx() !== S.cmd;
     if (surf && S.planes.some(p => p.seen)) return ["danger", "Aircraft", ["crash"]];
     if (S.charges.length || S.ships.some(q => q.role === "escort" && !q.sinking && q.ai.contact && S.t - q.ai.contact < 60)) return ["danger", "Hunted", surf ? ["crash", "tele", "helm"] : ["deeper", "silent", "slower", "turn"]];
     const by = {
       scope: s.depth > C.PD + 4 ? ["pd", "depth", "tele", "helm"] : !s.scope.up ? ["raise", "depth", "tele", "helm"] : locked ? ["train", "power", "fire", "next", "helm"] : ["train", "onHer", "power", "lock", "helm"],
       bridge: s.gun.on ? ["look", "glasses", "lock", "gunFire", "fire"] : locked ? ["look", "glasses", "fire", "gun", "crash"] : ["look", "onHer", "glasses", "lock", "gun"],
       panel: surf ? ["tele", "helm", ["pd", "dive to periscope depth"], "crash", "time"] : ["tele", "helm", "depth", "pd", "surface"],
-      chart: ["zoom", "tele", "helm", "time", "click", "pan"],
+      chart: other ? ["order", "waypoint", "command", "nextBoat", "zoom"] : pack ? ["click", "nextBoat", "zoom", "tele", "helm"] : ["zoom", "tele", "helm", "time", "click", "pan"],
       damage: surf ? ["tele", "helm", "time", "pd"] : ["tele", "helm", "depth", "silent"],
       sonar: surf ? ["tele", "helm", "time"] : ["tele", "helm", "depth", "silent"],
     };
@@ -613,6 +628,17 @@
       I.swing(S => { const q = PP.Ships.byId(S, id); return q && PP.Ships.alive(q) ? PP.angTo(S.sub.x, S.sub.y, q.x, q.y) : null; });
     } else if (R.report && S.t - R.report.t < 600) { const b = R.report.brg; I.swing(() => b); }
     else toast("Nothing in sight, and no report to swing to", "amber", 1800);
+  }
+
+  /* after a spread with a solution, the view stays on her while it runs and twenty seconds after, to see it strike;
+   * training it yourself, or another swing, lets go */
+  function follow(id) {
+    let last = game.S.t;
+    I.swing(S => {
+      if (S.torps.some(t => t.by === S.sub.id)) last = S.t;
+      const q = PP.Ships.byId(S, id);
+      return q && S.t - last < 20 ? PP.angTo(S.sub.x, S.sub.y, q.x, q.y) : null;
+    }, true);
   }
 
   /* ---- the loop ---- */
@@ -865,6 +891,7 @@
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (UI.sheet) { UI.key(ev); return; }
     if (game.omenu && ev.key === "Escape") { ev.preventDefault(); closeOrderMenu(); return; }
+    if (game.omenu) { omenuKey(ev); return; }
     const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
     if (k === "m" && !(ev.target.closest && ev.target.closest("input"))) { ev.preventDefault(); game.toggleMute(); return; }
     if (game.mode === "title") { titleKey(ev); return; }
@@ -974,8 +1001,15 @@
     const cur = esc ? q.ord || "screen" : q.orders || "attack", aboard = esc ? q.id === S.flag : q === S.sub;
     const m = document.createElement("div");
     m.className = "hp omenu"; m.setAttribute("role", "menu");
-    m.innerHTML = `<div class="ht-name">${PP.esc(q.name)}</div>${aboard ? `<p class="om-note">Her order once you leave</p>` : ""}` + list.map(([k, n, note]) => `<button role="menuitemradio" aria-checked="${k === cur}" data-ord="${k}" title="${PP.esc(note)}"${k === cur ? ' class="on"' : ""}>${PP.esc(n)}</button>`).join("")
-      + (aboard ? "" : `<button class="take" data-take="1">Take command</button>`);
+    /* each order with its number (its key while the menu is open); what it does is written at the foot for the one
+     * pointed at or focused, not in a tip that would lie over the orders under it */
+    const noteOf = k => (list.find(o => o[0] === k) || [])[2] || "";
+    m.innerHTML = `<div class="ht-name">${PP.esc(q.name)}</div>${aboard ? `<p class="om-note">Her order once you leave</p>` : ""}` + list.map(([k, n, note], j) => `<button role="menuitemradio" aria-checked="${k === cur}" aria-description="${PP.esc(note)}" data-ord="${k}" data-n="${j + 1}"${k === cur ? ' class="on"' : ""}>${I.cap(String(j + 1))}<span>${PP.esc(n)}</span></button>`).join("")
+      + (aboard ? "" : `<button class="take" data-take="1">${I.cap("Enter")}<span>Take command</span></button>`)
+      + `<p class="om-desc" aria-hidden="true">${PP.esc(noteOf(cur))}</p>`;
+    const desc = m.querySelector(".om-desc"), say = b => { if (b) desc.textContent = b.dataset.ord ? noteOf(b.dataset.ord) : b.dataset.take ? "Go aboard her: she becomes the boat you sail" : ""; };
+    m.addEventListener("pointerover", ev => say(ev.target.closest("button")));
+    m.addEventListener("focusin", ev => say(ev.target.closest("button")));
     $("hud").appendChild(m);
     const hb = $("hud").getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
     m.style.left = Math.round(PP.clamp(cx - hb.left + 6, 4, hb.width - mw - 4)) + "px"; m.style.top = Math.round(PP.clamp(cy - hb.top + 6, 4, hb.height - mh - 4)) + "px";
@@ -990,6 +1024,16 @@
     game.omenu = m;
   }
   function closeOrderMenu() { if (game.omenu) { game.omenu.remove(); game.omenu = null; } }
+  /* the keys while the orders menu is open are its own: an order's number picks it, the arrows move, Enter or Space
+   * chooses the one focused (Enter is not "take command" here, nor 1-4 the stations) */
+  function omenuKey(ev) {
+    const bs = [...game.omenu.querySelectorAll("button")], i = bs.indexOf(document.activeElement), n = /^(?:Digit|Numpad)([1-9])$/.exec(ev.code);
+    const pick = n && game.omenu.querySelector(`button[data-n="${n[1]}"]`);
+    if (pick) { ev.preventDefault(); pick.click(); return; }
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); bs[(i + (ev.key === "ArrowDown" ? 1 : bs.length - 1) + bs.length) % bs.length].focus(); return; }
+    if (ev.key === "Enter" || ev.key === " " || ev.key === "Tab") return;
+    ev.preventDefault();
+  }
   addEventListener("pointerdown", ev => { if (game.omenu && !game.omenu.contains(ev.target)) closeOrderMenu(); }, true);
   /* the wheel zooms the map about the point under the mouse; on the dashboard, the small map when it is over it */
   let wheelAcc = 0;
