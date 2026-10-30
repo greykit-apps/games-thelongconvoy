@@ -501,21 +501,24 @@
   }
 
   /* her plan, bow to the right: the throwers along each side (port above, starboard below, the aftmost first), a
-   * charge in each one loaded, and the racks to her two rails at the stern, the next to go at the stern; a
-   * launcher just emptied blinks out, the next one being loaded comes up as its crew work. What is below, in
-   * reserve, beside her where there is room and under her where there is not; at the foot the one trigger */
+   * charge in each one loaded, and the racks to her two rails at the stern, the next to go at the stern; as the
+   * submarine's tubes read, a launcher green when it is loaded, blinking out as it goes, the next one flashing
+   * yellow while its crew load it. What is below, in reserve, beside her where there is room and under her where
+   * there is not; at the foot the one trigger */
   const blinks = new Map();
   let lastRacks = null;
   function ship(g, S, f, x, y, w, h, now) {
     const X = C.ESC_SIDE, d = f.dcr || { P: 0, S: 0, R: 0, tP: 0, tS: 0, tR: 0 }, res = Math.max(0, f.dcLeft - d.P - d.S - d.R);
     if (lastRacks && lastRacks.id === f.id) for (const k of ["P", "S", "R"]) for (let i = d[k]; i < lastRacks[k]; i++) blinks.set(k + i, now);
     lastRacks = { id: f.id, P: d.P, S: d.S, R: d.R };
-    const slot = (k, i, sx, sy, load) => {
+    /* loaded, green; the next one in line flashing yellow while the crew load it from below, which they do only
+     * with charges in reserve and not while a pattern is going; empty, its socket */
+    const slot = (k, i, sx, sy) => {
       const b = blinks.get(k + i);
       if (b !== undefined && now - b < 700) { if (Math.floor((now - b) / 110) % 2 === 0) K.rect(g, sx - 1, sy - 1, 5, 5, "#fff6e8"); return; }
       if (b !== undefined) blinks.delete(k + i);
-      K.rect(g, sx, sy, 3, 3, i < d[k] ? AMBER : "#2a1410");
-      if (i === d[k] && load > 0) K.rect(g, sx, sy, 3, 3, `rgba(255,198,90,${(0.12 + 0.55 * load).toFixed(2)})`);
+      const loading = i === d[k] && res > 0 && !f.pat && Math.floor(now / 380) % 2 === 0;
+      K.rect(g, sx, sy, 3, 3, i < d[k] ? GREEN : loading ? AMBER : "#2a1410");
     };
     /* where the reserve goes, and so how much of the box she has */
     const below = X.charges - X.throwers * 2 - X.rails, beside = w >= 140;
@@ -535,13 +538,13 @@
     const sp = PP.clamp(Math.floor((xb - xs) * 0.4 / (X.throwers - 1)), 4, 8);
     for (let i = 0; i < X.throwers; i++) {
       const sx = xs + 9 + i * sp;
-      slot("P", i, sx, t - 5, d.tP / X.loadThrow);
-      slot("S", i, sx, b + 2, d.tS / X.loadThrow);
+      slot("P", i, sx, t - 5);
+      slot("S", i, sx, b + 2);
     }
     /* the two rails, the charges on them rolling aft */
     const ra = yc - 3, rb = yc + 1;
     for (const ry of [ra, rb]) K.rect(g, xs + 1, ry + 1, 4 * (X.rails / 2) + 2, 1, DIM);
-    for (let j = 0; j < X.rails; j++) slot("R", j, xs + 1 + Math.floor(j / 2) * 4, j % 2 ? rb : ra, d.tR / X.loadRail);
+    for (let j = 0; j < X.rails; j++) slot("R", j, xs + 1 + Math.floor(j / 2) * 4, j % 2 ? rb : ra);
   }
 
   /* the attack, beside the dials: what the contact is and where, and a lamp that says when to fire. RUN IN (an
