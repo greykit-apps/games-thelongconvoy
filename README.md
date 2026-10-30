@@ -83,7 +83,7 @@ tools/       sim-check (the captain plays every mission headless, the whole pack
 
 `node tools/sim-check.js` plays every mission headless: the fire control's solution hits, the pack sinks ships, the boats you are not on fire on their own, the escorts hunt, and a mission replays step for step and survives being saved and loaded half way. `node tools/stamp-assets.js` stamps every script and stylesheet with its hash after an edit. `?play=<mission>&side=<pack|escorts>&seed=<n>&run=<steps>&station=<chart|sonar|damage>&awake=1` on the page drops straight into a mission, for testing and for pictures. `tools/ORIGINAL.md` is what the 1990 game's files hold, in our own words.
 
-The Long Convoy began as a copy of [Puma Service](https://greykit.com/games/pumaservice/) and shares its sea, its boats and its view out; the screens, the controls and the code are its own. Its sonar's waterfall follows Attack Puma's.
+The Long Convoy began as a copy of [The Silent Patrol](https://greykit.com/games/thesilentpatrol/) and shares its sea, its boats and its view out; the screens, the controls and the code are its own. Its sonar's waterfall follows Attack Puma's.
 
 ## Credits
 

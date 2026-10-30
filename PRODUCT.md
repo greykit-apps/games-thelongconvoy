@@ -16,7 +16,7 @@ A remake of NovaLogic's *Wolfpack* (DOS, 1990): the Wolf Empire's wolfpack of su
 
 ## Positioning
 
-The 1990 game's design (the pack, switching command between boats, the convoy and its escorts, missions on both sides), rebuilt as its own game rather than an emulation, on Puma Service's sea, boats and periscope. It need not be faithful to *Wolfpack* (owner, 2026-10-29): it is our own thing, and takes what plays well from elsewhere, as its sonar's waterfall comes from *688 Attack Sub* by way of Attack Puma. Classic plays with the instruments and your eyes; Field adds modern aids; reality is set apart from the aids.
+The 1990 game's design (the pack, switching command between boats, the convoy and its escorts, missions on both sides), rebuilt as its own game rather than an emulation, on The Silent Patrol's sea, boats and periscope. It need not be faithful to *Wolfpack* (owner, 2026-10-29): it is our own thing, and takes what plays well from elsewhere, as its sonar's waterfall comes from *688 Attack Sub* by way of Attack Puma. Classic plays with the instruments and your eyes; Field adds modern aids; reality is set apart from the aids.
 
 ## Operating Context
 
@@ -35,9 +35,9 @@ Part of the greykit.games portfolio, served at greykit.com/games/thelongconvoy. 
 ## Brand Commitments
 
 - The name: The Long Convoy (owner, 2026-10-29), at greykit.com/games/thelongconvoy; it was PumaPack until then, and its saved keys are moved over once. The name keeps "Pumacity" out of the title; the story keeps Pumacity and the PDF. The submarines are the Wolf Empire's wolfpack; the convoys are Pumacity's, escorted by the Pumacity Defense Fleet (the PDF).
-- The same fictional archipelago and Wolf War as Puma Service; every place and ship name our own.
+- The same fictional archipelago and Wolf War as The Silent Patrol; every place and ship name our own.
 - Modern hi-bit pixel art at about 640 by 360; past the boot, a boat rigged for red light (owner's decision, 2026-10-26): black panels, red-orange light, amber readouts; the view out keeps the world's own colours.
-- The 1990 game's screens, not Puma Service's (owner's note, 2026-10-26): the map runs the battle, with your whole side listed on it; the dashboard of the vessel you are on; the sonar; the damage; orders for every vessel; select and fire, no torpedo data computer.
+- The 1990 game's screens, not The Silent Patrol's (owner's note, 2026-10-26): the map runs the battle, with your whole side listed on it; the dashboard of the vessel you are on; the sonar; the damage; orders for every vessel; select and fire, no torpedo data computer.
 - The title is a 16-bit painting, a destroyer at dusk over a U-boat in a dark red sea, under a slow, somber hunting theme; its menu is an engine-room telegraph (owner, 2026-10-29).
 - It must not look like a mobile game, and it must not look like it is running in an emulator.
 

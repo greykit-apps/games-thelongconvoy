@@ -11,8 +11,10 @@
    * (one already there wins), so a game in progress, the record and the settings carry over */
   try {
     const s = globalThis.localStorage, old = "pumapack_", now = KEY_PREFS.slice(0, KEY_PREFS.indexOf("_") + 1);
-    for (let i = s.length - 1; i >= 0; i--) {
-      const k = s.key(i);
+    /* the keys listed first: a key written during the walk can reorder s.key(i), and one would be skipped */
+    const ks = [];
+    for (let i = 0; i < s.length; i++) ks.push(s.key(i));
+    for (const k of ks) {
       if (!k || !k.startsWith(old)) continue;
       if (s.getItem(now + k.slice(old.length)) === null) s.setItem(now + k.slice(old.length), s.getItem(k));
       s.removeItem(k);

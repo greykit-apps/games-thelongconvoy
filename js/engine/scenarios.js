@@ -1,6 +1,6 @@
 /* The Long Convoy -- what there is to play: target practice, the convoy
  * actions (single engagements, each its own night or day of the war), a
- * custom action. (Puma Service's war patrols and career are gone: the 1990
+ * custom action. (The Silent Patrol's war patrols and career are gone: the 1990
  * game had missions, and so does this one.) */
 "use strict";
 (() => {
