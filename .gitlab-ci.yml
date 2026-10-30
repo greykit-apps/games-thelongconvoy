@@ -16,6 +16,7 @@ validate:
     # the sea sound, the firing solution true, every convoy action winnable by the bot, and a replay that matches step for step
     # two seeds, the default: a mission passes if the bot sinks a ship in either, so one unlucky game in a short
     # window (a big pack is dear to step) does not fail the build
+    # the games run side by side, one worker thread per core the container sees; the output and the verdict are the same as one at a time
     - node tools/sim-check.js --seeds 2
     # every script and stylesheet URL carries its content hash, so Cloudflare's 30-day cache never serves an old one
     - node tools/stamp-assets.js --check
