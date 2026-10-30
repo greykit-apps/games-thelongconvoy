@@ -29,7 +29,7 @@ deploy:
   # Without this a stalled job runs to the project's 60-minute limit, ends as
   # job_token_expired, and holds the production resource group all the while.
   timeout: 10m
-  before_script: &ssh_setup
+  before_script:
     # Output left visible: when the job stalls here, the log says which step.
     - apt-get update -q && apt-get install -y -q openssh-client rsync
     - mkdir -p ~/.ssh
@@ -91,27 +91,3 @@ deploy:
     name: production
     url: https://greykit.com/games/thelongconvoy/
   resource_group: production
-
-# One-off, 2026-10-29: before its rename the game deployed to games/pumapack/,
-# and that copy was left there, still serving. Run by hand once from main (the
-# DreamHost variables are protected, so it cannot run anywhere else), then this
-# job is taken out again. One SSH connection: it lists what is there, removes
-# it, and says so. Refuses a symlink, and exits clean if the folder is gone.
-remove-pumapack:
-  stage: deploy
-  image: debian:bookworm-slim
-  only:
-    - main
-  when: manual
-  timeout: 10m
-  before_script: *ssh_setup
-  script:
-    - test -n "$DREAMHOST_USERNAME"
-    - |
-      ssh ${DREAMHOST_USERNAME}@${DREAMHOST_HOST} "d=/home/${DREAMHOST_USERNAME}/greykit.com/games/pumapack
-        if [ -L \"\$d\" ]; then echo \"\$d is a symlink; not touching it\" >&2; exit 1; fi
-        if [ ! -d \"\$d\" ]; then echo \"\$d is already gone\"; exit 0; fi
-        ls -la \"\$d\"; du -sh \"\$d\"
-        rm -rf -- \"\$d\"
-        if [ -e \"\$d\" ]; then echo \"\$d is still there\" >&2; exit 1; fi
-        echo \"removed \$d\""
