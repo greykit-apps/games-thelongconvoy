@@ -404,7 +404,7 @@
     ["Keys", grid(
       card("Handling", [[kb("W", "S"), "Speed"], [kb("A", "D"), "Rudder"], [kb("Q", "E"), "Shallower, deeper (escort: charges' depth)"], [kb("P", "U", "C"), "Periscope depth, surface, crash dive"], [kb("J"), "AUTO or your control"]]),
       card("Weapons", [[kb("Space"), "Fire, or lay the pattern"], [kb("T"), "Select a ship"], [kb("V"), "Spread or pattern"], [kb("F"), "Tubes, or the hedgehog"], [kb("G"), "Gun"], [kb("K"), "Noisemaker"]]),
-      card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
+      card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, the glasses, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
       card("Screens and time", [[kb("1") + "–" + kb("5"), "Dashboard, map, sonar, damage; the log"], [kb("Tab"), "Next screen"], [kb("+", "−"), "Time faster, slower"], [kb("Backspace"), "Back to 1x"]]),
       card("Your side", [[kb("N"), "Next vessel (" + kb("Shift") + ": back)"], [kb("O"), "Next order"], [kb("Enter"), "Take command"]]),
       card("Systems", [[kb("X"), "Silent running, or sonar"], [kb("I"), "Snorkel"], [kb("Y"), "Radar"], [kb("L"), "Aids"], [kb("M"), "Sound"], [kb("Esc"), "Pause"]])) +
