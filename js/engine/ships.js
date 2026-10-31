@@ -155,14 +155,7 @@
       const k = C.SHIPS[s.cls], cv = Sh.convoy(S, s.conv);
       if (s.sinking) {
         s.sinking += dt; s.ordSpd = 0; s.list = Math.min(1, s.list + dt / s.sinkT);
-        if (s.sinking >= s.sinkT && !s.sunk) {
-          s.sunk = true; s.sunkT = S.t;
-          ev.push({ t: "shipSunk", id: s.id, name: s.name, cls: s.cls, tons: k.tons, x: s.x, y: s.y, role: s.role });
-          if (s.byUs) {
-            S.stats.tons += k.tons; S.stats.sunk.push({ name: s.name, cls: s.cls, tons: k.tons, t: S.t, role: s.role, kind: s.lastKind || "torp", boat: s.lastBy });
-            const q = S.subs.find(b => b.id === s.lastBy); if (q) { q.sank = (q.sank || 0) + 1; q.tons = (q.tons || 0) + k.tons; }
-          }
-        }
+        if (s.sinking >= s.sinkT && !s.sunk) Sh.sunk(S, s, ev);
       } else if (s.role === "merchant" || s.ai.st === "screen") {
         /* keep station: steer for the slot, a little ahead of it; or run, scattered */
         if (s.scatterHdg !== null && s.role === "merchant") { s.ordHdg = s.scatterHdg; s.ordSpd = k.kn; }
@@ -188,6 +181,19 @@
     S.ships = S.ships.filter(s => !(s.sunk && S.t - s.sunkT > 120));
     for (const q of S.subs) if (q.tdc.tgt !== null) { const t = Sh.byId(S, q.tdc.tgt); if (!t || t.sunk) q.tdc.tgt = null; }
   };
+
+  /* a ship gone under: the tonnage to whoever sank her */
+  Sh.sunk = (S, s, ev) => {
+    const k = C.SHIPS[s.cls];
+    s.sunk = true; s.sunkT = S.t;
+    ev.push({ t: "shipSunk", id: s.id, name: s.name, cls: s.cls, tons: k.tons, x: s.x, y: s.y, role: s.role });
+    if (s.byUs) {
+      S.stats.tons += k.tons; S.stats.sunk.push({ name: s.name, cls: s.cls, tons: k.tons, t: S.t, role: s.role, kind: s.lastKind || "torp", boat: s.lastBy });
+      const q = S.subs.find(b => b.id === s.lastBy); if (q) { q.sank = (q.sank || 0) + 1; q.tons = (q.tons || 0) + k.tons; }
+    }
+  };
+  /* the action over: every ship still going down is counted sunk, so nobody waits out her last minutes */
+  Sh.settle = (S, ev) => { for (const s of S.ships) if (s.sinking && !s.sunk) Sh.sunk(S, s, ev); };
 
   /* ---- a hit: a torpedo, a shell ---- */
   /* kind: torp, shell or ram; by: the boat of the pack that did it, for the debrief */

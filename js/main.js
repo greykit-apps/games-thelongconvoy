@@ -217,7 +217,7 @@
   game.pause = () => { if (game.mode !== "play" || UI.sheet) return; I.clear(); checkpoint(); UI.pause(); };
   game.unpause = () => { game.acc = 0; game.last = performance.now(); };
   game.leave = () => { checkpoint(true); game.toTitle(); };
-  game.endAction = () => { const S = game.S; if (!S) return; S.phase = "over"; S.end = { why: "ended", t: S.t }; finish(); };
+  game.endAction = () => { const S = game.S; if (!S) return; PP.Ships.settle(S, []); S.phase = "over"; S.end = { why: "ended", t: S.t }; finish(); };
   function checkpoint(force) {
     const S = game.S;
     if (!S || game.mode !== "play" || S.phase === "over") return;

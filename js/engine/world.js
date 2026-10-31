@@ -159,10 +159,13 @@
     if (S.side === "escorts" && !Esc.flag(S)) {
       const next = Esc.mine(S)[0];
       if (next) Esc.take(S, next, ev);
-      else if (S.phase === "sea" && !S.ships.some(q => q.role === "escort" && q.sinking && !q.sunk)) { S.phase = "over"; S.end = { why: "fleetLost", t: S.t }; ev.push({ t: "actionOver", why: "fleetLost" }); }
+      else if (S.phase === "sea") over(S, "fleetLost", ev);
     }
+    /* the escorts' side: the last of the pack with her hull broken is going down, so she is counted lost now rather than when the water fills her */
+    if (S.side === "escorts" && S.phase === "sea" && S.subs.every(q => q.lost || q.hull <= 0)) for (const q of S.subs) if (!q.lost) Sub.lost(S, "flooded", ev, q);
+    if (S.phase !== "sea") return finish(S, ev);
     /* a mission's time limit */
-    if (S.phase === "sea" && S.endT && S.t >= S.endT) { S.phase = "over"; S.end = { why: "time", t: S.t }; ev.push({ t: "actionOver", why: "time" }); }
+    if (S.phase === "sea" && S.endT && S.t >= S.endT) over(S, "time", ev);
     S.det = det;
     S.t += dt;
     /* the clock's cap for the next step */
@@ -170,19 +173,22 @@
     S.tcCap = cp.c; S.tcWhy = cp.why;
     if (cp.c < was && was > 0) ev.push({ t: "tcDropped", why: cp.why, to: C.TC[cp.c] });
     if (S.mode === "action" || S.mode === "practice") {
-      /* an action ends when every merchant is down (in a mission with none, every escort), or the rest are away */
+      /* an action ends when every merchant is going down (in a mission with none, every escort), or the rest are away */
       const merch = S.ships.filter(q => q.role === (S.goal || "merchant"));
-      const alive = merch.filter(Sh.alive), sinking = merch.filter(q => q.sinking && !q.sunk);
+      const alive = merch.filter(Sh.alive);
       const pack = E.afloat(S);
       const awayAll = S.convoys.every(cv => !cv.spawned || S.ships.filter(q => q.conv === cv.id && Sh.alive(q)).every(q => pack.every(b => PP.dist(q.x, q.y, b.x, b.y) > 30000)));
-      if ((alive.length === 0 && sinking.length === 0) || (awayAll && alive.length)) {
-        /* with no merchants, the pack drawing clear of the hunters is the other way to win */
-        S.phase = "over"; S.end = { why: alive.length ? (S.goal === "escort" ? "slipped" : "escaped") : "allSunk", t: S.t };
-        ev.push({ t: "actionOver", why: S.end.why });
-      }
+      /* with no merchants, the pack drawing clear of the hunters is the other way to win */
+      if (alive.length === 0 || (awayAll && alive.length)) over(S, alive.length ? (S.goal === "escort" ? "slipped" : "escaped") : "allSunk", ev);
     }
     return finish(S, ev);
   };
+  /* the action over: what is still going down is counted sunk first, so the tally is whole */
+  function over(S, why, ev) {
+    Sh.settle(S, ev);
+    S.phase = "over"; S.end = { why, t: S.t };
+    ev.push({ t: "actionOver", why });
+  }
   function finish(S, ev) {
     for (const e of ev) {
       const line = LOG[e.t] && LOG[e.t](S, e);

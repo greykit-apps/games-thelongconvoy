@@ -323,6 +323,6 @@
     s.lost = why; s.spd = 0; s.scope.up = false; s.gun.on = false; s.lostT = S.t;
     ev.push({ t: "subLost", why, by: s.id, name: s.name });
     (S.stats.lost = S.stats.lost || []).push({ name: s.name, cls: s.cls, why, kind: s.lastHit || "", t: S.t });
-    if (!S.subs.some(q => !q.lost)) { S.phase = "over"; S.end = { why, t: S.t }; }
+    if (!S.subs.some(q => !q.lost)) { PP.Ships.settle(S, ev); S.phase = "over"; S.end = { why, t: S.t }; }
   };
 })();
