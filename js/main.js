@@ -12,18 +12,29 @@
   const E = PP.Engine, C = PP.C, K = PP.K, UI = PP.UI, R = PP.Render, HUD = PP.HUD, SFX = PP.SFX, I = PP.Input, Sub = PP.Sub, W = PP.Weapons, esc = PP.esc, $ = id => document.getElementById(id);
   const game = PP.game = { mode: "boot", S: null, car: null, demo: null, ui: { station: "chart", look: 0, bino: false, chartZoom: 2, chartAt: null, aids: {}, track: [] }, step: 20, acc: 0, last: 0, warned: {}, lastCustom: null };
 
-  /* ---- sound on and off (STANDARD.md §8) ---- */
-  const readMuted = () => { try { return globalThis.localStorage.getItem(PP.KEY_MUTED) === "1"; } catch (e) { return false; } };
-  SFX.muted = readMuted();
+  /* ---- sound on and off (STANDARD.md §8), and the music on its own (§14) ---- */
+  const readFlag = (k, d) => { try { const v = globalThis.localStorage.getItem(k); return v === null ? d : v === "1"; } catch (e) { return d; } };
+  const writeFlag = (k, on) => { try { globalThis.localStorage.setItem(k, on ? "1" : "0"); } catch (e) { /* no storage */ } };
+  SFX.muted = readFlag(PP.KEY_MUTED, false);
+  SFX.musicOn = readFlag(PP.KEY_MUSIC, true);
+  const titleTune = () => { if (game.mode === "title" && !SMALL.matches) SFX.startTune(); };
   game.toggleMute = () => {
     SFX.unlock();
     SFX.setMuted(!SFX.muted);
-    try { globalThis.localStorage.setItem(PP.KEY_MUTED, SFX.muted ? "1" : "0"); } catch (e) { /* no storage */ }
+    writeFlag(PP.KEY_MUTED, SFX.muted);
     syncSound();
-    if (!SFX.muted) { SFX.play("menu"); if (game.mode === "title" && !SMALL.matches) SFX.startTune(); }
+    if (!SFX.muted) { SFX.play("menu"); titleTune(); }
     if (game.mode === "play") HUD.toast(SFX.muted ? "Sound off" : "Sound on", "", 1200);
   };
-  function syncSound() { const b = $("snd"); if (b) { b.setAttribute("aria-pressed", String(!SFX.muted)); b.classList.toggle("muted", SFX.muted); } }
+  game.setMusic = on => {
+    SFX.unlock();
+    SFX.setMusic(on);
+    writeFlag(PP.KEY_MUSIC, on);
+    syncSound();
+    if (on) titleTune();
+  };
+  /* the station's Sound, and the title's switches */
+  function syncSound() { const b = $("snd"); if (b) { b.setAttribute("aria-pressed", String(!SFX.muted)); b.classList.toggle("muted", SFX.muted); } if (game.sw) game.sw.refresh(); }
   const SMALL = matchMedia("(max-width: 759px), (max-height: 479px)");
   game.applySpeed = () => { game.step = 1000 / (PP.SPEEDS[PP.prefs.speed] || PP.SPEEDS.classic)[1]; };
   game.applyLook = () => { $("stage").classList.toggle("scan", !!PP.prefs.scanlines); };
@@ -99,10 +110,43 @@
       <footer class="ps-foot"><span class="gk-credit">${UI.CREDIT}</span></footer>
     </div>`;
   }
+  /* the integrated title's switches, top right (§14): Sound, the master, as M is, and Music alone. canon
+   * gk-intro's gkToggles, adapted: this title is the game's own, so it takes the switches and nothing else of the block */
+  const SW_ICON = {
+    sound: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+    music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>',
+  };
+  const SWITCHES = [
+    ["music", "Music", "", () => SFX.musicOn, on => game.setMusic(on)],
+    ["sound", "Sound", " (M)", () => !SFX.muted, on => { if (on === SFX.muted) game.toggleMute(); }],
+  ];
+  function titleSwitches(title) {
+    const wrap = document.createElement("div");
+    wrap.className = "gki-toggles";
+    const made = SWITCHES.map(([k, label, keyHint, get, set]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "gki-tg";
+      b.setAttribute("aria-label", label); b.title = label + keyHint;
+      b.innerHTML = SW_ICON[k] + '<span class="gki-sw"></span>';
+      b.addEventListener("click", ev => { ev.stopPropagation(); set(!get()); refresh(); });
+      wrap.appendChild(b);
+      return [b, k, get];
+    });
+    const refresh = () => {
+      for (const [b, k, get] of made) {
+        b.setAttribute("aria-pressed", String(get()));
+        if (k === "music") b.classList.toggle("gki-held", SFX.muted);
+      }
+    };
+    refresh();
+    title.appendChild(wrap);
+    return { refresh };
+  }
   function openTitle() {
     game.mode = "title";
     const el = $("title");
     el.innerHTML = titleHTML(titleCfg());
+    game.sw = titleSwitches(el.querySelector(".ps-title"));
     el.hidden = false;
     $("game").hidden = true;
     document.body.classList.add("on-title");
@@ -144,7 +188,7 @@
     SFX.stopLoops();
     I.clear(); HUD.clear(); PP.FX.clear();
     openTitle(); revealTitle();
-    if (!SMALL.matches) SFX.startTune();
+    titleTune();
   };
   async function titleAct(a) {
     SFX.unlock();
@@ -493,7 +537,7 @@
     next: KY(["T"], ["pad:X"], "next ship"),
     fire: KY(["Space"], ["pad:A"], "fire"),
     look: KY(["left", "right"], ["pad:R-stick"], "look"),
-    glasses: KY(["up", "down"], ["pad:Y"], "glasses"),
+    glasses: KY(["Z"], ["pad:Y"], "glasses"),
     gun: KY(["G"], ["pad:dR"], "man the gun"),
     gunFire: KY(["G"], ["pad:dR"], "fire the gun"),
     time: KY(["+", "−"], ["pad:LT", "pad:RT"], "time"),
@@ -541,7 +585,7 @@
     const C2 = (k, w) => k.map(I.cap).join("") + " " + w;
     if (fresh) return ["danger", "Contact", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["Q", "E"], "charges' depth"), C2(["Space"], "pattern"), C2(["F"], "hedgehog")]];
     if (st === "sonar") return ["", "", [C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "active or passive")]];
-    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "orders")] : [C2(["left", "right"], "look"), C2(["up", "down"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
+    return ["", "", st === "chart" ? [C2(["Z"], "zoom"), C2(["W", "S"], "speed"), C2(["A", "D"], "helm"), C2(["X"], "sonar"), C2(["O"], "orders")] : [C2(["left", "right"], "look"), C2(["Z"], "glasses"), C2(["T"], "target"), C2(["G"], "guns"), C2(["Space"], "pattern"), C2(["X"], "sonar")]];
   }
   function strip(S) {
     const s = S.sub, st = R.stationOf(S, game.ui), surf = Sub.surfaced(s), locked = S.tdc.tgt !== null;

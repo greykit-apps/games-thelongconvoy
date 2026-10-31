@@ -313,7 +313,8 @@
         <table class="aids">${line("Scanlines", "Fine dark lines over the screen, like an old television.", toggle("scan", PP.prefs.scanlines, "Scanlines"))}
         ${line("Screen shake", "The boat jolts when depth charges go off close." + (PP.calm() ? " Off to begin with, as this computer asks for less motion." : ""), toggle("shake", PP.prefs.shake, "Screen shake"))}</table>
         <h3>Sound</h3>
-        <table class="aids">${line("Sound", "Diesels, motors, screws, pings, charges; the theme on the title. <kbd>M</kbd> switches it anywhere.", toggle("mute", !PP.SFX.muted, "Sound"))}</table>
+        <table class="aids">${line("Sound", "Diesels, motors, screws, pings, charges; the theme on the title. <kbd>M</kbd> switches it anywhere.", toggle("mute", !PP.SFX.muted, "Sound"))}
+        ${line("Music", "The theme on the title. Off, the boats and the sea still sound." + (PP.SFX.muted ? " Silent while Sound is off." : ""), toggle("music", PP.SFX.musicOn, "Music"))}</table>
         <h3>Game speed</h3>
         <div class="row">${Object.entries(PP.SPEEDS).map(([k, [n]]) => pill(PP.prefs.speed === k, n, "speed:" + k)).join("")}</div>
         <p class="note">Relaxed slows the whole game down, Brisk speeds it up. Time compression works on top of it.</p>
@@ -336,6 +337,7 @@
         else if (k === "shake") { PP.prefs.shake = !PP.prefs.shake; PP.savePrefs(); }
         else if (k === "resume") { PP.prefs.resume = !PP.prefs.resume; PP.savePrefs(); }
         else if (k === "mute") PP.game.toggleMute();
+        else if (k === "music") PP.game.setMusic(!PP.SFX.musicOn);
         else if (k === "speed") { PP.prefs.speed = a; PP.savePrefs(); PP.game.applySpeed(); }
         PP.game.syncAids();
         api.refresh();
@@ -402,7 +404,7 @@
     ["Keys", grid(
       card("Handling", [[kb("W", "S"), "Speed"], [kb("A", "D"), "Rudder"], [kb("Q", "E"), "Shallower, deeper (escort: charges' depth)"], [kb("P", "U", "C"), "Periscope depth, surface, crash dive"], [kb("J"), "AUTO or your control"]]),
       card("Weapons", [[kb("Space"), "Fire, or lay the pattern"], [kb("T"), "Select a ship"], [kb("V"), "Spread or pattern"], [kb("F"), "Tubes, or the hedgehog"], [kb("G"), "Gun"], [kb("K"), "Noisemaker"]]),
-      card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
+      card("Looking", [[kb("←", "→"), "Train the periscope, look round"], [kb("↑", "↓"), "Periscope up and down, the glasses"], [kb("Z"), "Power, the glasses, or zoom the map"], [kb("H"), "Onto the target"], [kb("B"), "To the bow, again the stern"]]),
       card("Screens and time", [[kb("1") + "–" + kb("5"), "Dashboard, map, sonar, damage; the log"], [kb("Tab"), "Next screen"], [kb("+", "−"), "Time faster, slower"], [kb("Backspace"), "Back to 1x"]]),
       card("Your side", [[kb("N"), "Next vessel (" + kb("Shift") + ": back)"], [kb("O"), "Next order"], [kb("Enter"), "Take command"]]),
       card("Systems", [[kb("X"), "Silent running, or sonar"], [kb("I"), "Snorkel"], [kb("Y"), "Radar"], [kb("L"), "Aids"], [kb("M"), "Sound"], [kb("Esc"), "Pause"]])) +

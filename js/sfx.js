@@ -9,7 +9,7 @@
  * are Raid on Puma Bay's; the song is new.) */
 "use strict";
 (() => {
-  const A = PP.SFX = { ctx: null, muted: false, out: null, loops: {}, tune: null };
+  const A = PP.SFX = { ctx: null, muted: false, musicOn: true, out: null, loops: {}, tune: null };
   let noiseBuf = null;
 
   A.unlock = () => {
@@ -23,6 +23,8 @@
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   };
   A.setMuted = m => { A.muted = m; if (A.out) A.out.gain.value = m ? 0 : 0.5; if (m) { A.stopTune(); for (const k of Object.keys(A.loops)) A.loop(k, 0); } };
+  /* the music alone (STANDARD.md §14): the theme stops with it, and starts again from the top when it comes back on */
+  A.setMusic = on => { A.musicOn = on; if (!on) A.stopTune(); };
 
   function tone(f0, f1, ms, type, vol, dest, at = 0) {
     const a = A.ctx, o = a.createOscillator(), g = a.createGain(), t = a.currentTime + 0.005 + at;
@@ -147,7 +149,7 @@
   A.pings = [];
 
   A.startTune = () => {
-    if (A.muted || !A.ctx || A.tune) return;
+    if (A.muted || !A.musicOn || !A.ctx || A.tune) return;
     const a = A.ctx, g = a.createGain();
     g.gain.setValueAtTime(0, a.currentTime); g.gain.linearRampToValueAtTime(0.55, a.currentTime + 2.5); g.connect(A.comp);
     /* the deep: a long reverb, its tail made from noise dying away over four seconds */

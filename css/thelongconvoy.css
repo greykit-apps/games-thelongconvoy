@@ -315,6 +315,24 @@ dl.hk dd { margin: 0; line-height: 1.35; }
 .sh-body .cols > * { break-inside: avoid; }
 .sh-body .cols p { max-width: none; }
 .ps-foot { position: absolute; left: clamp(32px, 7vw, 120px); bottom: 24px; font-size: 14px; }
+/* the integrated title's switches, top right (STANDARD.md §14): canon gk-intro's, in the boat's red light */
+.gki-toggles { position: absolute; z-index: 2; top: 20px; right: 24px; display: flex; gap: 10px; }
+.gki-tg { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 10px 0 11px; font: inherit; color: var(--ps-text); cursor: pointer;
+  background: var(--ps-panel); border: 1px solid var(--ps-line); border-radius: 18px; }
+.gki-tg:hover { border-color: var(--ps-yellow); }
+.gki-tg:focus { background: var(--ps-panel); border-color: var(--ps-line); box-shadow: none; }
+.gki-tg:focus-visible { outline: 2px solid var(--ps-yellow); outline-offset: 2px; }
+.gki-tg svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.gki-tg .gki-sw { position: relative; width: 32px; height: 18px; border-radius: 9px; box-sizing: border-box;
+  border: 1px solid var(--ps-line); background: rgba(9,4,4,.7); transition: background .18s, border-color .18s; }
+.gki-tg .gki-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--ps-faint); transition: transform .18s cubic-bezier(.3,.7,.4,1), background .18s; }
+.gki-tg[aria-pressed="true"] .gki-sw { background: rgba(255,198,90,.3); border-color: var(--ps-yellow); }
+.gki-tg[aria-pressed="true"] .gki-sw::after { transform: translateX(14px); background: var(--ps-yellow); }
+.gki-tg[aria-pressed="false"] { color: var(--ps-muted); }
+/* music the master Sound switch has silenced: still its own switch, dimmed */
+.gki-tg.gki-held { opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .gki-tg .gki-sw, .gki-tg .gki-sw::after { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .paper button:focus .tick path { transition: none; } .paper button:focus::after { animation: none; } }
 
 /* ---- new game, the round's report, the end ---- */
@@ -538,9 +556,10 @@ img.fig { display: inline-block; vertical-align: middle; }
 @keyframes h-stamp-still { 0%, 78% { opacity: 1; } 100% { opacity: 0; } }
 /* the port's call, when a base is in reach */
 /* ---- the dashboard (art/dash.js): its buttons and its message window over the canvas; the old panels stand down ---- */
-/* the foot's strip stays on the dashboard only for the practice's lesson and the danger's way out, set at the foot of
- * the view (hud.js); the plain key strip and the toasts stand down (the message window keeps the news) */
-#hud.dashmode #h-tabs, #hud.dashmode #h-clock, #hud.dashmode #h-boat, #hud.dashmode #h-tdc, #hud.dashmode #h-orders, #hud.dashmode .h-toasts, #hud.dashmode .h-hint:not(.coach):not(.danger),
+/* the foot's strip stays on the dashboard only for the practice's lesson, set at the foot of the view (hud.js); the
+ * key strip stands down, danger or not: the buttons under the view carry their keys, the Hunted lamp and the
+ * contact's panel say what the red strip said; the toasts stand down too (the message window keeps the news) */
+#hud.dashmode #h-tabs, #hud.dashmode #h-clock, #hud.dashmode #h-boat, #hud.dashmode #h-tdc, #hud.dashmode #h-orders, #hud.dashmode .h-toasts, #hud.dashmode .h-hint:not(.coach),
 #hud.statusmode #h-boat, #hud.statusmode #h-tdc, #hud.statusmode #h-orders, #hud.statusmode #h-hull, #hud.statusmode #h-dmg { display: none; }
 #hud:not(.dashmode) .h-msgs { display: none; }
 .h-dash { position: absolute; inset: 0; pointer-events: none; }

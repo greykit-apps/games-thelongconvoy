@@ -6,6 +6,7 @@
 (() => {
   const KEY_PREFS = "thelongconvoy_prefs_v1", KEY_GAME = "thelongconvoy_game_v1", KEY_FAME = "thelongconvoy_fame_v1", KEY_NAME = "thelongconvoy_name_v1";
   PP.KEY_MUTED = "thelongconvoy_muted_v1";
+  PP.KEY_MUSIC = "thelongconvoy_music_v1";
   PP.KEY_LAST = "thelongconvoy_last_v1";
   /* the game was PumaPack until 2026-10-29: what it kept under that name is moved, once, to the new name's keys
    * (one already there wins), so a game in progress, the record and the settings carry over */
