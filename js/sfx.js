@@ -22,6 +22,32 @@
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   };
+  /* whether the page may sound before it is touched: after a launcher's click (greykit.com/arcade goes to the game
+   * in the same tab), or on a site the browser trusts (games-meta canon gkSoundAllowed). Resolves true with the
+   * context running; false where the browser waits for a press, and then the context is dropped, so that press
+   * makes a fresh one as it always has, and nothing queued on a held-back context sounds all at once */
+  A.tryAutoplay = (ms = 250) => new Promise(resolve => {
+    A.unlock();
+    const a = A.ctx;
+    if (!a) return resolve(false);
+    let done = false;
+    const end = ok => {
+      if (done) return;
+      done = true;
+      if (!ok && A.ctx === a && a.state !== "running") { a.close().catch(() => {}); A.ctx = A.out = A.comp = noiseBuf = null; }
+      resolve(ok || a.state === "running");
+    };
+    try {
+      if (navigator.getAutoplayPolicy) {
+        const p = navigator.getAutoplayPolicy(a);
+        if (p === "allowed") { a.resume(); return end(true); }
+        if (p === "disallowed") return end(false);
+      }
+    } catch (e) { /* not this browser's; ask the context */ }
+    if (a.state === "running") return end(true);
+    setTimeout(() => end(a.state === "running"), ms);
+    a.resume().then(() => end(a.state === "running"), () => end(false));
+  });
   A.setMuted = m => { A.muted = m; if (A.out) A.out.gain.value = m ? 0 : 0.5; if (m) { A.stopTune(); for (const k of Object.keys(A.loops)) A.loop(k, 0); } };
   /* the music alone (STANDARD.md §14): the theme stops with it, and starts again from the top when it comes back on */
   A.setMusic = on => { A.musicOn = on; if (!on) A.stopTune(); };

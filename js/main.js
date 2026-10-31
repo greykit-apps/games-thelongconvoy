@@ -1215,8 +1215,12 @@
       } else {
         openTitle();
         const saved = PP.loadGame();
+        /* sound and music are on unless the player turned them off: coming from the arcade's click the theme
+         * starts with the title, untouched; where the browser holds sound back, at the first press as before */
+        const sound = SFX.tryAutoplay();
         run.finish(["the convoy is sighted", saved ? "a game in progress" : "tubes loaded"]).then(() => {
           revealTitle(!q.has("shot"));
+          sound.then(ok => { if (ok) titleTune(); });
           const sheet = q.get("sheet");
           if (sheet && UI[sheet]) UI[sheet]();
         });
